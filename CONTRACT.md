@@ -5,6 +5,14 @@ This document is the single source of truth for connecting the phone frontend to
 It follows the message format and Ask states already fixed in [BLUEPRINT_1.md](BLUEPRINT_1.md#message-format)
 and the "one small `Transport` interface (send, receive, peers)" rule in [PLAN.md](PLAN.md#4-open-decision-which-stack).
 
+> **Status (coordinator, after worker merge):** all items below are implemented and merged into
+> `design/status-components` — B1/B2 in `hub/` (worker branch `qubula/hub-backend`, 42 unittests OK),
+> F1–F4 in `design/transport.js` + both prototypes (worker branch `qubula/frontend-transport`,
+> 42-check Node smoke test OK). Cross-checked live: `python3 -m hub` + stub inference → SSE `ack` then
+> `answer` ending with the disclaimer; inference down → labelled fallback answer; hub down → frontend
+> state `sent,unreachable` with working `retry()`. `?transport=sim` (default) keeps the original
+> scripted design demo unchanged.
+
 ## 1. Audit: what exists and what is missing
 
 ### Frontend — `design/` (static HTML prototypes, fully simulated)
