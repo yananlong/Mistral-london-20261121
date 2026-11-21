@@ -75,3 +75,6 @@ id_ecdsa*
 *.csr
 *.jks
 *.keystore
+yolo/.venv/
+yolo/out/
+yolo/models/
