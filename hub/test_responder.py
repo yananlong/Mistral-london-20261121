@@ -19,6 +19,17 @@ import responder
 
 logging.getLogger("hub.responder").setLevel(logging.CRITICAL)  # expected warnings in tests
 
+# These tests cover the responder contract without dataset facts; test_kb.py covers the KB.
+_no_kb = mock.patch.object(responder.kb, "get_kb", return_value=None)
+
+
+def setUpModule():
+    _no_kb.start()
+
+
+def tearDownModule():
+    _no_kb.stop()
+
 
 class FakeHTTPResponse:
     """Just enough of urllib's response object for responder.py."""

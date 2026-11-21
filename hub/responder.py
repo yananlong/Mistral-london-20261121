@@ -35,6 +35,8 @@ import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+import kb
+
 log = logging.getLogger("hub.responder")
 
 ACK = "Received. Working on an answer."
@@ -57,9 +59,11 @@ SYSTEM_PROMPT = (
     "If anyone's life may be at risk, step 1 is always: call 999 (or 112) if "
     "any phone works; if not, send someone to get help.\n"
     "You have no live information about the current disaster. You cannot see "
-    "a map, live alerts or feeds. Never invent place names, addresses, "
-    "distances, times or phone numbers; say plainly when you do not know and "
-    "suggest the app's map or asking people nearby.\n"
+    "a map, live alerts or feeds. When the message includes facts from the "
+    "hub's offline datasets, use them for any place, distance or number, and "
+    "name the place and its distance. Never invent place names, addresses, "
+    "distances, times or phone numbers; without such facts, say plainly that "
+    "you do not know and suggest the app's map or asking people nearby.\n"
     "You cannot send messages or contact anyone.\n"
     "Use UK units and UK emergency numbers (999, 112, 111, 105).\n"
     "Plain text only, no Markdown: no bold, no headings, no bullet sub-lists.\n"
@@ -426,11 +430,30 @@ def max_concurrent_answers():
 # --- model call and answer shaping ---------------------------------------------
 
 
+def kb_facts(question, loc):
+    """Dataset facts for this question from the hub KB; [] when the KB is off or fails."""
+    base = kb.get_kb()
+    if base is None:
+        return []
+    try:
+        return base.facts(question, loc)
+    except Exception as e:  # the KB must never stop an answer
+        log.warning("KB lookup failed: %s", e)
+        return []
+
+
 def build_user_content(question, loc):
-    """The loc line is stripped from the question and passed as structured data."""
-    if loc is None:
-        return question
-    return "%s\n\nAsker location (lat, lon): %s, %s" % (question, loc["lat"], loc["lon"])
+    """The loc line is stripped from the question and passed as structured data.
+
+    When the hub KB has matching facts, they follow as a numbered block.
+    """
+    content = question
+    if loc is not None:
+        content = "%s\n\nAsker location (lat, lon): %s, %s" % (question, loc["lat"], loc["lon"])
+    facts = kb_facts(question, loc)
+    if facts:
+        content += "\n\n" + kb.format_facts(facts)
+    return content
 
 
 def build_chat_payload(question, loc):
@@ -830,6 +853,7 @@ def main():
             "never a wildcard address (0.0.0.0, ::, ...)" % bind
         )
     port = env_int("HUB_PORT", 8080)
+    kb.get_kb()  # build the KB index once at startup, not on the first question
     server = make_server(bind, port)
     log.info(
         "hub responder on http://%s:%d, ollama at %s, model %s",
