@@ -14,23 +14,23 @@ export interface LatLon {
 
 export const LOC_PREFIX = 'loc:';
 
+/**
+ * The loc: line grammar, kept in lockstep with the hub's LOC_LINE_RE in
+ * hub/responder.py (decimal degrees only; scripts/check_loc_line_compat.py
+ * fails CI on drift). Case-insensitive like the hub.
+ */
+export const LOC_LINE_RE_TS = /^\s*loc:\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/i;
+
 export function formatLocLine(point: LatLon): string {
   return `${LOC_PREFIX} ${point.lat.toFixed(5)},${point.lon.toFixed(5)}`;
 }
 
 /** Parse one line as a loc: line. Returns null for anything else. */
 export function parseLocLine(line: string): LatLon | null {
-  const trimmed = line.trim();
-  if (!trimmed.startsWith(LOC_PREFIX)) return null;
-  const rest = trimmed.slice(LOC_PREFIX.length).trim();
-  const parts = rest.split(',');
-  if (parts.length !== 2) return null;
-  const latText = parts[0].trim();
-  const lonText = parts[1].trim();
-  if (latText === '' || lonText === '') return null;
-  const lat = Number(latText);
-  const lon = Number(lonText);
-  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  const m = LOC_LINE_RE_TS.exec(line);
+  if (!m) return null;
+  const lat = Number(m[1]);
+  const lon = Number(m[2]);
   if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
   return { lat, lon };
 }
