@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Library manifest. The namespace is set in build.gradle.kts.
+     The host app declares RECORD_AUDIO and the RecognitionService <queries> entry for speech (README "Using the engine"). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" />

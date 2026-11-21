@@ -95,6 +95,28 @@ to move to `GET /v2/audio/voices`.
 - Fall back to on-device TTS (Android/iOS system TTS) for dynamic text.
 - If self-hosting, run the model on a laptop/edge box over a local hotspot.
 
+## 7. Offline speech-to-text (self-hosted, working)
+
+Voxtral Mini 4B Realtime 2602 (Apache 2.0) runs locally on the GB10 box via vLLM:
+
+```bash
+voxtral/run_stt.sh                                   # starts container "voxtral-stt" on :8001
+uv run voxtral/stt.py audio.wav                      # streams audio, prints live transcript
+```
+
+- Endpoint: websocket `ws://<hub>:8001/v1/realtime`. Send `session.update` with
+  `"model": "voxtral-stt"`, then `input_audio_buffer.commit`, then
+  `input_audio_buffer.append` chunks of base64 PCM16 at 16 kHz, then
+  `input_audio_buffer.commit` with `"final": true`. Read `transcription.delta` events
+  until `transcription.done`. See `voxtral/stt.py`.
+- The batch HTTP `/v1/audio/transcriptions` endpoint hung with this model. Use the websocket.
+- Use `vllm/vllm-openai:v0.33.0-aarch64` (CUDA 13.0) plus audio libraries
+  (`voxtral/Dockerfile.stt`). The NGC `nvcr.io/nvidia/vllm:26.05.post1-py3` image is
+  CUDA 13.2 and runs in forward-compat mode on driver 580. cuFFT fails there
+  (`cuFFT error: unknown error 50`), and the audio encoder crashes on startup.
+- Uses about 11 GB of the 18 GB it reserves (`--gpu-memory-utilization 0.15`).
+  Start it before loading large Ollama models, or vLLM may refuse to start.
+
 ## Sources
 
 - [Voxtral 3 announcement](https://mistral.ai/news/voxtral-3/)

@@ -4,8 +4,8 @@ The data from [DATASETS.md](../DATASETS.md), downloaded on 21 November 2026 and 
 
 | Folder | Tier in DATASETS.md | Who uses it | Size |
 |---|---|---|---|
-| [phone/](phone/) | **0. On the phone** | Android **and** iOS apps, as the same files | ~0.6 GB |
-| [hub/](hub/) | **1. On the hub** | DGX Spark retrieval (RAG) and "nearest X" lookups | ~19 GB |
+| [phone/](phone/) | **0. On the phone** | Android **and** iOS apps, as the same files | ~0.9 GB |
+| [hub/](hub/) | **1. On the hub** | DGX Spark retrieval (RAG), "nearest X" lookups, foraging vision evaluation | ~20 GB |
 | [feeds/](feeds/) | **2. Live, via the hub** | Hub bulletins; demo replay when there's no live connection | ~1 MB per snapshot |
 
 Every file in `phone/` and `hub/` is listed in `<tier>/manifest.json`, with its size, SHA-256, licence and attribution. Apps should read the manifest to check that the bundle is present and intact.
@@ -19,11 +19,15 @@ Every format here works on both platforms, so neither app needs its own conversi
 | `map/london.pmtiles` | Greater London vector basemap, z0–15 (Protomaps build 20261121) | PMTiles v3, MVT tiles | MapLibre Native, using a `pmtiles://file://…` source (recent Android and iOS SDKs support it; check the version you pin) |
 | `pois/london_pois.sqlite` | About 22k emergency POIs. Table `pois(id, category, type, name, lat, lon, opening_hours, tags)` | SQLite | Android `SQLiteDatabase`, iOS GRDB / SQLite.swift / sqlite3 |
 | `pois/<category>.geojson` | The same POIs as GeoJSON, one file per category, for map layers | GeoJSON | MapLibre `GeoJSONSource` on both |
-| `zim/*.zim` | WikiMed mini, NHS medicines, Kiwix water/medicine/food-prep libraries, Wikivoyage Europe | ZIM | [libkiwix Android](https://github.com/kiwix/java-libkiwix) / [libkiwix iOS (CoreKiwix.xcframework)](https://github.com/kiwix/kiwix-apple) |
+| `zim/*.zim` | Top Wikipedia articles (mini: intro + infobox of the most-read articles), WikiMed mini, NHS medicines, Kiwix water/medicine/food-prep libraries, Wikivoyage Europe | ZIM | [libkiwix Android](https://github.com/kiwix/java-libkiwix) / [libkiwix iOS (CoreKiwix.xcframework)](https://github.com/kiwix/kiwix-apple) |
 | `guides/pdf/` | IFRC first-aid guidelines 2020, WHO Psychological First Aid, Be Ready checklist | PDF | Android `PdfRenderer`, iOS PDFKit |
 | `guides/govuk/*.json` | UK CMOs' power-outage scripts (water, food, warmth), food safety in a power cut, carbon monoxide, National Risk Register | GOV.UK Content API JSON (`details.body` is HTML) | Any JSON parser |
 | `guides/beready/*.html` | Every Be Ready (formerly Prepare) hazard and preparedness page | HTML | WebView / WKWebView |
 | `givefood/` | UK food banks and donation points | JSON + GeoJSON | Any JSON parser |
+| `foraging/species.json` | 70 UK foraging species (35 fungi, 35 fruit/berry/nut plants): edibility, key features, lookalikes and how to tell them apart, preparation. Hand-curated, **not expert-reviewed** | JSON | Any JSON parser |
+| `foraging/vision_prompt.json` | The exact system prompt, JSON schema and safety thresholds that [foraging/identify.py](../foraging/identify.py) uses, so the phone's Ministral 3 3B runs the same task | JSON | Any JSON parser; llama.cpp grammar from the schema |
+| `foraging/trees.geojson` | About 10,200 mapped London trees whose OSM species tag matches `species.json`: fruit and nut trees (cherry, apple, crab apple, hawthorn, hazel, pear, plum, walnut, fig, mulberry...) **and** poisonous ones (yew, laburnum, cherry laurel, horse chestnut, holly) | GeoJSON | MapLibre `GeoJSONSource` on both |
+| `foraging/orchards.geojson` | 65 `landuse=orchard` centroids (community orchards and similar) | GeoJSON | MapLibre `GeoJSONSource` on both |
 
 POI categories: `aed` (652), `medical` (4,225), `water` (695), `toilets` (1,134), `shelter` (5,872), `food` (6,891), `power` (1,331), `fuel` (529), `emergency_services` (321).
 
@@ -46,6 +50,8 @@ POI categories: `aed` (652), `medical` (4,225), `water` (695), `toilets` (1,134)
 | `zim/*.stackexchange.com_*` | DIY, Electrical Engineering, Outdoors, Amateur Radio, Sustainability, Cooking | CC BY-SA |
 | `pdf/hesperian_where_there_is_no_doctor_2025/` | *Where There Is No Doctor*, all chapters | **Free or at-cost redistribution only** |
 | `pdf/ifrc_first_aid_guidelines_2020.pdf` | IFRC evidence base | IFRC |
+| `foraging/images/<species_id>/*.jpg` | About 2,000 labelled photos, 30 per species in `species.json` (19 for deadly fibrecap and 25 for livid pinkgill), from GBIF (mostly iNaturalist research-grade, UK first). The evaluation set for the foraging vision pipeline. `attribution.jsonl` gives the creator, licence and source page for each photo | **CC0 or CC BY 4.0 only** (NC/ND excluded); credit each CC BY photographer |
+| `foraging/wiki/<species_id>.json` | Wikipedia summary for each species, for hub retrieval | CC BY-SA 4.0 |
 
 To serve the ZIMs as HTTP for the retrieval pipeline, run `kiwix-serve hub/zim/*.zim`. To extract them to text, use `python-libzim`.
 
@@ -76,7 +82,7 @@ To serve the ZIMs as HTTP for the retrieval pipeline, run `kiwix-serve hub/zim/*
 | ERG 2024 (CAMEO companion) | PHMSA returns 403 to scripted downloads | Download by hand from phmsa.dot.gov into `phone/guides/pdf/` |
 | UK Hazchem / EAC list (NCEC) | No open download found | Check with NCEC |
 | WikEM | Not in the current Kiwix catalogue | Look for it on wikem.org |
-| Falling Fruit | Mixed, mostly non-commercial licences, and the blueprint rules out plant ID | Leave out |
+| Falling Fruit | Mixed, mostly non-commercial licences | Use OSM-mapped trees instead (`phone/foraging/trees.geojson`, ODbL) |
 | "Run, Hide, Tell" / "Remove, Remove, Remove" | No stable GOV.UK page found by the API | Curate by hand into the first-aid cards |
 | EA 3-day flood forecast | Endpoint not confirmed | Find it in the EA/FFC docs |
 | Full Wikipedia (49 GB), Electronics SE beyond the current set | Not needed for the MVP | Add to `download_zims.sh` if wanted |
@@ -92,5 +98,7 @@ The **first-aid cards** (rank 3 in DATASETS.md) still have to be written by hand
 | `scripts/extract_pmtiles.py URL OUT MINLON MINLAT MAXLON MAXLAT MAXZOOM` | Fallback only. A pure-Python version of `pmtiles extract`. `fetch_all.sh` uses the official `pmtiles` CLI v1.31.2 (installed in `.tools/`, checked against GitHub's SHA-256 digest) and switches to this script if the CLI is unavailable |
 | `scripts/download_zims.sh [phone\|hub\|all]` | Kiwix ZIMs from the dotsrc mirror (falls back to download.kiwix.org), with SHA-256 checks |
 | `scripts/download_guides.sh` | PDFs, GOV.UK Content API, Be Ready pages, Give Food, Hesperian |
+| `scripts/extract_fruit_trees.py PBF OUTDIR` | OSM to the fruit tree, poisonous tree and orchard GeoJSON for foraging |
+| `scripts/fetch_foraging.py [PER_SPECIES]` | GBIF photos (CC0/CC BY) and Wikipedia summaries for every species in `phone/foraging/species.json`. Resumable |
 | `scripts/snapshot_feeds.sh` | One timestamped snapshot of every live feed |
 | `scripts/build_manifest.py phone hub` | Writes `manifest.json` for each tier |

@@ -1,6 +1,6 @@
 // DeviceProfile.swift
 // Runtime tier selection for 8 GB iPhones (iPhone 17 family). Plain Swift, no llama dependency.
-// Wire-up: map EngineProfile onto EngineConfig / llama_context_params / mtmd_context_params.
+// Wire-up: EngineConfig(profile:) and OfflineBundle.selectProfile() in OfflineBundle.swift.
 // All memory numbers are ESTIMATES, not measured. See DESIGN_IPHONE17.md.
 import Foundation
 

@@ -11,6 +11,7 @@ CANON="https://download.kiwix.org"                           # checksums come fr
 # tier  kiwix-dir  file
 ZIMS=$(cat <<'EOF'
 phone wikipedia      wikipedia_en_medicine_mini_2026-10.zim
+phone wikipedia      wikipedia_en_top_mini_2026-09.zim
 phone zimit          nhs.uk_en_medicines_2026-09b.zim
 phone other          zimgit-medicine_en_2024-08.zim
 phone other          zimgit-water_en_2024-08.zim

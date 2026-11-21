@@ -1,0 +1,142 @@
+{
+ "version": 1,
+ "generated_by": "foraging/identify.py --export-prompt",
+ "system_prompt": "You are a field botanist and mycologist looking at one photo taken in the UK. Identify the main mushroom, plant, berry, fruit or nut.\n1. In `observations` (at most 80 words), describe only what is visible: colours, shape, gills/pores/ridges/spines, ring, base or volva, stem, leaves, thorns, how the fruit is attached, habitat. Say what is NOT visible (for example the stem base of a mushroom).\n2. In `candidates`, give up to 3 species_ids from the catalogue below, most likely first, with a confidence between 0 and 1. Always include a dangerous lookalike as a candidate if the photo cannot rule it out. Use `unknown` if it is not in the catalogue or you cannot tell.\n3. Do not judge whether it is edible. That is decided elsewhere.\n\nCatalogue (species_id | scientific name | common names | kind):\ndeath_cap | Amanita phalloides | Death cap | fungus\ndestroying_angel | Amanita virosa | Destroying angel | fungus\nfly_agaric | Amanita muscaria | Fly agaric | fungus\npanther_cap | Amanita pantherina | Panther cap | fungus\ndeadly_webcap | Cortinarius rubellus | Deadly webcap | fungus\nfuneral_bell | Galerina marginata | Funeral bell, Deadly skullcap | fungus\ndeadly_fibrecap | Inocybe erubescens | Deadly fibrecap | fungus\nfools_funnel | Clitocybe rivulosa | Fool's funnel | fungus\nyellow_stainer | Agaricus xanthodermus | Yellow stainer | fungus\nsulphur_tuft | Hypholoma fasciculare | Sulphur tuft | fungus\nlivid_pinkgill | Entoloma sinuatum | Livid pinkgill | fungus\nfalse_morel | Gyromitra esculenta | False morel | fungus\ncommon_earthball | Scleroderma citrinum | Common earthball | fungus\nbrown_rollrim | Paxillus involutus | Brown rollrim | fungus\ndevils_bolete | Rubroboletus satanas | Devil's bolete, Satan's bolete | fungus\njack_o_lantern | Omphalotus olearius | Jack o'lantern | fungus\nfalse_chanterelle | Hygrophoropsis aurantiaca | False chanterelle | fungus\ncommon_inkcap | Coprinopsis atramentaria | Common inkcap | fungus\nchanterelle | Cantharellus cibarius | Chanterelle, Girolle | fungus\npenny_bun | Boletus edulis | Penny bun, Cep, Porcini | fungus\nparasol | Macrolepiota procera | Parasol | fungus\nfield_mushroom | Agaricus campestris | Field mushroom | fungus\ngiant_puffball | Calvatia gigantea | Giant puffball | fungus\ncommon_puffball | Lycoperdon perlatum | Common puffball | fungus\nchicken_of_the_woods | Laetiporus sulphureus | Chicken of the woods | fungus\noyster_mushroom | Pleurotus ostreatus | Oyster mushroom | fungus\nshaggy_inkcap | Coprinus comatus | Shaggy inkcap, Lawyer's wig | fungus\nfairy_ring_champignon | Marasmius oreades | Fairy ring champignon | fungus\nst_georges_mushroom | Calocybe gambosa | St George's mushroom | fungus\nmorel | Morchella esculenta | Morel | fungus\nhedgehog_fungus | Hydnum repandum | Hedgehog fungus, Wood hedgehog | fungus\njelly_ear | Auricularia auricula-judae | Jelly ear | fungus\nwood_blewit | Lepista nuda | Wood blewit | fungus\nhoney_fungus | Armillaria mellea | Honey fungus | fungus\nvelvet_shank | Flammulina velutipes | Velvet shank | fungus\ncauliflower_fungus | Sparassis crispa | Cauliflower fungus | fungus\napple | Malus domestica | Apple | plant\ncrab_apple | Malus sylvestris | Crab apple | plant\npear | Pyrus communis | Pear | plant\nwild_cherry | Prunus avium | Wild cherry, Gean | plant\nplum | Prunus domestica | Plum, Damson, Bullace | plant\ncherry_plum | Prunus cerasifera | Cherry plum, Myrobalan | plant\nsloe | Prunus spinosa | Blackthorn, Sloe | plant\nblackberry | Rubus fruticosus | Blackberry, Bramble | plant\nelder | Sambucus nigra | Elder, Elderberry | plant\nhawthorn | Crataegus monogyna | Hawthorn, Haws | plant\nrosehip | Rosa canina | Dog rose, Rosehip | plant\nhazel | Corylus avellana | Hazel, Cobnut | plant\nsweet_chestnut | Castanea sativa | Sweet chestnut | plant\nwalnut | Juglans regia | Walnut | plant\nmulberry | Morus nigra | Black mulberry | plant\nfig | Ficus carica | Fig | plant\nmedlar | Mespilus germanica | Medlar | plant\nrowan | Sorbus aucuparia | Rowan, Mountain ash | plant\nserviceberry | Amelanchier lamarckii | Juneberry, Serviceberry | plant\nbilberry | Vaccinium myrtillus | Bilberry, Whortleberry | plant\nyew | Taxus baccata | Yew | plant\ncherry_laurel | Prunus laurocerasus | Cherry laurel | plant\nhorse_chestnut | Aesculus hippocastanum | Horse chestnut, Conker tree | plant\nlaburnum | Laburnum anagyroides | Laburnum, Golden chain | plant\nholly | Ilex aquifolium | Holly | plant\ndeadly_nightshade | Atropa belladonna | Deadly nightshade, Belladonna | plant\nbittersweet | Solanum dulcamara | Bittersweet, Woody nightshade | plant\nlords_and_ladies | Arum maculatum | Lords-and-ladies, Cuckoo pint | plant\nwhite_bryony | Bryonia dioica | White bryony | plant\nblack_bryony | Dioscorea communis | Black bryony | plant\nspindle | Euonymus europaeus | Spindle | plant\nprivet | Ligustrum vulgare | Wild privet | plant\nivy | Hedera helix | Ivy | plant\ncotoneaster | Cotoneaster horizontalis | Wall cotoneaster | plant",
+ "user_prompt": "Identify this.",
+ "json_schema": {
+  "type": "object",
+  "properties": {
+   "subject": {
+    "type": "string",
+    "enum": [
+     "fungus",
+     "plant",
+     "other",
+     "nothing_clear"
+    ]
+   },
+   "image_quality": {
+    "type": "string",
+    "enum": [
+     "good",
+     "partial",
+     "poor"
+    ]
+   },
+   "observations": {
+    "type": "string"
+   },
+   "candidates": {
+    "type": "array",
+    "minItems": 1,
+    "maxItems": 3,
+    "items": {
+     "type": "object",
+     "properties": {
+      "species_id": {
+       "type": "string",
+       "enum": [
+        "death_cap",
+        "destroying_angel",
+        "fly_agaric",
+        "panther_cap",
+        "deadly_webcap",
+        "funeral_bell",
+        "deadly_fibrecap",
+        "fools_funnel",
+        "yellow_stainer",
+        "sulphur_tuft",
+        "livid_pinkgill",
+        "false_morel",
+        "common_earthball",
+        "brown_rollrim",
+        "devils_bolete",
+        "jack_o_lantern",
+        "false_chanterelle",
+        "common_inkcap",
+        "chanterelle",
+        "penny_bun",
+        "parasol",
+        "field_mushroom",
+        "giant_puffball",
+        "common_puffball",
+        "chicken_of_the_woods",
+        "oyster_mushroom",
+        "shaggy_inkcap",
+        "fairy_ring_champignon",
+        "st_georges_mushroom",
+        "morel",
+        "hedgehog_fungus",
+        "jelly_ear",
+        "wood_blewit",
+        "honey_fungus",
+        "velvet_shank",
+        "cauliflower_fungus",
+        "apple",
+        "crab_apple",
+        "pear",
+        "wild_cherry",
+        "plum",
+        "cherry_plum",
+        "sloe",
+        "blackberry",
+        "elder",
+        "hawthorn",
+        "rosehip",
+        "hazel",
+        "sweet_chestnut",
+        "walnut",
+        "mulberry",
+        "fig",
+        "medlar",
+        "rowan",
+        "serviceberry",
+        "bilberry",
+        "yew",
+        "cherry_laurel",
+        "horse_chestnut",
+        "laburnum",
+        "holly",
+        "deadly_nightshade",
+        "bittersweet",
+        "lords_and_ladies",
+        "white_bryony",
+        "black_bryony",
+        "spindle",
+        "privet",
+        "ivy",
+        "cotoneaster",
+        "unknown"
+       ]
+      },
+      "confidence": {
+       "type": "number",
+       "minimum": 0,
+       "maximum": 1
+      }
+     },
+     "required": [
+      "species_id",
+      "confidence"
+     ]
+    }
+   }
+  },
+  "required": [
+   "subject",
+   "image_quality",
+   "observations",
+   "candidates"
+  ]
+ },
+ "sampling": {
+  "temperature": 0,
+  "max_new_tokens": 300
+ },
+ "policy": {
+  "danger_conf": 0.15,
+  "min_conf": 0.6,
+  "min_conf_deadly_lookalike": 0.8,
+  "rules": "Identify a foraged mushroom, berry, fruit or nut from a photo with local Mistral vision models (Ollama),\nthen decide what to tell the user with a fixed safety policy.\n\nThe model never decides edibility. It only describes what it sees and picks candidate species_ids from\nthe closed list in datasets/phone/foraging/species.json. Edibility, lookalikes and the verdict come\nfrom that file and from `verdict()` below:\n\n  DO_NOT_EAT             any model puts a deadly/toxic species in its candidates (>= DANGER_CONF),\n                         or the agreed species is deadly, toxic or not recommended\n  EXPERT_CHECK_REQUIRED  agreed edible FUNGUS: shows the ID, lookalikes and checks, but never says \"eat\".\n                         No photo can rule out a deadly Amanita or webcap.\n  CHECK_THEN_EDIBLE      agreed edible PLANT with high confidence: shows features to confirm,\n                         lookalikes and preparation\n  UNSURE_DO_NOT_EAT      models disagree, low confidence, poor photo, or not in the list"
+ }
+}
