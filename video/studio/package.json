@@ -1,0 +1,22 @@
+{
+  "name": "firefish-video-studio",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Shared Remotion studio for the firefish video pipeline. node_modules is installed once here and symlinked into each run's studio dir.",
+  "scripts": {
+    "preview": "remotion preview",
+    "render": "remotion render"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.545"
+  },
+  "devDependencies": {
+    "@remotion/cli": "^4.0.545",
+    "@types/node": "^22.10.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "typescript": "^5.6.3"
+  }
+}
