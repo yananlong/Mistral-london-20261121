@@ -711,7 +711,8 @@ class TestAnswerShaping(ResponderTestCase):
     def test_system_prompt_safety_rules(self):
         prompt = responder.build_chat_payload("q?", None)["messages"][0]["content"]
         for needle in ("numbered steps", "most urgent action first", "999",
-                       "in danger right now", "Do not add this step when nobody is in danger",
+                       "in danger\nright now".replace("\n", " "), "Do not add this step when nobody is in danger",
+                       "whenever the question is about a hospital or A&E", "do not describe a route",
                        "Never suggest drinking untreated water",
                        "The hub has offline maps", "Name only places given in those facts",
                        "no live alerts, news or feeds", "no matching place nearby",
