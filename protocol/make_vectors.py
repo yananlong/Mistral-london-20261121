@@ -14,8 +14,10 @@ ANSWER_LABEL = "AI answer from an open-weight model on the hub. Not verified eme
 HUB_ERROR_TEXT = "The hub could not answer right now. Please try again."
 HUB_EMPTY_TEXT = "Send a question in plain words, for example: How do I make water safe to drink?"
 LOCATION_SHARE_DEFAULT_NOTE = "Shared location"
-MAX_QUESTION_UNITS = 500
-MAX_ANSWER_BODY_UNITS = 900
+MAX_MESSAGE_BYTES = 255  # BitChat PrivateMessagePacket content TLV: bitchat/bitchat/Protocols/Packets.swift:251-265
+MAX_QUESTION_BYTES = 200
+MAX_ANSWER_BODY_BYTES = 900
+MAX_ANSWER_PARTS = 9
 ACK_TIMEOUT_MS = 30_000
 ANSWER_TIMEOUT_MS = 150_000
 HUB_MODEL_TIMEOUT_MS = 120_000
@@ -23,16 +25,19 @@ HUB_MODEL_TIMEOUT_MS = 120_000
 LOC_RE = re.compile(r"^loc:\s*(-?\d{1,3}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)$")
 
 
-def units(s):
-    """Length in UTF-16 code units, the unit both JS and Swift (utf16) count."""
-    return len(s.encode("utf-16-le")) // 2
+PART_RE = re.compile(r"^\((\d)/(\d)\) (.*)$", re.DOTALL)
 
 
-def prefix_units(s, n):
-    """Longest prefix of s with at most n UTF-16 units, never splitting a character."""
+def nbytes(s):
+    """Length in UTF-8 bytes, the unit BitChat's packet limit counts."""
+    return len(s.encode("utf-8"))
+
+
+def prefix_bytes(s, n):
+    """Longest prefix of s with at most n UTF-8 bytes, never splitting a character."""
     out, used = [], 0
     for ch in s:
-        w = units(ch)
+        w = nbytes(ch)
         if used + w > n:
             break
         out.append(ch)
@@ -79,7 +84,7 @@ def parse_question(wire):
     body, loc = split_trailing_loc(wire)
     if body == "":
         return {"kind": "empty", "body": "", "loc": loc}
-    return {"kind": "question", "body": prefix_units(body, MAX_QUESTION_UNITS), "loc": loc}
+    return {"kind": "question", "body": prefix_bytes(body, MAX_QUESTION_BYTES), "loc": loc}
 
 
 def user_content(body, loc):
@@ -88,10 +93,10 @@ def user_content(body, loc):
     return f"{body}\n\nThe person's approximate location: {loc['lat']:.5f}, {loc['lon']:.5f} (London, UK)."
 
 
-def truncate_body(body, limit=MAX_ANSWER_BODY_UNITS):
-    if units(body) <= limit:
+def truncate_body(body, limit=MAX_ANSWER_BODY_BYTES):
+    if nbytes(body) <= limit:
         return body
-    cut = prefix_units(body, limit - 1)
+    cut = prefix_bytes(body, limit - nbytes("\u2026"))
     floor = limit // 2
     nl = cut.rfind("\n")
     if nl >= floor:
@@ -103,13 +108,43 @@ def truncate_body(body, limit=MAX_ANSWER_BODY_UNITS):
     return cut.rstrip() + "…"
 
 
+def split_answer(body):
+    """Pack body lines into chunks that fit one message after the "(i/n) " prefix."""
+    limit = MAX_MESSAGE_BYTES - nbytes("(9/9) ")
+    chunks, cur = [], ""
+    for line in body.split("\n"):
+        while nbytes(line) > limit:
+            head = prefix_bytes(line, limit)
+            sp = head.rfind(" ")
+            if sp >= len(head) // 2:
+                head = head[:sp]
+            if cur:
+                chunks.append(cur)
+                cur = ""
+            chunks.append(head)
+            line = line[len(head):].lstrip()
+        candidate = line if cur == "" else cur + "\n" + line
+        if nbytes(candidate) <= limit:
+            cur = candidate
+        else:
+            chunks.append(cur)
+            cur = line
+    chunks.append(cur)
+    chunks = [c.strip() for c in chunks if c.strip()]
+    if len(chunks) > MAX_ANSWER_PARTS - 1:
+        chunks = chunks[: MAX_ANSWER_PARTS - 1]
+        chunks[-1] = prefix_bytes(chunks[-1], limit - nbytes("\u2026")).rstrip() + "\u2026"
+    return chunks
+
+
 def compose_answer(model_output):
-    """Wire text of the hub's second reply, or None when the hub must send HUB_ERROR_TEXT."""
+    """The hub's answer messages in send order, or None when the hub must send HUB_ERROR_TEXT."""
     lines = [l for l in normalize(model_output).split("\n") if l.strip() != ANSWER_LABEL]
     body = "\n".join(lines).strip()
     if body == "":
         return None
-    return truncate_body(body) + "\n" + ANSWER_LABEL
+    parts = split_answer(truncate_body(body)) + [ANSWER_LABEL]
+    return [f"({i}/{len(parts)}) {p}" for i, p in enumerate(parts, 1)]
 
 
 def classify_hub_reply(wire):
@@ -118,10 +153,24 @@ def classify_hub_reply(wire):
         return {"kind": "ack"}
     if text == HUB_ERROR_TEXT:
         return {"kind": "hub_error"}
-    lines = text.split("\n")
-    if lines[-1].strip() == ANSWER_LABEL:
-        return {"kind": "answer", "body": "\n".join(lines[:-1]).strip()}
+    m = PART_RE.match(text)
+    if m:
+        index, total = int(m.group(1)), int(m.group(2))
+        if 1 <= index <= total:
+            return {"kind": "answer_part", "index": index, "total": total, "text": m.group(3).strip()}
     return {"kind": "other"}
+
+
+def assemble_answer(parts):
+    """parts: [[index, total, text], ...] in arrival order, duplicates allowed.
+    Returns the answer body once every index 1..total has arrived and the last part is the label, else None."""
+    if not parts:
+        return None
+    total = parts[-1][1]
+    got = {i: t for i, n, t in parts if n == total}
+    if set(got) != set(range(1, total + 1)) or got[total] != ANSWER_LABEL:
+        return None
+    return "\n".join(got[i] for i in range(1, total)).strip()
 
 
 def encode_location_share(note, lat, lon):
@@ -215,11 +264,14 @@ def build():
     ]
     replies = [
         ACK_TEXT,
+        "(1/2) 1. Let the water settle.\n2. Boil it for 1 minute.",
+        "(2/2) " + ANSWER_LABEL,
+        "(3/2) bad index",
+        "(1/2)no space",
         "  " + ACK_TEXT + "\n",
         HUB_ERROR_TEXT,
         HUB_EMPTY_TEXT,
         "1. Let the water settle.\n2. Boil it for 1 minute.\n" + ANSWER_LABEL,
-        "1. Press hard on the wound.\r\n" + ANSWER_LABEL + "\r\n",
         "hello from phone B",
         "Received.",
     ]
@@ -239,8 +291,10 @@ def build():
             "HUB_ERROR_TEXT": HUB_ERROR_TEXT,
             "HUB_EMPTY_TEXT": HUB_EMPTY_TEXT,
             "LOCATION_SHARE_DEFAULT_NOTE": LOCATION_SHARE_DEFAULT_NOTE,
-            "MAX_QUESTION_UNITS": MAX_QUESTION_UNITS,
-            "MAX_ANSWER_BODY_UNITS": MAX_ANSWER_BODY_UNITS,
+            "MAX_MESSAGE_BYTES": MAX_MESSAGE_BYTES,
+            "MAX_QUESTION_BYTES": MAX_QUESTION_BYTES,
+            "MAX_ANSWER_BODY_BYTES": MAX_ANSWER_BODY_BYTES,
+            "MAX_ANSWER_PARTS": MAX_ANSWER_PARTS,
             "ACK_TIMEOUT_MS": ACK_TIMEOUT_MS,
             "ANSWER_TIMEOUT_MS": ANSWER_TIMEOUT_MS,
             "HUB_MODEL_TIMEOUT_MS": HUB_MODEL_TIMEOUT_MS,
@@ -255,8 +309,16 @@ def build():
             {"body": "How do I make river water safe to drink?", "loc": loc_a,
              "content": user_content("How do I make river water safe to drink?", loc_a)},
         ],
-        "composeAnswer": [{"modelOutput": m, "wire": compose_answer(m)} for m in model_outputs],
+        "composeAnswer": [{"modelOutput": m, "messages": compose_answer(m)} for m in model_outputs],
         "classifyHubReply": [{"wire": r, "result": classify_hub_reply(r)} for r in replies],
+        "assembleAnswer": [{"parts": ps, "result": assemble_answer(ps)} for ps in [
+            [[1, 2, "1. Boil it."], [2, 2, ANSWER_LABEL]],
+            [[2, 3, "2. Cool it."], [1, 3, "1. Boil it."], [3, 3, ANSWER_LABEL]],
+            [[1, 3, "1. Boil it."], [1, 3, "1. Boil it."], [3, 3, ANSWER_LABEL]],
+            [[1, 2, "1. Boil it."], [1, 2, "1. Boil it."], [2, 2, ANSWER_LABEL]],
+            [[1, 2, "1. Boil it."], [2, 2, "not the label"]],
+            [],
+        ]],
         "encodeLocationShare": [
             {"note": n, "lat": la, "lon": lo, "wire": encode_location_share(n, la, lo)} for n, la, lo in shares
         ],
