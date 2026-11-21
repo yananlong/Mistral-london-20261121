@@ -4,17 +4,7 @@ Let's set the scene. You're in the middle of an ongoing disaster: the lights are
 
 
 
-
-
-
-
 **Disaster Relief Management, Evacuation, and Survival**
-
-&nbsp;
-
-&nbsp;
-
-&nbsp;
 
 1. Food
 2. Water
@@ -25,8 +15,6 @@ Let's set the scene. You're in the middle of an ongoing disaster: the lights are
 
 
 
-&nbsp;
-
 Computer Vision
 
-TTS integration, using Voxtral 3
+**TTS integration**, using Voxtral 3
