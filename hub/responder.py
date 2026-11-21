@@ -30,6 +30,8 @@ import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+import kb
+
 log = logging.getLogger("hub.responder")
 
 ACK = "Received. Working on an answer."
@@ -42,7 +44,9 @@ SYSTEM_PROMPT = (
     "you over a Bluetooth mesh with no internet, so answers travel slowly. "
     "Answer in short numbered steps in plain language, with the most urgent "
     "action first. Keep the answer brief and practical. You have no live "
-    "information about the current disaster; say so when you do not know."
+    "information about the current disaster; say so when you do not know. "
+    "When the message includes facts from the hub's datasets, use them for any "
+    "place, distance or number, and do not invent others."
 )
 
 MAX_BODY_BYTES = 1 << 20  # mesh messages are short text; 1 MiB is generous
@@ -175,11 +179,30 @@ def num_ctx():
 # --- model call and answer shaping ---------------------------------------------
 
 
+def kb_facts(question, loc):
+    """Dataset facts for this question from the hub KB; [] when the KB is off or fails."""
+    base = kb.get_kb()
+    if base is None:
+        return []
+    try:
+        return base.facts(question, loc)
+    except Exception as e:  # the KB must never stop an answer
+        log.warning("KB lookup failed: %s", e)
+        return []
+
+
 def build_user_content(question, loc):
-    """The loc line is stripped from the question and passed as structured data."""
-    if loc is None:
-        return question
-    return "%s\n\nAsker location (lat, lon): %s, %s" % (question, loc["lat"], loc["lon"])
+    """The loc line is stripped from the question and passed as structured data.
+
+    When the hub KB has matching facts, they follow as a numbered block.
+    """
+    content = question
+    if loc is not None:
+        content = "%s\n\nAsker location (lat, lon): %s, %s" % (question, loc["lat"], loc["lon"])
+    facts = kb_facts(question, loc)
+    if facts:
+        content += "\n\n" + kb.format_facts(facts)
+    return content
 
 
 def build_chat_payload(question, loc):
@@ -378,6 +401,7 @@ def main():
             "never 0.0.0.0" % bind
         )
     port = int(os.environ.get("HUB_PORT", "8080"))
+    kb.get_kb()  # build the KB index once at startup, not on the first question
     server = make_server(bind, port)
     log.info(
         "hub responder on http://%s:%d, ollama at %s, model %s",
