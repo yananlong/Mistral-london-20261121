@@ -59,7 +59,7 @@ export function AskScreen({ openLocate }: { openLocate: () => void }) {
       </Card>}
       {(session.state === 'unreachable' || session.state === 'failed') && <Button title="Retry" onPress={() => ask.retry()} />}
       {(session.state === 'answered' || session.state === 'unreachable' || session.state === 'failed') &&
-        <Button title="Ask another question" secondary onPress={() => { ask.reset(); setQuestion(''); }} />}
+        <Button title="Ask another question" secondary onPress={() => { ask.reset(); setQuestion(''); setAttachLocation(false); }} />}
     </>}
     <Card><Body style={styles.small}>{DISCLAIMER}</Body></Card>
   </View>;

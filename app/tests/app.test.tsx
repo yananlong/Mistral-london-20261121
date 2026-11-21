@@ -79,6 +79,19 @@ describe('Ask on the real simulated link', () => {
     expect(decodeLocationShare(wire)).toEqual({ note: 'How do I keep warm with no power?', lat: 51.5007, lon: -0.1246 });
   });
 
+  test('a new question switches location attachment off again', async () => {
+    const { transport } = await launch();
+    await tab('Ask');
+    await fireEvent(screen.getByRole('switch', { name: 'Attach my location' }), 'valueChange', true);
+    await tap('Make water safe to drink');
+    expect(decodeLocationShare(transport.hubInbox[0])).not.toBeNull();
+    await advance(3300);
+    await tap('Ask another question');
+    expect(screen.getByRole('switch', { name: 'Attach my location' })).toHaveProp('value', false);
+    await tap('Stop heavy bleeding');
+    expect(decodeLocationShare(transport.hubInbox[1])).toBeNull();
+  });
+
   test('without attachment no coordinates travel to the hub', async () => {
     const { transport } = await launch();
     await tab('Ask');
