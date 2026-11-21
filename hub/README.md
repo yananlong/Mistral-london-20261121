@@ -33,7 +33,9 @@ BITCHAT_HUB_OLLAMA_URL=http://10.0.0.2:11434
 BITCHAT_HUB_MODEL=ministral-3:14b-instruct-2512-q4_K_M
 ```
 
-The URL and model variables are optional; defaults are `http://127.0.0.1:11434` and the tag above. Run the app with Bluetooth enabled. Incoming private questions get replies through BitChat's normal encrypted send path. The console logs one line per question with outcome and latency, without the question text.
+The URL and model variables are optional; defaults are `http://127.0.0.1:11434` and the tag above. Run the app with Bluetooth enabled.
+
+Set **Edit Scheme → Run → Info → Build Configuration** to **Release**. A Debug build advertises BitChat's testnet Bluetooth service UUID (`F47B5E2D-…-4B5A`), and a Release build advertises the mainnet one (`F47B5E2D-…-4B5C`), set at `bitchat/bitchat/Services/BLE/BLEService.swift:186-190`. The phones and stock BitChat use mainnet, so a Debug hub never sees them. Incoming private questions get replies through BitChat's normal encrypted send path. The console logs one line per question with outcome and latency, without the question text.
 
 Before starting BitChat, check the local link from the Mac:
 
