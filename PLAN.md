@@ -1,16 +1,16 @@
 # Team plan (open draft)
 
-An open plan for the team. Edit freely. Nothing here is decided until the team agrees. [README.md](README.md) has the concept, and [BLUEPRINT_1.md](BLUEPRINT_1.md) has the MVP architecture and build order.
+An open plan for the team. Edit freely. [The blueprint's decisions](BLUEPRINT_1.md#decisions) list what the team has agreed, and the rest of this plan stays open until the team agrees. [README.md](README.md) has the concept, and [BLUEPRINT_1.md](BLUEPRINT_1.md) has the MVP architecture and build order.
 
-The MVP gives people three capabilities with no internet. They can talk over the BitChat mesh, locate themselves on an offline map with an on-device vision model, and ask a Mistral model that runs on an offline Mac mini hub.
+The MVP gives people three capabilities while their phones have no internet. They can talk over the BitChat mesh, locate themselves on an offline map with an on-device vision model, and ask Ministral 3 14B Instruct on the hub through the Mac bridge. The hub is the team's DGX Spark.
 
 ---
 
 ## 1. Sharpening the concept
 
-Mesh messaging apps and off-grid AI projects already exist. Our difference is one Mistral model on an offline Mac mini, shared by everyone in mesh range, with no internet anywhere in the system. The phones spend no battery on inference, and the hub has the memory for a larger model and a library of survival guides. The same phones message each other and find their position on an offline map.
+Mesh messaging apps and off-grid AI projects already exist. Our difference is one open-weight Mistral model on the hub, shared by everyone in mesh range, while the phones have no internet. The model can run on local hardware with no internet, and no question goes to a cloud model API. The phones spend no battery on inference, and the hub can run a larger model and hold a library of survival guides. The same phones message each other and find their position on an offline map.
 
-- **No internet anywhere.** The phones are in airplane mode, and the Mac mini has no network connection. The demo shows this at the start.
+- **No internet on the phones.** Both iPhones are in airplane mode, and the Mac bridge forwards their questions to the hub. In the demo, the Mac bridge reaches the remote hub over the internet. The demo shows airplane mode at the start, and the Ollama log on the hub shows each run.
 - **Works with stock BitChat.** The hub answers plain-text private messages, so a person with the stock BitChat app can ask it questions. Our app adds the map, the vision model and a better Ask screen.
 - **Trust is the product.** The person chooses whether to share their location, and every answer is labelled as AI-generated and not verified emergency advice.
 - **Templates, not chat.** The Ask screen offers suggested questions, for example "How do I make water safe to drink?" or "How do I stop heavy bleeding?". Short questions and answers suit a slow link and stressed people.
@@ -22,45 +22,45 @@ Parts of it do. The closest precedent, [bitchat-gateway](https://github.com/spcp
 
 | Project | Link | Where the AI runs | Hardware | What we learn |
 |---|---|---|---|---|
-| BitChat | Bluetooth mesh + Nostr | No AI | Phones | The mesh we build on. It has no bot API, so the hub needs a modified BitChat build. Community ports haven't been audited. |
-| bitchat-gateway | BitChat mesh | Internet AI, reached through a connected peer | Phones and a connected computer | The same peer pattern as our hub, but it needs internet. |
+| BitChat | Bluetooth mesh + Nostr | No AI | Phones | The mesh we build on. It has no bot API, so the Mac bridge needs a modified BitChat build. Community ports haven't been audited. |
+| bitchat-gateway | BitChat mesh | Internet AI, reached through a connected peer | Phones and a connected computer | The same peer pattern as our Mac bridge, but it sends questions to a cloud AI service. |
 | Radio LLM | Meshtastic LoRa radio | A server at the other end of the radio link | LoRa radios | AI over a mesh works, but you need dedicated radios. |
 | net0 | ESP32 relay nodes | Gemini dispatch dashboard | Custom nodes | Saves reports locally first, so they aren't lost if the AI can't be reached. |
 | Meshnet | Bluetooth mesh | A web server summarises mesh traffic | Phones | The AI only reads the traffic; it doesn't reply to people. |
 | Flood Ready | QR codes between devices | On-device, in the browser | Phones | QR relay is a real, fully offline fallback. |
 | Bridgefy / Briar | Bluetooth / Wi-Fi mesh | No AI | Phones | Audits found security flaws in Bridgefy, so trust has to be designed in. |
-| **Us** | BitChat mesh | A Mistral model on an offline Mac mini | Ordinary phones and a Mac mini | No internet anywhere, and stock BitChat users can ask the hub too. |
+| **Us** | BitChat mesh | Ministral 3 14B Instruct on the hub, a DGX Spark reached through the Mac bridge | iPhones, a Mac and a DGX Spark | No internet on the phones, no cloud model API, and stock BitChat users can ask the hub too. |
 
 ## 3. Hard constraints
 
 - **A web app can't send messages phone to phone over Bluetooth.** Web Bluetooth only connects to accessories, runs only in Chromium and doesn't work on iOS. A real offline link needs a native app, a local Wi-Fi network or QR codes.
-- **Native offline links don't work across platforms.** Apple's Multipeer and Google's Nearby can't talk to each other, so a fallback on either one needs demo phones on the same OS. QR codes work across both. BitChat also has an [Android app](https://github.com/permissionlesstech/bitchat-android). Test messaging between iOS and Android before you rely on it.
-- **The hub stays in one place and needs power.** Phones reach it only within Bluetooth range, either directly or through other phones on the mesh. The Mac mini's memory sets the largest model that it can run.
-- **No one needs to pay.** A free Apple ID can install the app onto our own iPhones from Xcode (it re-signs every 7 days, about 3 devices). Android APKs install freely. Only TestFlight needs the $99 account, and we don't need it.
+- **Native offline links don't work across platforms.** Apple's Multipeer and Google's Nearby can't talk to each other, so a fallback on either one needs demo phones on the same OS. QR codes work across both. The app runs on iPhone only, so the Multipeer fallback works on every demo phone.
+- **The Mac bridge stays in one place and needs power.** Phones reach it only within Bluetooth range, either directly or through other phones on the mesh. It also needs a network link to the hub.
+- **No one needs to pay.** A free Apple ID can install the app onto our own iPhones from Xcode (it re-signs every 7 days, about 3 devices). Only TestFlight needs the $99 account, and we don't need it.
 
-## 4. Open decision: which stack?
+## 4. Stack
 
-Whatever we pick, the UI should sit on one small `Transport` interface (send, receive, peers), so how messages move can change without redoing the design.
+The team chose the stack on 2026-11-21, and [the blueprint's decisions](BLUEPRINT_1.md#decisions) record it. The UI sits on one small `Transport` interface (send, receive, peers) that the native module exposes, so how messages move can change without redoing the design.
 
-The blueprint proposes a Swift fork of BitChat. BitChat's mesh, its iOS app and the macOS app that the hub runs are all written in Swift.
-
-| Option | Pros | Cons |
+| Part | Choice | Notes |
 |---|---|---|
-| **Swift fork of BitChat (iOS)** | The mesh already works. The hub's macOS build shares the code. Multipeer is built in as a fallback. | Everyone who builds it needs Xcode and a Mac. iOS only. |
-| **Expo (React Native)** | Least setup. Design in Expo Go with live changes on real phones. Real offline link later via `expo-nearby-connections`. React skills carry over. | Reaching BitChat users or the hub means wrapping BitChat's Swift code in a native module. The offline link needs one development build, made on one laptop. |
-| **React web app** | Fastest to start. Fine for a design prototype. | No Bluetooth. A real handoff needs QR codes or a local Wi-Fi network. |
+| Front end | A new React Native app | iPhone only. It holds the Talk, Locate and Ask screens. |
+| Mesh | A native module that wraps the Swift mesh code from the team's BitChat fork | The native build needs a Mac with Xcode. Multipeer is the fallback. |
+| Mac bridge | The modified BitChat for macOS build from the same fork | The build needs a Mac with Xcode. It forwards each question to Ollama on the hub. |
+| Hub | Ministral 3 14B Instruct in Ollama on the DGX Spark | Open-weight models only. No question goes to a cloud model API. |
+| Vision | A small model on the iPhone, ideally a multimodal Mistral model | Not chosen yet. [The blueprint's open questions](BLUEPRINT_1.md#open-questions) track it. |
 
-## 5. Open decision: how does the message move?
+## 5. How does the message move?
 
-This decision covers messages between phones and questions from phones to the hub. The blueprint proposes BitChat for both, with Multipeer as the fallback.
+This section covers messages between phones and questions from phones to the hub. The team chose the BitChat mesh for both, and Multipeer is the fallback.
 
 | Option | Truly offline? | Effort | Demo risk | Notes |
 |---|---|---|---|---|
 | Simulated link | No | Very low | None | Enough to design every screen and state. |
-| QR codes | Yes | Low | Low | Works on any phone and across iOS and Android. Each handoff is a visible gesture. The Mac mini needs a webcam to read codes. |
-| Local Wi-Fi and server | Yes (network with no internet) | Medium | Medium | The Mac mini serves the model over a Wi-Fi router that has no internet uplink. Phones must be in range of the router. It doesn't carry messages between phones. |
+| QR codes | Yes | Low | Low | Works on any phone and across iOS and Android. Each handoff is a visible gesture. The Mac bridge needs a webcam to read codes. |
+| Local Wi-Fi and server | Yes (network with no internet) | Medium | Medium | The Mac bridge serves answers over a Wi-Fi router that gives the phones no internet. Phones must be in range of the router. It doesn't carry messages between phones. |
 | Multipeer or Nearby | Yes | Medium | Medium | Native only, and both phones need the same OS. Multipeer also runs on macOS, but it has no multi-hop relay. |
-| BitChat | Yes (multi-hop mesh) | High | High | Proposed. One mesh carries Talk and Ask, and stock BitChat users can join. The hub needs a modified macOS build. Try it for a fixed timebox before committing. |
+| BitChat | Yes (multi-hop mesh) | High | High | Chosen. One mesh carries Talk and Ask, and stock BitChat users can join. The Mac bridge needs a modified macOS build. If BitChat fails within a fixed timebox, switch to Multipeer. The timebox is deferred. |
 
 ## 6. Design workstream
 
@@ -70,7 +70,7 @@ The phone has three flows:
 - **Locate.** Open the map and see your position. Use the camera to orient yourself, and share your location if you choose.
 - **Ask.** Pick a suggested question or type one, and choose whether to attach your location. Send it, watch the status and read the answer.
 
-The hub has no screen. For the demo, a terminal log on the Mac mini shows each question and each model run.
+The hub has no user interface. For the demo, the Ollama log on the hub shows each model run.
 
 Design these states: no one nearby, hub not reachable, answer still coming, no position fix yet, map not downloaded for this area, location permission denied, and camera permission denied. [The blueprint's state table](BLUEPRINT_1.md#message-format) lists the Ask states.
 
@@ -89,9 +89,9 @@ The demo script is in [the blueprint](BLUEPRINT_1.md#demo-script).
 
 ## 8. Open questions for the team
 
-- [ ] How many of us have a Mac with Xcode? Each person who builds the Swift fork needs one.
-- [ ] Who owns each workstream: the hub, the phone app, the vision model and design?
-- [ ] Who brings the Mac mini to the venue?
+- [ ] How many of us have a Mac with Xcode? Each person who builds the native module or the Mac bridge needs one.
+- [ ] Who owns the Mac bridge and design? [The blueprint's decisions](BLUEPRINT_1.md#decisions) name the owners chosen so far.
+- [ ] Which Mac is the Mac bridge, and who brings it to the venue?
 - [ ] What's the name and tagline?
 
 [BLUEPRINT_1.md](BLUEPRINT_1.md#open-questions) has the technical open questions.
@@ -99,7 +99,6 @@ The demo script is in [the blueprint](BLUEPRINT_1.md#demo-script).
 ## Sources
 
 - [BitChat](https://github.com/permissionlesstech/bitchat)
-- [BitChat for Android](https://github.com/permissionlesstech/bitchat-android)
 - [bitchat-gateway](https://github.com/spcpza/bitchat-gateway)
 - [Radio LLM](https://www.producthunt.com/products/off-grid-llm-over-radio)
 - [net0](https://devpost.com/software/net0)
@@ -107,4 +106,3 @@ The demo script is in [the blueprint](BLUEPRINT_1.md#demo-script).
 - [Flood Ready](https://dev.to/flamehaven01/i-survived-a-300-year-flood-then-i-built-flood-ready-on-device-ai-for-when-the-internet-fails-4f44)
 - [MDN: Web Bluetooth API](https://developer.mozilla.org/Web/API/Web_Bluetooth_API)
 - [caniuse: Web Bluetooth](https://caniuse.com/web-bluetooth)
-- [expo-nearby-connections](https://www.pkgstats.com/pkg:expo-nearby-connections)
