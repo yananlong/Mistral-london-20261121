@@ -5,7 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { DeveloperPanel } from './components/DeveloperPanel';
 import { Body, Notice, styles } from './components/ui';
 import { MapFocus } from './map/types';
-import { AskScreen } from './screens/AskScreen';
+import { AskScreen, DISCLAIMER } from './screens/AskScreen';
 import { LocateScreen } from './screens/LocateScreen';
 import { TalkScreen } from './screens/TalkScreen';
 import { AppRuntime, RuntimeProvider, useMesh, useRuntime } from './store/Runtime';
@@ -37,13 +37,14 @@ function AppShell() {
         </View>
       </View>
       {mesh.link !== 'running' && <Notice>{mesh.detail ?? LINK_COPY[mesh.link]}</Notice>}
-      <ScrollView ref={scroll} contentContainerStyle={local.content} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={scroll} testID="main-scroll" contentContainerStyle={local.content} keyboardShouldPersistTaps="handled">
         {screen === 'Talk' && <TalkScreen openPin={pin => { setFocus(pin); openScreen('Locate'); }} openAsk={() => openScreen('Ask')} />}
         {screen === 'Locate' && <LocateScreen focus={focus} clearFocus={() => setFocus(null)} />}
         {screen === 'Ask' && <AskScreen openLocate={() => { setFocus(null); openScreen('Locate'); }} />}
         <DeveloperPanel />
         <Body style={styles.small}>Mesh Help · Talk, locate and ask when the phone network is down.</Body>
       </ScrollView>
+      {screen === 'Ask' && <View style={local.disclaimer}><Body style={styles.small}>{DISCLAIMER}</Body></View>}
       <View accessibilityRole="tablist" style={local.tabs}>
         {TABS.map(tab => <Pressable key={tab} accessibilityRole="tab" accessibilityLabel={tab} accessibilityState={{ selected: screen === tab }}
           onPress={() => openScreen(tab)} style={[local.tab, screen === tab && local.activeTab]}>
@@ -67,6 +68,7 @@ const local = StyleSheet.create({
   badgeText: { color: t.color.ink, fontSize: t.font.small, fontWeight: t.weight.bold },
   link: { color: t.color.white, fontSize: t.font.small, flexShrink: 1 },
   content: { padding: t.space.lg, gap: t.space.lg, paddingBottom: t.space.xl },
+  disclaimer: { backgroundColor: t.color.warningSoft, paddingHorizontal: t.space.md, paddingVertical: t.space.sm, borderTopWidth: 1, borderColor: t.color.border },
   tabs: { backgroundColor: t.color.surface, flexDirection: 'row', gap: t.space.xs, padding: t.space.sm, borderTopWidth: 1, borderColor: t.color.border },
   tab: { flex: 1, minHeight: t.target, padding: t.space.md, justifyContent: 'center', alignItems: 'center', borderRadius: t.radius.sm },
   activeTab: { backgroundColor: t.color.primary },

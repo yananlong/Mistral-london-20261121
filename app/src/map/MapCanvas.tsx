@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Camera, Layer, LayerAnnotation, Map, MapProps } from '@maplibre/maplibre-react-native';
-import { View } from 'react-native';
+import { Camera, Map, MapProps, Marker } from '@maplibre/maplibre-react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Body, Notice, styles } from '../components/ui';
 import { tokens as t } from '../theme/tokens';
 import { OfflineMapProps } from './types';
@@ -25,11 +25,17 @@ export default function MapCanvas({ points, focus, uri }: OfflineMapProps & { ur
     <Map style={{ height: 340, width: '100%', borderRadius: t.radius.md }} mapStyle={mapStyle}
       onDidFinishLoadingMap={() => setState('ready')} onDidFailLoadingMap={() => setState('failed')}>
       <Camera key={`${center.lat},${center.lon}`} initialViewState={{ center: [center.lon, center.lat], zoom: 13 }} />
-      {points.map(point => <LayerAnnotation key={point.id} id={point.id} lngLat={[point.position.lon, point.position.lat]}>
-        <Layer id={`${point.id}-dot`} type="circle" paint={{ 'circle-radius': point.kind === 'self' ? 10 : 8,
-          'circle-color': point.kind === 'self' ? t.color.position : t.color.pin, 'circle-stroke-color': t.color.white, 'circle-stroke-width': 3 }} />
-      </LayerAnnotation>)}
+      {points.map(point => <Marker key={point.id} id={point.id} lngLat={[point.position.lon, point.position.lat]}>
+        <View style={[local.pin, { backgroundColor: point.kind === 'self' ? t.color.position : t.color.pin }]}>
+          <Text numberOfLines={1} style={local.pinText}>{point.label}</Text>
+        </View>
+      </Marker>)}
     </Map>
     <Body style={styles.small}>London · offline · © OpenStreetMap contributors · Protomaps</Body>
   </View>;
 }
+
+const local = StyleSheet.create({
+  pin: { maxWidth: 180, paddingHorizontal: t.space.sm, paddingVertical: t.space.xs, borderRadius: t.radius.pill, borderWidth: 2, borderColor: t.color.white },
+  pinText: { color: t.color.white, fontSize: t.font.small, fontWeight: t.weight.bold },
+});
