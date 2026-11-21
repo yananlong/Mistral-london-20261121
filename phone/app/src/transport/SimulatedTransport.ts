@@ -3,6 +3,7 @@ import {
   IncomingMessageHandler,
   MeshMessage,
   Peer,
+  PeerId,
   SELF_PEER_ID,
   Transport,
 } from './Transport';
