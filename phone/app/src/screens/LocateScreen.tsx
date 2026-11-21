@@ -1,10 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import MapView, { LocalTile, Marker } from 'react-native-maps';
 import { useTransport } from '../transport/TransportContext';
 import { usePositionContext } from '../locate/PositionContext';
 import { LatLon, findLocLine, formatLocLine } from '../locate/locLine';
-import { LONDON_REGION, TILE_PATH_TEMPLATE, bundledTilesCover } from '../locate/tiles';
+import {
+  LONDON_REGION,
+  MAP_ATTRIBUTION,
+  MAX_ZOOM,
+  MIN_ZOOM,
+  TILE_PATH_TEMPLATE,
+  bundledTilesCover,
+  deltaForZoom,
+} from '../locate/tiles';
 import { colors, fontSize, fontWeight, layout, spacing } from '../theme/tokens';
 
 interface SharedPin {
@@ -14,9 +22,15 @@ interface SharedPin {
   lon: number;
 }
 
+/** Zoom-step clamps derived from the bundled zoom pyramid. */
+const MIN_DELTA = deltaForZoom(MAX_ZOOM, LONDON_REGION.latitude);
+const MAX_DELTA = deltaForZoom(MIN_ZOOM, LONDON_REGION.latitude) * 1.5;
+
 export function LocateScreen() {
   const transport = useTransport();
   const position = usePositionContext();
+  const mapRef = useRef<MapView>(null);
+  const [region, setRegion] = useState(LONDON_REGION);
   const [pins, setPins] = useState<SharedPin[]>([]);
   const [justShared, setJustShared] = useState(false);
 
@@ -44,6 +58,29 @@ export function LocateScreen() {
     setJustShared(true);
   }
 
+  /** Pan/zoom stays inside the bundled tile pyramid. */
+  function zoomBy(factor: number) {
+    const nextLat = Math.min(MAX_DELTA, Math.max(MIN_DELTA, region.latitudeDelta * factor));
+    const ratio = nextLat / region.latitudeDelta;
+    mapRef.current?.animateToRegion({
+      latitude: region.latitude,
+      longitude: region.longitude,
+      latitudeDelta: nextLat,
+      longitudeDelta: region.longitudeDelta * ratio,
+    });
+  }
+
+  function centerOnMe() {
+    if (!coords) return;
+    const latDelta = Math.max(region.latitudeDelta, deltaForZoom(15, coords.lat));
+    mapRef.current?.animateToRegion({
+      latitude: coords.lat,
+      longitude: coords.lon,
+      latitudeDelta: latDelta,
+      longitudeDelta: latDelta,
+    });
+  }
+
   if (position.status === 'denied') {
     return (
       <View style={styles.container}>
@@ -59,7 +96,20 @@ export function LocateScreen() {
 
   return (
     <View style={styles.container}>
-      <MapView style={styles.map} initialRegion={LONDON_REGION}>
+      <MapView
+        ref={mapRef}
+        style={styles.map}
+        mapType="standard"
+        initialRegion={LONDON_REGION}
+        onRegionChangeComplete={setRegion}
+        scrollEnabled
+        zoomEnabled
+        pitchEnabled
+        rotateEnabled
+        minZoomLevel={MIN_ZOOM}
+        maxZoomLevel={MAX_ZOOM}
+        showsCompass
+      >
         <LocalTile pathTemplate={TILE_PATH_TEMPLATE} tileSize={256} />
         {coords && (
           <Marker
@@ -77,6 +127,36 @@ export function LocateScreen() {
           />
         ))}
       </MapView>
+      <View style={styles.mapControls} pointerEvents="box-none">
+        <TouchableOpacity
+          style={styles.controlButton}
+          onPress={() => zoomBy(0.5)}
+          accessibilityRole="button"
+          accessibilityLabel="Zoom in"
+        >
+          <Text style={styles.controlText}>+</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.controlButton}
+          onPress={() => zoomBy(2)}
+          accessibilityRole="button"
+          accessibilityLabel="Zoom out"
+        >
+          <Text style={styles.controlText}>−</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.controlButton, !coords && styles.controlButtonDisabled]}
+          onPress={centerOnMe}
+          disabled={!coords}
+          accessibilityRole="button"
+          accessibilityLabel="Center on my location"
+        >
+          <Text style={styles.controlText}>◎</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.attributionWrap} pointerEvents="none">
+        <Text style={styles.attribution}>{MAP_ATTRIBUTION}</Text>
+      </View>
       {position.status === 'pending' && (
         <View style={styles.banner}>
           <Text style={styles.bannerText}>Getting your position…</Text>
@@ -111,6 +191,37 @@ export function LocateScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   map: { flex: 1 },
+  mapControls: {
+    position: 'absolute',
+    top: spacing.lg,
+    right: spacing.lg,
+    flexDirection: 'column',
+    gap: spacing.sm,
+  },
+  controlButton: {
+    width: layout.minTapTarget,
+    height: layout.minTapTarget,
+    borderRadius: layout.radiusMd,
+    backgroundColor: colors.surface,
+    borderWidth: layout.borderWidth,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  controlButtonDisabled: { backgroundColor: colors.border },
+  controlText: { color: colors.text, fontSize: fontSize.title, fontWeight: fontWeight.bold },
+  attributionWrap: {
+    position: 'absolute',
+    right: spacing.sm,
+    bottom: spacing.sm,
+  },
+  attribution: {
+    color: colors.textMuted,
+    fontSize: fontSize.caption,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.sm,
+    borderRadius: layout.radiusSm,
+  },
   notice: {
     flex: 1,
     alignItems: 'center',
