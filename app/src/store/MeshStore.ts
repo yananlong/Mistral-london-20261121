@@ -1,4 +1,5 @@
-import { decodeLocationShare, HUB_NICKNAME, LocationShare, MAX_MESSAGE_BYTES, utf8Bytes } from '../protocol';
+import { decodeLocationShare, LocationShare, MAX_MESSAGE_BYTES, utf8Bytes } from '../protocol';
+import { config } from '../config';
 import { InboundMessage, LinkState, Peer, PeerId, peerId, Transport, TransportEvent } from '../transport/types';
 
 export type ThreadKey = 'public' | PeerId;
@@ -32,7 +33,7 @@ export class MeshStore {
       case 'peers': {
         const knownPeers = { ...this.state.knownPeers };
         event.peers.forEach(peer => { knownPeers[peer.id] = peer; });
-        const hubId = event.peers.find(peer => peer.nickname === HUB_NICKNAME)?.id ?? this.state.hubId;
+        const hubId = event.peers.find(peer => peer.nickname === config.hubNickname)?.id ?? this.state.hubId;
         this.update({ ...this.state, peers: event.peers, knownPeers, hubId });
         return;
       }
