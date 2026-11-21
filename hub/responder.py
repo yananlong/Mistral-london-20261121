@@ -663,7 +663,39 @@ def build_proxy_chat_payload(body):
     payload = build_chat_payload(question, loc)
     # Ollama streams unless the caller says "stream": false
     payload["stream"] = body.get("stream", True) is not False
+    # Keep the caller's options (the Swift hub sends temperature and
+    # num_predict). num_predict is capped, so a run fits the hub's deadline.
+    # num_ctx is set to the hub's value (8192) when the caller sends none:
+    # measured on the Spark, a request without num_ctx made Ollama reload the
+    # model at its default context (262144 tokens, 69 GB), and it reloaded
+    # again for every /ask at 8192.
+    options = dict(body["options"]) if isinstance(body.get("options"), dict) else {}
+    options.setdefault("num_ctx", num_ctx())
+    asked = options.get("num_predict")
+    cap = num_predict()
+    if not isinstance(asked, int) or isinstance(asked, bool) or asked <= 0 or asked > cap:
+        options["num_predict"] = cap
+    payload["options"] = options
     return payload
+
+
+def proxy_chat_payload_or_original(body):
+    """build_proxy_chat_payload with a fail-safe.
+
+    A malformed request is still a ValueError (400). If anything else fails
+    (the knowledge base, the prompt override), the caller's own request goes
+    to Ollama unchanged except for the model tag, so the hub still answers.
+    """
+    try:
+        return build_proxy_chat_payload(body)
+    except ValueError:
+        raise
+    except Exception as e:
+        log.error("/api/chat override failed (%s); forwarding the caller's request", e)
+        payload = dict(body)
+        payload["model"] = model_name()
+        payload["stream"] = body.get("stream", True) is not False
+        return payload
 
 
 def shape_proxy_reply(raw):
@@ -954,7 +986,7 @@ class ResponderHandler(BaseHTTPRequestHandler):
             self._send_json(403, {"error": "/api/chat is served to loopback callers only"})
             return
         try:
-            payload = build_proxy_chat_payload(body)
+            payload = proxy_chat_payload_or_original(body)
         except ValueError as e:
             self._send_json(400, {"error": str(e)})
             return
