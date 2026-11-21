@@ -5,6 +5,7 @@ import { ACK_TEXT, ACK_TIMEOUT_MS, ANSWER_LABEL, ANSWER_TIMEOUT_MS, decodeLocati
 import { DISCLAIMER } from '../src/screens/AskScreen';
 import { AppRuntime } from '../src/store/Runtime';
 import { HUB_ID, SimulatedTransport } from '../src/transport/SimulatedTransport';
+import { createTransport } from '../src/transport/factory';
 import { TransportEvent } from '../src/transport/types';
 
 async function launch(options: ConstructorParameters<typeof SimulatedTransport>[0] = {}, source: LocationSource = demoLocation, transport = new SimulatedTransport(options)) {
@@ -29,6 +30,12 @@ const advance = async (ms: number) => { await act(async () => { jest.advanceTime
 
 beforeEach(() => { jest.useFakeTimers(); });
 afterEach(async () => { await cleanup(); jest.clearAllTimers(); jest.useRealTimers(); });
+
+test('the app falls back to the simulated link when the native module is unavailable', () => {
+  const selection = createTransport();
+  expect(selection.transport.kind).toBe('simulated');
+  expect(selection.simulation).toBeDefined();
+});
 
 describe('Ask on the real simulated link', () => {
   test('the disclaimer stays outside the scrolling content', async () => {
@@ -195,6 +202,23 @@ describe('Ask on the real simulated link', () => {
     await act(() => reply('(1/2) New answer'));
     expect(screen.getByText('Answered')).toBeTruthy();
     expect(screen.getByText('New answer')).toBeTruthy();
+  });
+
+  test('reset discards partial answers before a new question', async () => {
+    const { runtime, transport } = await launch();
+    await act(() => transport.setHubMode('offline'));
+    await tab('Ask');
+    await tap('Treat a burn');
+    await advance(ACK_TIMEOUT_MS);
+    const reply = (text: string) => runtime.ask.receive({ id: text, from: HUB_ID, fromNickname: HUB_NICKNAME, text, channel: 'private', receivedAt: Date.now() });
+    await act(() => reply('(1/2) Previous answer'));
+    await tap('Ask another question');
+    await tap('Stop heavy bleeding');
+    await act(() => reply(`(2/2) ${ANSWER_LABEL}`));
+    expect(screen.queryByText('Answered')).toBeNull();
+    await act(() => reply('(1/2) Current answer'));
+    expect(screen.getByText('Answered')).toBeTruthy();
+    expect(screen.getByText('Current answer')).toBeTruthy();
   });
 
   test('emoji questions stop at 200 bytes and fit with an attached location', async () => {
