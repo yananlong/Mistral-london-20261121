@@ -1,63 +1,77 @@
-# Commercial critique
+# Hackathon evidence and commercial critique
 
-Reviewed on **21 November 2026** against [commit `eccf0b1`][reviewed], covering `README.md` and `IDEA.md`. Sources were checked on the same date, and software performance and customer demand remain untested.
+Updated on **21 November 2026** against [commit `145a442`][reviewed], covering `README.md`, `IDEA.md`, and the open `PLAN.md`. External sources were checked on the same date. The evaluation below is proposed work, and the repository documents contain no measured performance or customer results.
 
-## Verdict
+## Decision
 
-Continue the hackathon build, focus the commercial proposition on a completed communication task, and treat the moat as unproven. The [README explicitly describes an unbuilt concept][readme-status], requires a connected volunteer, and presents generated content as a draft, while the wider survival vision remains aspirational. The documents establish no proprietary technical asset, measured advantage, or buyer commitment.
+Proceed with a complete communication workflow and require credible initial evidence of commercial advantage and progress toward operational readiness as part of the hackathon deliverable. The demonstration should complete a useful task, compare the result with a realistic alternative, and expose behaviour under a deliberate interruption. The evidence should show what improved and under which conditions.
 
-The most promising direction to investigate is a managed communication workflow for prepared groups with designated gateways, with AI justified by better comprehension or lower operator effort. Durable advantage would need to accumulate through deployment relationships, operational integration, and demonstrated reliability.
+The [README accurately describes an unbuilt concept][readme-status], while the [team plan remains open][plan-status]. A managed communication workflow for prepared groups is a promising direction to investigate, with AI earning a place through better comprehension or lower coordination effort. A durable moat remains unproven, although measured user benefit and demonstrated operating behaviour would provide evidence on which to build.
 
-## The product needs to complete a useful job
+## Complete the task and identify the architecture
 
-The main gap is at [README.md:10–11, “The experience”][readme-flow]: Mistral drafts a family message and returns the draft to the disconnected sender, without specifying how the family receives it. The product must distinguish drafting, gateway submission, external delivery, and recipient acknowledgement, specifying recipient selection, sender approval, the sending mechanism, and the evidence for each displayed status around the chosen outcome.
+At [README.md:10–11, “The experience”][readme-flow], Mistral drafts a family message and returns the draft to the disconnected sender, leaving delivery to the family unspecified. Choose the promised endpoint and distinguish drafting, gateway submission, delivery, and recipient acknowledgement, with the [progress display][readme-states] tied to actual events.
 
-The example also leaves AI's incremental value unclear. A fixed message containing supplied location, timestamp, and needs could outperform generated prose, while translation or assistance with difficult phrasing might justify an LLM. Compare these alternatives on the same cases and transport, preserving critical fields as structured data and measuring completion, correction effort, and total elapsed time. A nearby volunteer's [personal hotspot][hotspot] or manual relay should remain a baseline wherever feasible.
+A useful alternative to evaluate is a multilingual request reaching a local coordinator, receiving human acceptance, and returning an acknowledgement to the originating phone. Mistral could translate or extract a proposed request for user confirmation, while coordinates and quantities remain attached as supplied data. Compare that interaction with a fixed form or manual relay, including a volunteer's [personal hotspot][hotspot] wherever feasible.
 
-Useful operation depends on compatible installed clients, a willing reachable gateway, working backhaul, and a surviving or recoverable return path. The [two-device goal and direct-link fallback][readme-scope] are reasonable hackathon boundaries, although success would establish only the tested configuration. [The proposed progress states][readme-states] need decline, timeout, expiry, cancellation, cloud failure, and lost-return-path outcomes, while the design must specify who sees request content and who pays for processing.
+The proposed Mac mini arrangement supports different claims depending on where inference runs:
 
-Background behaviour also requires testing on the chosen devices: [Android documents connection loss when the app process is killed][android-background], and [Apple permits Wi-Fi while airplane mode is enabled][airplane]. Verify the sender's lack of direct internet access and record actual handoffs, including failures and retries.
+| Arrangement | Claim to test | Required demonstration |
+| --- | --- | --- |
+| Phones connect locally to a Mac mini running Mistral. | The workflow operates without internet access. | Remove internet access from the complete setup, preserve the local connection, and process fresh input through the model. |
+| Phones connect locally to a Mac mini that calls Mistral in the cloud. | Phones reach a cloud service through a connected gateway. | Show the phones' lack of direct internet access and the gateway's actual cloud request and return path. |
+| Phones use Bluetooth relays to reach the hub or gateway. | The demonstrated path supports the stated relay behaviour. | Show traffic traversing the claimed relays and identify the inference location. |
 
-## Competition and patent signals weaken the architectural moat
+A local Wi-Fi connection is a reasonable hackathon transport, and the [README's direct-link fallback][readme-scope] remains useful. The pitch should name the transport actually demonstrated, along with the powered hub and local network required by that configuration. [Airplane mode can coexist with Wi-Fi][airplane], so verify the relevant internet path explicitly.
 
-A close public precedent, [`spcpza/bitchat-gateway`][gateway], describes a disconnected Bitchat user reaching an internet AI service through a connected neighbour and receiving the response over the mesh. The associated [March 2026 proposal][gateway-pr] included AI query/result packets and was closed without merging. Working compatibility and adoption remain unverified, so the evidence establishes an earlier design and code attempt, with room remaining to demonstrate a better implementation.
+## Collect initial evidence during the hackathon
 
-[Bitchat already documents queues and couriers][bitchat-paper], and its [release notes include an opt-in mesh–Nostr gateway][bitchat-releases]. [Meshtastic-AI-Bridge][meshtastic-ai] publishes a mesh-to-AI implementation using additional radio hardware, while [Bridgefy][bridgefy] markets a mobile mesh SDK. These sources establish alternatives and shared components, without independently verifying their field performance. Choosing Mistral as the destination service provides little exclusivity by itself.
+The [plan's progression from simulation to a real Mistral call and offline link][plan-phasing] provides a build sequence. Collect evidence alongside the real-system stages, using the following checks to turn the working experience into an assessable claim.
 
-Selected patent publications also describe older relay and gateway mechanisms:
+1. **Define the advantage and success condition.** Select a target user, a completed task, and a proposed benefit before evaluating outcomes, such as lower coordination effort with unchanged critical facts. Specify who sees request content and who pays for processing.
+
+2. **Run a fair paired comparison.** A small set, for example ten preselected scenarios, can include a straightforward request that a form handles well, a language difficulty, missing information, and an interrupted interaction. Use the same information and comparable connectivity for Mistral assistance and the strongest practical baseline, retaining ordinary assistance available to that baseline and varying trial order where possible. Expected facts should come from the authored requests and human assessment.
+
+3. **Record every attempt.** Report successful completions as a count and denominator, elapsed time including retries, clarification effort, and incorrect or altered critical facts. Keep timeouts and failures visible alongside timing summaries, preserving the distinction between initial success and eventual recovery. These measurements should compare the same endpoint, such as receipt of a human acknowledgement.
+
+4. **Test the operating condition and one interruption.** Show fresh input on real phones and identify the model, inference location, and connectivity configuration. Disconnect a link or interrupt processing, then observe the request, acknowledgement, and user-visible state. The [plan's existing failure states][plan-states] now need implementation evidence. Test background behaviour where relevant because [Android closes a Bluetooth connection when its process is killed][android-background].
+
+5. **Present the observations with their user consequence.** Include a short evidence table with the configuration, comparator, attempts, completions, timings, factual errors, and failure behaviour. If an intended user is available, have that person attempt both workflows and explain the current workaround and value of the observed difference. Record purchasing interest separately from usability feedback.
+
+An observed improvement on these cases would provide initial evidence of user value, while successful operation and recovery would support the tested conditions. State the observed benefit directly, identify team-run testing as such, and carry the recorded failures into the next build decision.
+
+## Prior work limits the architectural moat
+
+A close public precedent, [`spcpza/bitchat-gateway`][gateway], describes a disconnected Bitchat user reaching internet AI through a connected neighbour and receiving a mesh response. The associated [March 2026 proposal][gateway-pr] included AI query/result packets and closed without merging. Working compatibility and adoption remain unverified. Replace [PLAN.md's categorical claim that the whole flow does not exist][plan-prior-art] with a specific workflow difference and a test of its value.
+
+[Bitchat documents queues and couriers][bitchat-paper], with an [opt-in mesh-to-Nostr gateway in its release notes][bitchat-releases]. [Meshtastic-AI-Bridge][meshtastic-ai] publishes an implementation using additional radio hardware, while [Bridgefy][bridgefy] markets a mobile mesh SDK. These sources establish alternatives and shared components, without independently verifying field performance. A Mistral endpoint supplies little exclusivity by itself.
+
+Selected patent publications also disclose older mechanisms:
 
 | Publication | Relevant disclosure | Qualification |
 | --- | --- | --- |
-| [EP3605962B1, Nagravision][nagravision] | A disconnected device reaches a remote server through another device, with buffered responses and Bluetooth embodiments. | The selected claims include hotspot-mode requirements. |
+| [EP3605962B1, Nagravision][nagravision] | Device-to-server relay with buffered replies and Bluetooth embodiments. | Selected claims include hotspot-mode requirements. |
 | [US10091702B2, Qualcomm][qualcomm] | Relays cache and forward delay-tolerant messages. | Claim 1 includes an estimated time to network contact. |
-| [US20170310553A1, Butler Solutions][butler] | Mesh nodes forward messages through an internet gateway to a server. | This is a published application, with present enforceable rights unverified. |
+| [US20170310553A1, Butler Solutions][butler] | Mesh traffic reaches a server through an internet gateway. | Published application, with present enforceable rights unverified. |
 
-These are focused prior-disclosure signals, with current ownership and legal status unverified and no infringement, patentability, or freedom-to-operate conclusion. Any future IP argument needs a specific technical improvement and comparison against relevant claims.
+Current ownership and legal status remain unverified, and this review makes no infringement, patentability, or freedom-to-operate conclusion. A future IP argument needs a specific technical improvement assessed against relevant claims.
 
-## Commercial route and possible defensibility
+## Commercial route and follow-through
 
-Sponsored development of a managed component is the strongest route to investigate first, because an organised volunteer team or event operator could arrange installation, training, and gateways. A service-enabled deployment could follow if the workflow and support effort become repeatable. Consumer subscriptions and patent licensing currently lack supporting evidence.
+Sponsored development of a managed component is the strongest route to investigate first, because an organised volunteer team or event operator could arrange installation and gateways. A service-enabled deployment could follow if the workflow and support effort become repeatable. Consumer subscriptions and patent licensing currently lack supporting evidence.
 
-Identify the user, gateway operator, economic buyer, and adoption owner separately, then establish the existing workaround, its cost, and the budget available to improve it. UK [resilient communications guidance][cabinet-office] identifies relevant institutional workflows and the existing free ResilienceDirect service, and helps identify organisations to approach, although demand for this project remains untested. Include onboarding, training, integration maintenance, and support in the economics alongside model and messaging costs.
+Translate any observed advantage into a user's avoided effort or communication failure, then identify the economic buyer and budget, including equipment savings or added hub costs. UK [resilient communications guidance][cabinet-office] identifies institutional workflows and the existing free ResilienceDirect service, and discovery should establish where the proposed workflow adds value. Include onboarding, training, integration maintenance, and support alongside inference and messaging costs. A subsequent pilot needs an operating owner, integration access, success criteria, a timeline, and a purchase or conversion decision.
 
-Phone-only convenience, consent, and multilingual assistance could create an initial edge, although none has been measured here. A moat would require assets competitors cannot reproduce simply by using the same components, such as recurring deployment relationships, maintained operational integrations, or permissioned failure-case data that demonstrably improves performance. The useful question is what each deployment adds that makes the next deployment better.
+Phone access, consent, and multilingual assistance are candidate advantages to measure. Defensibility would develop through recurring deployment relationships, maintained operational integrations, or permissioned failure-case data that demonstrably improves later deployments. The initial evidence should guide which of those assets is worth building.
 
-## Tests that should determine the next decision
+Keep the README's qualifications and update the selected endpoint, architecture, and evidence as results arrive. Treat the [survival list and computer-vision note in IDEA.md][idea] as future possibilities until each has a defined task. [Voxtral TTS 3 exists][voxtral], so specify the model and deployment choice, while recognising that Mistral's [“offline” audio mode][audio-modes] means complete-input API processing and does not establish disconnected inference.
 
-1. Complete one approved communication job, distinguishing a returned draft from actual recipient delivery or acknowledgement.
-2. Compare templates, manual relay, and Mistral assistance fairly, allowing the simplest approach to win and checking preservation of critical fields.
-3. Interrupt internet and local return paths, background the app, and expire queued requests, reporting all attempts and the supported device configuration.
-4. Measure setup completion, available gateways, waiting time, battery impact, and successful task completion in a prepared group.
-5. Seek a priced commitment from an actual budget owner. A subsequent pilot needs an operating owner, integration access, agreed success criteria, a timeline, and a purchase or conversion decision.
-
-Keep the README's existing limitations and add the selected outcome, baseline, trust boundaries, and failure states. Reframe the [survival list and computer-vision note in IDEA.md][idea] as future possibilities until each has a defined task and evidence. [Voxtral TTS 3 exists][voxtral], so specify the model and deployment choice, while recognising that Mistral's [“offline” audio mode][audio-modes] describes complete-input API processing and does not establish disconnected handset inference.
-
-[reviewed]: https://github.com/yananlong/Mistral-london-20261121/commit/eccf0b1006a7f905e53e369ca032245af25e8482
-[readme-status]: https://github.com/yananlong/Mistral-london-20261121/blob/eccf0b1006a7f905e53e369ca032245af25e8482/README.md#L19-L27
-[readme-flow]: https://github.com/yananlong/Mistral-london-20261121/blob/eccf0b1006a7f905e53e369ca032245af25e8482/README.md#L10-L11
-[readme-scope]: https://github.com/yananlong/Mistral-london-20261121/blob/eccf0b1006a7f905e53e369ca032245af25e8482/README.md#L17
-[readme-states]: https://github.com/yananlong/Mistral-london-20261121/blob/eccf0b1006a7f905e53e369ca032245af25e8482/README.md#L13
-[idea]: https://github.com/yananlong/Mistral-london-20261121/blob/eccf0b1006a7f905e53e369ca032245af25e8482/IDEA.md#L11-L32
+[reviewed]: https://github.com/yananlong/Mistral-london-20261121/commit/145a442e4950d988264bfd06662707746da5627e
+[readme-status]: https://github.com/yananlong/Mistral-london-20261121/blob/145a442e4950d988264bfd06662707746da5627e/README.md#L19-L27
+[readme-flow]: https://github.com/yananlong/Mistral-london-20261121/blob/145a442e4950d988264bfd06662707746da5627e/README.md#L10-L11
+[readme-scope]: https://github.com/yananlong/Mistral-london-20261121/blob/145a442e4950d988264bfd06662707746da5627e/README.md#L17
+[readme-states]: https://github.com/yananlong/Mistral-london-20261121/blob/145a442e4950d988264bfd06662707746da5627e/README.md#L13
+[idea]: https://github.com/yananlong/Mistral-london-20261121/blob/145a442e4950d988264bfd06662707746da5627e/IDEA.md#L11-L32
 [hotspot]: https://support.apple.com/en-gb/111785
 [android-background]: https://developer.android.com/develop/connectivity/bluetooth/ble/background
 [airplane]: https://support.apple.com/en-ie/108785
@@ -73,3 +87,8 @@ Keep the README's existing limitations and add the selected outcome, baseline, t
 [cabinet-office]: https://www.gov.uk/guidance/resilient-communications
 [voxtral]: https://docs.mistral.ai/models/voxtral-mini-tts-3-0
 [audio-modes]: https://docs.mistral.ai/studio/audio/concepts/offline-and-realtime
+
+[plan-status]: https://github.com/yananlong/Mistral-london-20261121/blob/145a442e4950d988264bfd06662707746da5627e/PLAN.md#L1-L5
+[plan-prior-art]: https://github.com/yananlong/Mistral-london-20261121/blob/145a442e4950d988264bfd06662707746da5627e/PLAN.md#L18-L30
+[plan-states]: https://github.com/yananlong/Mistral-london-20261121/blob/145a442e4950d988264bfd06662707746da5627e/PLAN.md#L58-L64
+[plan-phasing]: https://github.com/yananlong/Mistral-london-20261121/blob/145a442e4950d988264bfd06662707746da5627e/PLAN.md#L73-L78
