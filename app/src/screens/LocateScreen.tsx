@@ -3,7 +3,7 @@ import { Text, View } from 'react-native';
 import { Body, Button, Card, Heading, Notice, styles } from '../components/ui';
 import OfflineMap from '../map/OfflineMap';
 import { MapFocus, MapPoint } from '../map/types';
-import { encodeLocationShare, HUB_NICKNAME } from '../protocol';
+import { encodeLocationShare, formatCoordinate, HUB_NICKNAME } from '../protocol';
 import { ThreadKey } from '../store/MeshStore';
 import { useLocation, useMesh, useRuntime } from '../store/Runtime';
 
@@ -36,14 +36,14 @@ export function LocateScreen({ focus, clearFocus }: { focus: MapFocus | null; cl
         : <Notice>{location.detail}</Notice>}
     <Button secondary title={location.kind === 'denied' ? 'Try location permission again' : 'Use device position'} onPress={() => runtime.useDevicePosition()} />
     {focus && <Card><Text style={styles.subheading}>Selected location · {focus.label}</Text>
-      <Body>{focus.position.lat.toFixed(5)}, {focus.position.lon.toFixed(5)}</Body>
+      <Body>{formatCoordinate(focus.position.lat)}, {formatCoordinate(focus.position.lon)}</Body>
       <Button secondary title="Show all pins" onPress={clearFocus} />
     </Card>}
     <OfflineMap points={points} focus={focus} />
     <Text accessibilityRole="header" style={styles.subheading}>Position and shared pins</Text>
     {points.filter(point => point.kind !== 'focus').map(point => <Card key={point.id}>
       <Text style={styles.subheading}>{point.kind === 'self' ? '● ' : '◆ '}{point.label}</Text>
-      <Body selectable>{point.position.lat.toFixed(5)}, {point.position.lon.toFixed(5)}</Body>
+      <Body selectable>{formatCoordinate(point.position.lat)}, {formatCoordinate(point.position.lon)}</Body>
       <Body style={styles.small}>{point.kind === 'self' ? location.kind === 'ready' && location.source === 'demo' ? 'Simulated GPS position' : 'Only on this phone until you share' : 'Latest location shared by this peer. It may have changed.'}</Body>
     </Card>)}
     {!Object.keys(mesh.pins).length && <Body style={styles.small}>No peer locations shared yet.</Body>}

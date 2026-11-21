@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Body, Button, Card, Heading, Notice, styles } from '../components/ui';
-import { decodeLocationShare, HUB_NICKNAME, MAX_MESSAGE_BYTES, MAX_QUESTION_BYTES, prefixBytes, trim, utf8Bytes } from '../protocol';
+import { decodeLocationShare, formatCoordinate, HUB_NICKNAME, MAX_MESSAGE_BYTES, MAX_QUESTION_BYTES, prefixBytes, trim, utf8Bytes } from '../protocol';
 import { MapFocus } from '../map/types';
 import { ThreadKey } from '../store/MeshStore';
 import { useAsk, useMesh, useRuntime } from '../store/Runtime';
@@ -61,7 +61,7 @@ export function TalkScreen({ openPin, openAsk }: { openPin: (focus: MapFocus) =>
         {share ? <Pressable accessibilityRole="button" accessibilityLabel={`Open ${message.fromNickname} location in Locate`}
           onPress={() => openPin({ position: { lat: share.lat, lon: share.lon }, label: message.fromNickname })} style={local.location}>
           <Body style={{ fontWeight: t.weight.bold }}>Location · {share.note || 'Shared location'}</Body>
-          <Body>{share.lat.toFixed(5)}, {share.lon.toFixed(5)}</Body>
+          <Body>{formatCoordinate(share.lat)}, {formatCoordinate(share.lon)}</Body>
           <Body style={styles.small}>Open in Locate →</Body>
         </Pressable> : <Body selectable>{message.text}</Body>}
       </View>;
