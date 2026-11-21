@@ -26,6 +26,7 @@ export function AskStatus({ session }: { session: Exclude<AskSession, { state: '
     <Text style={local.eyebrow}>QUESTION STATUS</Text>
     <Text accessibilityRole="header" style={local.title}>{labels[session.state]}</Text>
     <Body>{details[session.state]}</Body>
+    {session.progress && session.state !== 'answered' && <Body>Answer arriving, {session.progress.received} of {session.progress.total}</Body>}
     <Text style={local.time}>{seconds}s elapsed</Text>
   </View>;
 }

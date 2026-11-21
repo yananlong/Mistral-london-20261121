@@ -1,4 +1,4 @@
-import { decodeLocationShare, HUB_NICKNAME, LocationShare } from '../protocol';
+import { decodeLocationShare, HUB_NICKNAME, LocationShare, MAX_MESSAGE_BYTES, utf8Bytes } from '../protocol';
 import { InboundMessage, LinkState, Peer, PeerId, peerId, Transport, TransportEvent } from '../transport/types';
 
 export type ThreadKey = 'public' | PeerId;
@@ -56,6 +56,7 @@ export class MeshStore {
   }
 
   async send(to: ThreadKey, text: string): Promise<void> {
+    if (utf8Bytes(text) > MAX_MESSAGE_BYTES) throw new Error('The message exceeds the mesh byte limit.');
     if (to === 'public') await this.transport.sendPublic(text);
     else await this.transport.sendPrivate(to, text);
     const message: ThreadMessage = {

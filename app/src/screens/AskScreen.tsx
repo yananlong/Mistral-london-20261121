@@ -3,7 +3,7 @@ import { Switch, Text, TextInput, View } from 'react-native';
 import { SUGGESTED_QUESTIONS } from '../ask/questions';
 import { AskStatus } from '../components/AskStatus';
 import { Body, Button, Card, Heading, Notice, styles } from '../components/ui';
-import { ANSWER_LABEL, MAX_QUESTION_UNITS, prefixUnits } from '../protocol';
+import { ANSWER_LABEL, MAX_QUESTION_BYTES, prefixBytes, utf8Bytes } from '../protocol';
 import { useAsk, useLocation, useMesh, useRuntime } from '../store/Runtime';
 import { tokens as t } from '../theme/tokens';
 
@@ -16,6 +16,7 @@ export function AskScreen({ openLocate }: { openLocate: () => void }) {
   const location = useLocation();
   const [question, setQuestion] = useState('');
   const [attachLocation, setAttachLocation] = useState(false);
+  const remaining = MAX_QUESTION_BYTES - utf8Bytes(question);
   const canAsk = mesh.hubId !== null && (!attachLocation || location.kind === 'ready');
   const submit = (text: string) => ask.submit(text, attachLocation && location.kind === 'ready' ? location.position : null);
   const hubNearby = mesh.peers.some(peer => peer.id === mesh.hubId && peer.reachable);
@@ -44,9 +45,9 @@ export function AskScreen({ openLocate }: { openLocate: () => void }) {
       {SUGGESTED_QUESTIONS.map(item => <Button key={item.topic} secondary title={item.title} label={item.title} disabled={!canAsk} onPress={() => submit(item.text)} />)}
       <Card>
         <Text style={styles.subheading}>Or use your own words</Text>
-        <TextInput accessibilityLabel="Your question" multiline value={question} onChangeText={text => setQuestion(prefixUnits(text, MAX_QUESTION_UNITS))}
-          maxLength={MAX_QUESTION_UNITS} placeholder="What do you need help with?" placeholderTextColor={t.color.muted} style={[styles.input, { minHeight: 112 }]} />
-        <Body style={styles.small}>{question.length} / {MAX_QUESTION_UNITS}</Body>
+        <TextInput accessibilityLabel="Your question" multiline value={question} onChangeText={text => setQuestion(prefixBytes(text, MAX_QUESTION_BYTES))}
+          maxLength={MAX_QUESTION_BYTES} placeholder="What do you need help with?" placeholderTextColor={t.color.muted} style={[styles.input, { minHeight: 112 }]} />
+        {remaining <= 50 && <Body style={styles.small}>{remaining} bytes remaining</Body>}
         <Button title="Send question" disabled={!canAsk || !question.trim()} onPress={() => submit(question)} />
       </Card>
     </> : <>

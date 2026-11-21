@@ -1,6 +1,7 @@
 import vectors from '../../protocol/vectors.json';
 import { ASK_EVENTS, ASK_STATES, ASK_TABLE, askReducer } from '../src/ask/machine';
-import { CONSTANTS, classifyHubReply, decodeLoc, decodeLocationShare, encodeLoc, encodeLocationShare, encodeQuestion, prefixUnits } from '../src/protocol';
+import { ANSWER_LABEL, CONSTANTS, MAX_MESSAGE_BYTES, assembleAnswer, classifyHubReply, decodeLoc, decodeLocationShare, encodeLoc, encodeLocationShare, encodeQuestion, prefixBytes, utf8Bytes } from '../src/protocol';
+import { composeAnswer, parseQuestion } from '../src/transport/simulatedHub';
 
 describe('shared protocol vectors (read from the repository contract)', () => {
   test.each(Object.entries(vectors.constants))('constant %s', (name, expected) => {
@@ -9,7 +10,20 @@ describe('shared protocol vectors (read from the repository contract)', () => {
   test.each(vectors.locEncode)('encode $line', ({ lat, lon, line }) => expect(encodeLoc(lat, lon)).toBe(line));
   test.each(vectors.locDecode)('decode $line', ({ line, result }) => expect(decodeLoc(line)).toEqual(result));
   test.each(vectors.encodeQuestion)('question $text', ({ text, loc, wire }) => expect(encodeQuestion(text, loc)).toBe(wire));
+  test.each(vectors.parseQuestion)('simulated hub parses $wire', ({ wire, result }) => expect(parseQuestion(wire)).toEqual(result));
+  test.each(vectors.composeAnswer)('simulated hub composes answer', ({ modelOutput, messages }) => {
+    const result = composeAnswer(modelOutput);
+    expect(result).toEqual(messages);
+    result?.forEach(message => expect(new TextEncoder().encode(message).length).toBeLessThanOrEqual(MAX_MESSAGE_BYTES));
+  });
   test.each(vectors.classifyHubReply)('classify $wire', ({ wire, result }) => expect(classifyHubReply(wire)).toEqual(result));
+  test.each(vectors.assembleAnswer)('assemble $parts', ({ parts, result }) => {
+    const typedParts = parts.map(([index, total, text]) => {
+      if (typeof index !== 'number' || typeof total !== 'number' || typeof text !== 'string') throw new Error('Invalid answer vector');
+      return { index, total, text };
+    });
+    expect(assembleAnswer(typedParts)).toEqual(result);
+  });
   test.each(vectors.encodeLocationShare)('share $wire', ({ note, lat, lon, wire }) => expect(encodeLocationShare(note, lat, lon)).toBe(wire));
   test.each(vectors.decodeLocationShare)('read share $wire', ({ wire, result }) => expect(decodeLocationShare(wire)).toEqual(result));
   test('state and event vocabulary match the contract', () => {
@@ -25,9 +39,29 @@ describe('shared protocol vectors (read from the repository contract)', () => {
   });
 });
 
-test('Unicode cap preserves the last whole character', () => {
-  expect(prefixUnits(`${'x'.repeat(499)}😀`, 500)).toBe('x'.repeat(499));
-  expect(prefixUnits(`${'x'.repeat(498)}😀`, 500)).toHaveLength(500);
+test('UTF-8 byte counts and prefixes preserve whole characters', () => {
+  expect(utf8Bytes('Aé😀')).toBe(new TextEncoder().encode('Aé😀').length);
+  expect(utf8Bytes('a\ud800b')).toBe(new TextEncoder().encode('a\ud800b').length);
+  expect(prefixBytes(`${'x'.repeat(199)}😀`, 200)).toBe('x'.repeat(199));
+  expect(prefixBytes(`${'x'.repeat(196)}😀`, 200)).toBe(`${'x'.repeat(196)}😀`);
+});
+
+test('simulated answers split long Unicode lines without splitting a character', () => {
+  expect(composeAnswer('😀'.repeat(63))).toEqual([
+    `(1/3) ${'😀'.repeat(62)}`,
+    '(2/3) 😀',
+    `(3/3) ${ANSWER_LABEL}`,
+  ]);
+});
+
+test('answer assembly follows the latest total and replaces duplicate indexes', () => {
+  expect(assembleAnswer([
+    { index: 1, total: 2, text: 'old' },
+    { index: 1, total: 3, text: 'first' },
+    { index: 1, total: 3, text: 'corrected' },
+    { index: 3, total: 3, text: ANSWER_LABEL },
+    { index: 2, total: 3, text: 'second' },
+  ])).toBe('corrected\nsecond');
 });
 
 test('only the last non-empty line is a location; line endings are normalized', () => {
