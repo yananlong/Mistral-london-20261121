@@ -164,6 +164,20 @@ class TestDegradation(unittest.TestCase):
             with mock.patch.dict(os.environ, {"HUB_DATASETS_DIR": d, "HUB_KB": "1"}):
                 self.assertIsNone(kb.get_kb())  # empty dir: nothing loads, no crash
 
+    @unittest.skipUnless(HAVE_DATA, "datasets/ not present")
+    def test_concurrent_first_calls_all_get_the_kb(self):
+        import threading
+        kb.reset_kb()
+        got = []
+        with mock.patch.dict(os.environ, {"HUB_DATASETS_DIR": DATASETS, "HUB_KB": "1"}):
+            ts = [threading.Thread(target=lambda: got.append(kb.get_kb())) for _ in range(4)]
+            for t in ts:
+                t.start()
+            for t in ts:
+                t.join()
+        self.assertEqual(len(got), 4)
+        self.assertTrue(all(g is not None and g is got[0] for g in got))
+
     def test_hub_kb_0_disables(self):
         kb.reset_kb()
         with mock.patch.dict(os.environ, {"HUB_KB": "0"}):
