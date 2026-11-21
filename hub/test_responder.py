@@ -347,5 +347,301 @@ class TestMalformedInput(ResponderTestCase):
         self.assertEqual(status, 404)
 
 
+class TestDisclaimerSuffix(ResponderTestCase):
+    def test_disclaimer_echoed_mid_answer_still_ends_with_it(self):
+        # a crafted question can make the model echo the label mid-answer;
+        # the delivered answer must still END with the disclaimer
+        reply = "1. Boil water. %s 2. Then filter it." % responder.DISCLAIMER
+        with mock.patch(
+            "urllib.request.urlopen", fake_urlopen_factory(model_reply=reply)
+        ):
+            status, body = self.post_ask({"sender": "p", "question": "q?", "wait": True})
+        self.assertEqual(status, 200)
+        self.assertTrue(body["answer"].endswith(responder.DISCLAIMER), body["answer"])
+        self.assertEqual(body["answer"].count(responder.DISCLAIMER), 2)
+
+
+class TestConcurrencyCap(unittest.TestCase):
+    def test_429_when_saturated_and_slot_released_afterwards(self):
+        entered = threading.Event()
+        release = threading.Event()
+        callbacks = []
+
+        def blocking_urlopen(req, timeout=None):
+            url = req.full_url
+            if url.endswith("/api/chat"):
+                entered.set()
+                release.wait(10)
+                return FakeHTTPResponse(
+                    json.dumps({"message": {"role": "assistant", "content": "1. ok."}})
+                )
+            callbacks.append({"url": url, "payload": json.loads((req.data or b"{}").decode())})
+            return FakeHTTPResponse("{}")
+
+        with mock.patch.dict(os.environ, {"OLLAMA_NUM_PARALLEL": "1"}):
+            server = responder.make_server("127.0.0.1", 0)
+        port = server.server_address[1]
+        thread = threading.Thread(
+            target=server.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True
+        )
+        thread.start()
+
+        def post(payload):
+            conn = http.client.HTTPConnection("127.0.0.1", port, timeout=15)
+            conn.request("POST", "/ask", json.dumps(payload),
+                         {"Content-Type": "application/json"})
+            resp = conn.getresponse()
+            raw = resp.read().decode("utf-8")
+            conn.close()
+            return resp.status, (json.loads(raw) if raw else None)
+
+        try:
+            with mock.patch("urllib.request.urlopen", blocking_urlopen):
+                status1, body1 = post({"sender": "a", "question": "q1",
+                                       "callback_url": "http://127.0.0.1:9/cb"})
+                self.assertEqual(status1, 202)
+                self.assertEqual(body1["ack"], responder.ACK)
+                self.assertTrue(ResponderTestCase.wait_for(entered.is_set, 5),
+                                "the model call never started")
+                # the only slot is held: async and wait asks are refused with 429
+                status2, body2 = post({"sender": "b", "question": "q2",
+                                       "callback_url": "http://127.0.0.1:9/cb"})
+                self.assertEqual(status2, 429)
+                self.assertEqual(body2["status"], "busy")
+                self.assertIn("retry", body2["answer"].lower())
+                self.assertTrue(body2["answer"].endswith(responder.DISCLAIMER), body2)
+                status3, body3 = post({"sender": "c", "question": "q3", "wait": True})
+                self.assertEqual(status3, 429)
+                self.assertTrue(body3["answer"].endswith(responder.DISCLAIMER), body3)
+                release.set()
+                self.assertTrue(ResponderTestCase.wait_for(lambda: len(callbacks) == 1, 5),
+                                "the first answer was never delivered")
+                self.assertTrue(callbacks[0]["payload"]["answer"].endswith(responder.DISCLAIMER))
+                # the slot was released: the next ask is accepted again
+                status4, _ = post({"sender": "d", "question": "q4",
+                                  "callback_url": "http://127.0.0.1:9/cb"})
+                self.assertEqual(status4, 202)
+                self.assertTrue(ResponderTestCase.wait_for(lambda: len(callbacks) == 2, 5))
+        finally:
+            release.set()
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=5)
+
+
+class TestBroadExceptionHandling(ResponderTestCase):
+    def test_unexpected_error_wait_mode_returns_502_retry_answer(self):
+        with mock.patch(
+            "urllib.request.urlopen",
+            fake_urlopen_factory(model_error=RuntimeError("boom")),
+        ):
+            status, body = self.post_ask({"sender": "p", "question": "q?", "wait": True})
+        self.assertEqual(status, 502)
+        self.assertIn("boom", body["error"])
+        self.assertIn("retry", body["answer"].lower())
+        self.assertTrue(body["answer"].endswith(responder.DISCLAIMER), body["answer"])
+
+    def test_unexpected_error_async_mode_still_calls_back(self):
+        with mock.patch(
+            "urllib.request.urlopen",
+            fake_urlopen_factory(model_error=ValueError("weird"), callbacks=self.callbacks),
+        ):
+            status, body = self.post_ask({
+                "sender": "p", "question": "q?", "callback_url": "http://127.0.0.1:9/cb",
+            })
+            self.assertEqual(status, 202)
+            self.assertEqual(body["ack"], responder.ACK)
+            self.assertTrue(
+                self.wait_for(lambda: len(self.callbacks) == 1),
+                "no callback after an unexpected error",
+            )
+        answer = self.callbacks[0]["payload"]["answer"]
+        self.assertIn("retry", answer.lower())
+        self.assertTrue(answer.endswith(responder.DISCLAIMER), answer)
+
+    def test_bad_numeric_env_falls_back_instead_of_crashing(self):
+        env = {
+            "OLLAMA_CONTEXT_LENGTH": "abc",
+            "HUB_MAX_ANSWER_CHARS": "0",
+            "HUB_ANSWER_TIMEOUT_SECONDS": "xyz",
+        }
+        with mock.patch.dict(os.environ, env), mock.patch(
+            "urllib.request.urlopen",
+            fake_urlopen_factory(model_reply="1. ok.", ollama_requests=self.ollama_requests),
+        ):
+            status, body = self.post_ask({"sender": "p", "question": "q?", "wait": True})
+        self.assertEqual(status, 200)
+        self.assertTrue(body["answer"].endswith(responder.DISCLAIMER), body["answer"])
+        # defaults applied, truncation not disabled by HUB_MAX_ANSWER_CHARS=0
+        self.assertEqual(self.ollama_requests[0]["payload"]["options"]["num_ctx"], 8192)
+
+
+class TestStartupValidation(unittest.TestCase):
+    def test_validate_numeric_env_exits_on_bad_values(self):
+        env = {"OLLAMA_CONTEXT_LENGTH": "abc", "HUB_MAX_ANSWER_CHARS": "0", "HUB_PORT": "99999"}
+        with mock.patch.dict(os.environ, env):
+            with self.assertRaises(SystemExit):
+                responder.validate_numeric_env()
+
+    def test_validate_numeric_env_accepts_good_values(self):
+        env = {
+            "HUB_PORT": "8080",
+            "HUB_ANSWER_TIMEOUT_SECONDS": "30",
+            "HUB_MAX_ANSWER_CHARS": "800",
+            "OLLAMA_CONTEXT_LENGTH": "4096",
+            "OLLAMA_NUM_PARALLEL": "4",
+        }
+        with mock.patch.dict(os.environ, env):
+            responder.validate_numeric_env()  # must not raise
+
+    def test_wildcard_bind_forms_refused(self):
+        for bad in ("0.0.0.0", "::", "0:0:0:0:0:0:0:0", "[::]", ""):
+            self.assertTrue(responder.is_wildcard_bind(bad), bad)
+        for good in ("127.0.0.1", "10.0.0.2", "192.168.5.2", "fe80::1", "spark.local"):
+            self.assertFalse(responder.is_wildcard_bind(good), good)
+
+
+class TestCallbackAllowlist(ResponderTestCase):
+    def test_public_ip_callback_is_400(self):
+        status, body = self.post_ask({
+            "sender": "p", "question": "q?",
+            "callback_url": "http://8.8.8.8:9000/cb", "wait": True,
+        })
+        self.assertEqual(status, 400)
+        self.assertIn("callback_url", body["error"])
+
+    def test_public_hostname_callback_is_400(self):
+        status, body = self.post_ask({
+            "sender": "p", "question": "q?",
+            "callback_url": "https://evil.example.com/cb", "wait": True,
+        })
+        self.assertEqual(status, 400)
+        self.assertIn("not allowed", body["error"])
+
+    def test_env_allowlist_host_is_allowed(self):
+        env = {"HUB_CALLBACK_ALLOW_HOSTS": "peer.example.com,10.9.9.9:9000"}
+        with mock.patch.dict(os.environ, env), mock.patch(
+            "urllib.request.urlopen", fake_urlopen_factory(model_reply="ok")
+        ):
+            status, _ = self.post_ask({
+                "sender": "p", "question": "q?",
+                "callback_url": "http://peer.example.com:9000/cb", "wait": True,
+            })
+        self.assertEqual(status, 200)
+
+    def test_local_targets_are_allowed(self):
+        # the test client connects from 127.0.0.1, so that is also the peer host
+        with mock.patch(
+            "urllib.request.urlopen", fake_urlopen_factory(model_reply="ok")
+        ):
+            for url in (
+                "http://127.0.0.1:9000/cb",
+                "http://192.168.5.10:9000/cb",
+                "http://[fe80::1]:9000/cb",
+                "http://mac.local:9000/cb",
+                "http://localhost/cb",
+            ):
+                status, _ = self.post_ask({
+                    "sender": "p", "question": "q?", "callback_url": url, "wait": True,
+                })
+                self.assertEqual(status, 200, url)
+
+    def test_callback_host_allowed_unit(self):
+        self.assertTrue(responder.callback_host_allowed("http://127.0.0.1:9/cb"))
+        self.assertTrue(responder.callback_host_allowed("http://10.0.0.5:9/cb"))
+        self.assertTrue(responder.callback_host_allowed("http://[fe80::1]:9/cb"))
+        self.assertTrue(responder.callback_host_allowed("http://mac.local:9/cb"))
+        self.assertTrue(responder.callback_host_allowed("http://192.168.1.20:9/cb",
+                                                         peer_host="192.168.1.20"))
+        self.assertFalse(responder.callback_host_allowed("http://8.8.8.8/cb"))
+        self.assertFalse(responder.callback_host_allowed("http://evil.example.com/cb"))
+        self.assertFalse(responder.callback_host_allowed("ftp://127.0.0.1/x"))
+        self.assertFalse(responder.callback_host_allowed("http://127.0.0.1:99999/x"))
+        with mock.patch.dict(os.environ, {"HUB_CALLBACK_ALLOW_HOSTS": "hub-peer.example.org"}):
+            self.assertTrue(
+                responder.callback_host_allowed("http://hub-peer.example.org:9000/cb")
+            )
+
+
+class TestLocLineParsing(ResponderTestCase):
+    def test_multiple_loc_lines_are_400(self):
+        status, body = self.post_ask({"sender": "p", "question": "q?\nloc: 1,2\nloc: 3,4"})
+        self.assertEqual(status, 400)
+        self.assertIn("loc", body["error"])
+
+    def test_mid_body_loc_line_stays_in_the_question(self):
+        with mock.patch(
+            "urllib.request.urlopen",
+            fake_urlopen_factory(model_reply="ok", ollama_requests=self.ollama_requests),
+        ):
+            status, _ = self.post_ask({
+                "sender": "p", "question": "first\nloc: 1,2\nlast", "wait": True,
+            })
+        self.assertEqual(status, 200)
+        user_msg = self.ollama_requests[0]["payload"]["messages"][1]["content"]
+        self.assertIn("loc: 1,2", user_msg)  # not stripped from mid-body
+        self.assertNotIn("Asker location", user_msg)  # loc is None
+
+    def test_trailing_loc_line_is_stripped(self):
+        with mock.patch(
+            "urllib.request.urlopen",
+            fake_urlopen_factory(model_reply="ok", ollama_requests=self.ollama_requests),
+        ):
+            status, _ = self.post_ask({
+                "sender": "p", "question": "What now?\nloc: 51.5,-0.1", "wait": True,
+            })
+        self.assertEqual(status, 200)
+        user_msg = self.ollama_requests[0]["payload"]["messages"][1]["content"]
+        self.assertNotIn("loc:", user_msg)
+        self.assertIn("Asker location (lat, lon): 51.5, -0.1", user_msg)
+
+
+class TestFieldSizeCaps(ResponderTestCase):
+    def test_huge_question_is_400(self):
+        status, body = self.post_ask({
+            "sender": "p", "question": "x" * (responder.MAX_QUESTION_CHARS + 1),
+        })
+        self.assertEqual(status, 400)
+        self.assertIn("question", body["error"])
+
+    def test_huge_sender_is_400(self):
+        status, body = self.post_ask({
+            "sender": "s" * (responder.MAX_SENDER_CHARS + 1), "question": "q?",
+        })
+        self.assertEqual(status, 400)
+        self.assertIn("sender", body["error"])
+
+
+class Test413ClosesConnection(ResponderTestCase):
+    def test_413_marks_connection_close_and_server_stays_healthy(self):
+        # Send only the headers of an oversized body: the server must answer
+        # 413 without reading the body, and must mark the connection close so
+        # the unread body cannot corrupt a keep-alive connection.
+        sock = socket.create_connection(("127.0.0.1", self.port), timeout=15)
+        headers = (
+            "POST /ask HTTP/1.1\r\n"
+            "Host: 127.0.0.1\r\n"
+            "Content-Type: application/json\r\n"
+            "Content-Length: %d\r\n"
+            "\r\n" % (responder.MAX_BODY_BYTES + 1)
+        )
+        sock.sendall(headers.encode("ascii"))
+        raw = b""
+        while True:
+            chunk = sock.recv(4096)
+            if not chunk:
+                break
+            raw += chunk
+        sock.close()
+        head, _, body = raw.partition(b"\r\n\r\n")
+        self.assertIn(b" 413 ", head.split(b"\r\n")[0] + b" ")
+        self.assertIn(b"Connection: close", head)
+        self.assertIn(b"too large", body)
+        # the server is still healthy on a fresh connection
+        status, resp_body = self.request("GET", "/health")
+        self.assertEqual(status, 200)
+        self.assertEqual(resp_body, {"status": "ok"})
+
+
 if __name__ == "__main__":
     unittest.main()
