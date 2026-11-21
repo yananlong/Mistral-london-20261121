@@ -61,7 +61,7 @@ CPU only, Q4_0 weights (repacked for i8mm), Q8_0 mmproj, 4 threads pinned to the
 - If the limiter kills the app:
   - drop a tier (test plan section 6);
   - or load with CPU weight repacking off. Set `llama_model_params.use_extra_bufts = false` (`--no-repack` in the CLI). The weights then stay file-backed mmap pages, which are probably not counted, but decoding is slower. This option is untested here, so measure it before relying on it.
-- Keep `targetSdk` at 36 or lower. The target-37 changes are not needed. One of them is that native files loaded with `System.load()` must be read-only.
+- `targetSdk` 37 is fine. bitchat-android already targets 37. The target-37 rule that native files loaded with `System.load()` must be read-only does not affect us, because `:ministral` uses `System.loadLibrary` from the APK.
 
 ### Budget (MB, est). KV per token: f16 ~104 KB, q8_0 ~55 KB
 | Tier | Weights | Projector | KV | Compute | App | Total (est) | Min availMem |
