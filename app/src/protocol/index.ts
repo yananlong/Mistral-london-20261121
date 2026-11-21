@@ -128,6 +128,17 @@ export function encodeLocationShare(note: string | null, lat: number, lon: numbe
   return `${(note === null ? '' : trim(note)) || LOCATION_SHARE_DEFAULT_NOTE}\n${encodeLoc(lat, lon)}`;
 }
 
+/**
+ * Public SOS broadcast. Because it carries the standard trailing `loc:` line
+ * when a fix exists, receivers also drop a pin on their maps (decodeLocationShare).
+ */
+export const SOS_NOTE = 'SOS — I need help';
+/** Sent publicly when someone cancels an SOS that already went out. */
+export const SOS_CANCEL_NOTE = 'SOS cancelled — I am OK now';
+export function encodeSOS(loc: Coordinates | null): string {
+  return loc ? encodeLocationShare(SOS_NOTE, loc.lat, loc.lon) : SOS_NOTE;
+}
+
 export function decodeLocationShare(wire: string): LocationShare | null {
   const { body, loc } = splitTrailingLoc(wire);
   return loc ? { note: body, ...loc } : null;

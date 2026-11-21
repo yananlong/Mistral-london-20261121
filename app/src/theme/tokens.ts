@@ -1,66 +1,64 @@
 /**
- * Design tokens from design/system.html and design/PRINCIPLES.md.
- * Dark is the default (black pixels are off on OLED); the light palette is for
- * bright sun and follows the phone's appearance setting.
- * Colour means state, never decoration: red = danger, yellow = waiting
- * (icons and fills only, never text), green = done.
+ * Design tokens, copied from design/system.html and design/components.html
+ * (the source of truth). Dark is the default: pure black saves battery on
+ * OLED screens (design/PRINCIPLES.md §6).
+ *
+ * Colour means state, never decoration (PRINCIPLES §4):
+ *   red    = danger / SOS only
+ *   yellow = waiting, not known yet, not sent yet (icons only, never text)
+ *   green  = done, delivered, answered
+ * Every state also has its own icon and word, so colour is never alone.
  */
-export interface Palette {
-  ink: string; ink2: string; surface: string; surface2: string; line: string; lineStrong: string;
-  onInk: string; onFill: string; onYellow: string;
-  red: string; redFill: string; redTint: string; yellow: string; green: string; greenTint: string;
-  scrim: string;
-}
-
-export const dark: Palette = {
-  ink: '#FFFFFF', ink2: '#9A9A9F', surface: '#000000', surface2: '#1C1C1E', line: '#2C2C2E', lineStrong: '#8E8E93',
-  onInk: '#000000', onFill: '#FFFFFF', onYellow: '#000000',
-  red: '#FF6159', redFill: '#D7000F', redTint: '#3A0A0C', yellow: '#FFD100', green: '#30D158', greenTint: '#0B2A18',
-  scrim: 'rgba(0,0,0,0.6)',
-};
-
-export const light: Palette = {
-  ink: '#000000', ink2: '#6B6B6B', surface: '#FFFFFF', surface2: '#F2F2F3', line: '#D1D1D6', lineStrong: '#6B6B6B',
-  onInk: '#FFFFFF', onFill: '#FFFFFF', onYellow: '#000000',
-  red: '#D7000F', redFill: '#D7000F', redTint: '#FDE7E8', yellow: '#9A5B00', green: '#007A3D', greenTint: '#E3F4EA',
-  scrim: 'rgba(0,0,0,0.4)',
-};
-
-/** Atkinson Hyperlegible Next, bundled so it works offline. One family, two weights. */
-export const fonts = { regular: 'AtkinsonHyperlegibleNext_400Regular', semibold: 'AtkinsonHyperlegibleNext_600SemiBold' } as const;
-
-/** Eight text styles, nothing in between. Sizes in points, each scales with the phone's text size. */
-export const type = {
-  display: { fontSize: 44, lineHeight: 46, weight: 'semibold', letterSpacing: -0.44 },
-  title1: { fontSize: 28, lineHeight: 32, weight: 'semibold', letterSpacing: 0 },
-  title2: { fontSize: 22, lineHeight: 28, weight: 'semibold', letterSpacing: 0 },
-  body: { fontSize: 17, lineHeight: 24, weight: 'regular', letterSpacing: 0 },
-  bodyStrong: { fontSize: 17, lineHeight: 24, weight: 'semibold', letterSpacing: 0 },
-  callout: { fontSize: 15, lineHeight: 20, weight: 'semibold', letterSpacing: 0 },
-  caption: { fontSize: 13, lineHeight: 18, weight: 'regular', letterSpacing: 0 },
-  label: { fontSize: 13, lineHeight: 16, weight: 'semibold', letterSpacing: 0 },
-} as const;
-export type TypeStyle = keyof typeof type;
-
 export const tokens = {
-  /** 4 px steps, 20 px outer margins. */
-  space: { s1: 4, s2: 8, s3: 12, s4: 16, s5: 20, s6: 24, s8: 32, s12: 48 },
-  /** Small, friendly corners. No pills. */
-  radius: { tail: 4, s: 8, m: 12, l: 16 },
-  /** 44 pt to tap; main actions are 48 pt high. */
-  target: 44,
-  action: 48,
-  motion: { press: 150, expand: 250, sheet: 320 },
-  contentWidth: 680,
   color: {
-    // Basemap palette for the offline Protomaps style (src/map/mapStyle.ts):
-    // a calm, muted street-map look that still reads as a real map.
-    mapLand: '#E7E9DC', mapWater: '#B8D8DD', mapRoad: '#A3AEA2', mapBuilding: '#CDD2C5',
-    mapEarth: '#EDEFE2', mapForest: '#C7DDB4', mapGrass: '#DCE7C6', mapScrub: '#E4E9CF',
-    mapPark: '#BFDDB0', mapUrban: '#E6E3D8', mapBuildingLine: '#BDB9AA',
-    mapCasing: '#B5B1A2', mapMotorway: '#E59A6B', mapTrunk: '#EDBE7C', mapPrimary: '#F4D98E',
-    mapSecondary: '#F8E6A8', mapTertiary: '#F9EDBE', mapStreet: '#FFFFFF', mapPath: '#EFEDE4',
-    mapBoundary: '#B9B4A4',
-    pin: '#D7000F', position: '#0A84FF', ink: '#000000', white: '#FFFFFF', border: '#2C2C2E',
+    ink: '#FFFFFF',        // text and primary actions, 21:1 on surface
+    ink2: '#9A9A9F',       // secondary text: sources, times, hints
+    onInk: '#000000',      // text on white buttons
+    surface: '#000000',
+    surface2: '#1C1C1E',   // answers, quiet panels, anything raised
+    line: '#2C2C2E',       // 1 px outlines
+    lineStrong: '#8E8E93',
+    red: '#FF6159',        // danger icons and text
+    redFill: '#D7000F',    // the SOS button, always
+    onFill: '#FFFFFF',
+    redTint: '#3A0A0C',    // the SOS bar
+    redLine: '#5A1A1C',
+    yellow: '#FFD100',
+    green: '#30D158',
+    scrim: 'rgba(0, 0, 0, 0.7)',
+
+    // Offline basemap (src/map/mapStyle.ts): a quiet dark street map, so the
+    // numbered white pins are what stands out.
+    mapEarth: '#0B0B0C', mapForest: '#12201A', mapGrass: '#142018', mapScrub: '#151C14',
+    mapPark: '#13231A', mapUrban: '#111113', mapWater: '#0F2530', mapBuilding: '#1A1A1D',
+    mapBuildingLine: '#26262A', mapCasing: '#000000', mapMotorway: '#5C5C63', mapTrunk: '#4D4D53',
+    mapPrimary: '#424248', mapSecondary: '#38383D', mapTertiary: '#313136', mapStreet: '#2A2A2E',
+    mapPath: '#232327', mapBoundary: '#3A3A40',
   },
+  /** Atkinson Hyperlegible Next, bundled so it works offline. Two weights only. */
+  font: {
+    regular: 'AtkinsonHyperlegibleNext_400Regular',
+    semibold: 'AtkinsonHyperlegibleNext_600SemiBold',
+  },
+  /** Type scale (PRINCIPLES §3): size / line height. */
+  type: {
+    display: { fontSize: 44, lineHeight: 46, letterSpacing: -0.44 },
+    title1: { fontSize: 28, lineHeight: 32 },
+    title2: { fontSize: 22, lineHeight: 28 },
+    body: { fontSize: 17, lineHeight: 24 },
+    callout: { fontSize: 15, lineHeight: 20 },
+    caption: { fontSize: 13, lineHeight: 18 },
+    label: { fontSize: 13, lineHeight: 16 },
+  },
+  /** Spacing in steps of 4; 20 px outer margins. */
+  space: { xxs: 4, xs: 8, sm: 12, md: 16, gutter: 20, lg: 24, xl: 32 },
+  /** Friendly, not sharp: tags 4, small things 8, cards and buttons 12, sheets 16. No pills. */
+  radius: { xs: 4, s: 8, m: 12, l: 16 },
+  /** Tap targets: buttons 48, small buttons 44 (Apple minimum). */
+  target: 48,
+  targetSmall: 44,
+  contentWidth: 520,
+  motion: { press: 150, change: 200, arrive: 220, sheet: 300 },
 } as const;
+
+export type TypeStyle = keyof typeof tokens.type;

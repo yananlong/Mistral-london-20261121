@@ -7,13 +7,14 @@ import {
   type MapProps,
   type ViewStateChangeEvent,
 } from '@maplibre/maplibre-react-native';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Card, Txt } from '../components/ui';
-import { fonts, tokens as t } from '../theme/tokens';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Icon, Txt } from '../components/ui';
+import { tokens as t } from '../theme/tokens';
+import { Pin } from './Pin';
+import { SchematicMap } from './SchematicMap';
 import { OfflineMapProps } from './types';
 import { buildMapStyle, INITIAL_ZOOM, LONDON_CENTER, MAP_MAX_ZOOM, MAP_MIN_ZOOM } from './mapStyle';
 
-const MAP_HEIGHT = 380;
 
 /**
  * The offline London map: Protomaps vector tiles from london.pmtiles, drawn
@@ -21,7 +22,7 @@ const MAP_HEIGHT = 380;
  * zoom, rotate and pitch are on, zoom is clamped to the downloaded area, and
  * the on-map buttons zoom in/out or recenter on the selected position.
  */
-export default function MapCanvas({ points, focus, uri }: OfflineMapProps & { uri: string }) {
+export default function MapCanvas({ points, focus, uri, height = 260 }: OfflineMapProps & { uri: string }) {
   const [state, setState] = useState<'opening' | 'ready' | 'failed'>('opening');
   const [zoom, setZoom] = useState(INITIAL_ZOOM);
   const cameraRef = useRef<CameraRef>(null);
@@ -43,12 +44,11 @@ export default function MapCanvas({ points, focus, uri }: OfflineMapProps & { ur
     cameraRef.current?.flyTo({ center: [center.lon, center.lat], zoom: Math.max(zoom, INITIAL_ZOOM), duration: 500 });
   };
 
-  if (state === 'failed') return <Card tone="quiet"><Txt>The map could not open. The place details are listed below.</Txt></Card>;
-  return <View style={{ gap: t.space.s2 }}>
-    {state === 'opening' && <Txt>Opening the map…</Txt>}
-    <View>
+  if (state === 'failed') return <SchematicMap points={points} height={height} note="The stored street map could not open. Places are shown in the right direction." />;
+  return <View style={{ gap: t.space.xs }}>
+    <View style={local.frame}>
       <Map
-        style={local.map}
+        style={{ height, width: '100%' }}
         mapStyle={mapStyle as MapProps['mapStyle']}
         dragPan
         touchZoom
@@ -68,48 +68,31 @@ export default function MapCanvas({ points, focus, uri }: OfflineMapProps & { ur
         />
         {points.map((point) => (
           <Marker key={point.id} id={point.id} lngLat={[point.position.lon, point.position.lat]}>
-            <View style={[local.pin, { backgroundColor: point.kind === 'self' ? t.color.position : t.color.pin }]}>
-              <Text numberOfLines={1} style={local.pinText}>{point.label}</Text>
-            </View>
+            <Pin point={point} />
           </Marker>
         ))}
       </Map>
       <View style={local.controls} pointerEvents="box-none">
         <Pressable accessibilityRole="button" accessibilityLabel="Zoom in" style={local.controlButton} onPress={() => zoomBy(1.5)}>
-          <Text style={local.controlText}>+</Text>
+          <Icon name="add" size={22} />
         </Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel="Zoom out" style={local.controlButton} onPress={() => zoomBy(-1.5)}>
-          <Text style={local.controlText}>−</Text>
+          <Icon name="remove" size={22} />
         </Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel="Center on selected position" style={local.controlButton} onPress={recenter}>
-          <Text style={local.controlText}>◎</Text>
+          <Icon name="my-location" size={20} />
         </Pressable>
       </View>
     </View>
-    <Txt variant="caption">Pan and pinch to explore. © OpenStreetMap contributors, Protomaps</Txt>
+    <Txt variant="caption" muted>{state === 'opening' ? 'Opening the map stored on your phone…' : 'Stored on your phone. © OpenStreetMap contributors · Protomaps'}</Txt>
   </View>;
 }
 
 const local = StyleSheet.create({
-  map: { height: MAP_HEIGHT, width: '100%', borderRadius: t.radius.m },
-  controls: {
-    position: 'absolute',
-    top: t.space.s2,
-    right: t.space.s2,
-    flexDirection: 'column',
-    gap: t.space.s1,
-  },
+  frame: { borderRadius: t.radius.m, borderWidth: 1, borderColor: t.color.line, overflow: 'hidden' },
+  controls: { position: 'absolute', top: t.space.xs, right: t.space.xs, gap: t.space.xxs },
   controlButton: {
-    width: t.target,
-    height: t.target,
-    borderRadius: t.radius.s,
-    backgroundColor: t.color.white,
-    borderWidth: 1,
-    borderColor: t.color.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: t.targetSmall, height: t.targetSmall, borderRadius: t.radius.s, backgroundColor: t.color.surface,
+    borderWidth: 1, borderColor: t.color.line, alignItems: 'center', justifyContent: 'center',
   },
-  controlText: { color: t.color.ink, fontSize: 22, fontFamily: fonts.semibold },
-  pin: { maxWidth: 180, paddingHorizontal: t.space.s2, paddingVertical: t.space.s1, borderRadius: t.radius.tail, borderWidth: 2, borderColor: t.color.white },
-  pinText: { color: t.color.white, fontSize: 13, fontFamily: fonts.semibold },
 });
