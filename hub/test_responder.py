@@ -673,7 +673,7 @@ class TestAnswerShaping(ResponderTestCase):
     def test_num_predict_and_keep_alive_are_sent_and_sized_to_the_cap(self):
         payload = responder.build_chat_payload("q?", None)
         self.assertEqual(payload["options"]["num_ctx"], 8192)
-        self.assertEqual(payload["options"]["num_predict"], (1407 - 78 - 1) // 4)
+        self.assertEqual(payload["options"]["num_predict"], 256)
         self.assertEqual(payload["keep_alive"], -1)
         self.assertIs(payload["stream"], False)
         with mock.patch.dict(os.environ, {"HUB_MAX_ANSWER_BYTES": "700"}):
@@ -783,7 +783,31 @@ class TestEgressAndConfig(ResponderTestCase):
             for k in ("HUB_ANSWER_TIMEOUT_SECONDS", "HUB_QUEUE_WAIT_SECONDS"):
                 os.environ.pop(k, None)
             self.assertEqual(responder.answer_timeout(), 100.0)
-            self.assertLess(responder.queue_wait_seconds(), responder.answer_timeout())
+            self.assertEqual(responder.queue_wait_seconds(), 25.0)
+            # worst measured run: 256 tokens at 3.5 tok/s with four in parallel
+            worst_run = responder.num_predict() / 3.5
+            self.assertLess(responder.queue_wait_seconds() + worst_run,
+                            responder.answer_timeout())
+
+    def test_loopback_callbacks_are_accepted_for_ssh_tunnel_testing(self):
+        # remote testing: ssh -R 9000:127.0.0.1:9000 puts the tester's
+        # listener on the Spark's loopback
+        with mock.patch.dict(os.environ):
+            os.environ.pop("HUB_CALLBACK_ALLOW_HOSTS", None)
+            for url in ("http://127.0.0.1:9000/cb", "http://127.8.9.10:9000/cb",
+                        "http://[::1]:9000/cb", "http://localhost:9000/cb"):
+                # peer_host is a non-loopback address: loopback is allowed by itself
+                self.assertTrue(responder.callback_host_allowed(url, "10.0.0.9"), url)
+        for url in ("http://127.0.0.1:9000/cb", "http://[::1]:9000/cb"):
+            callbacks = []
+            with mock.patch("urllib.request.urlopen",
+                            fake_urlopen_factory(model_reply="1. ok.", callbacks=callbacks)):
+                status, body = self.post_ask(
+                    {"sender": "sim", "question": "q?", "callback_url": url})
+                self.assertEqual(status, 202, body)
+                self.assertTrue(self.wait_for(lambda: len(callbacks) == 1))
+            self.assertEqual(callbacks[0]["url"], url)
+            self.assertEqual(callbacks[0]["payload"]["status"], "answered")
 
 
 class TestBroadExceptionHandling(ResponderTestCase):

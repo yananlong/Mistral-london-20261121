@@ -76,12 +76,15 @@ BUSY_REASON = "the hub is busy answering other questions"
 # fragments of about 469 bytes (DATASETS.md, "512-byte BLE packets").
 DEFAULT_MAX_ANSWER_BYTES = 1407
 # Total deadline for one question, from arrival: queue wait plus model run.
-# From measurements on the Spark (fp16, about 9 tok/s): a warm answer takes
-# about 26 s and a cold one about 36 s, and num_predict bounds a run at about
-# 40 s. 100 s leaves room for one queued wait plus a slow run, and it is
-# below the 120 s that callers wait, so the retry answer still arrives.
+# Measured on the Spark (fp16): one answer alone decodes at about 9 tok/s
+# (warm about 26 s, cold about 36 s); four in parallel decode at about
+# 3.5 tok/s each. DEFAULT_NUM_PREDICT bounds a run at 256 tokens, about 73 s
+# in the worst case (four in parallel). A queued question waits at most 25 s,
+# so it still has 75 s for its own run inside the 100 s deadline.
 DEFAULT_ANSWER_TIMEOUT_SECONDS = 100.0
-DEFAULT_QUEUE_WAIT_SECONDS = 45.0
+DEFAULT_QUEUE_WAIT_SECONDS = 25.0
+# About 1 KB of text: DATASETS.md asks for answers of one to three fragments.
+DEFAULT_NUM_PREDICT = 256
 DEFAULT_MAX_QUEUED = 16
 
 LOC_LINE_RE = re.compile(
@@ -397,8 +400,9 @@ def model_part_max_bytes():
 
 
 def num_predict():
-    """Token cap for one answer, sized to the byte budget (about 4 bytes per token)."""
-    return max(1, env_int("HUB_NUM_PREDICT", max(32, model_part_max_bytes() // 4)))
+    """Token cap for one answer: the byte budget at about 4 bytes per token, at most 256."""
+    sized = min(DEFAULT_NUM_PREDICT, max(32, model_part_max_bytes() // 4))
+    return max(1, env_int("HUB_NUM_PREDICT", sized))
 
 
 def keep_alive():

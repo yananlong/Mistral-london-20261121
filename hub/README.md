@@ -68,22 +68,24 @@ Responses:
 ### Queueing, timeout and answer size
 
 BLUEPRINT_1.md leaves these three values to the implementation team. They are
-set from measurements on the Spark (fp16, about 9 tokens/s, warm answer about
-26 s, cold about 36 s).
+set from measurements on the Spark (fp16): one answer alone decodes at about
+9 tokens/s (warm about 26 s, cold about 36 s), and four in parallel decode at
+about 3.5 tokens/s each.
 
 - **Queue.** The hub runs `OLLAMA_NUM_PARALLEL` (4) answers at once and queues
   the rest, as the blueprint says. A queued question waits up to
-  `HUB_QUEUE_WAIT_SECONDS` (45) for a slot; after that, or when
+  `HUB_QUEUE_WAIT_SECONDS` (25) for a slot; after that, or when
   `HUB_MAX_QUEUED` (16) questions are already waiting, it gets the busy answer.
   There is no 429: every accepted question gets an answer message.
 - **Timeout.** `HUB_ANSWER_TIMEOUT_SECONDS` (100) is the total deadline from
-  arrival, queue wait included. A caller should wait a little longer than this
-  (for example 120 s) before it shows **Hub not reachable**.
+  arrival, queue wait included: up to 25 s in the queue, then at least 75 s
+  for the run (256 tokens at 3.5 tokens/s is 73 s). A caller should wait a
+  little longer than this (for example 120 s) for the second message.
 - **Answer size.** The whole answer message, disclaimer included, is at most
   `HUB_MAX_ANSWER_BYTES` (1407 UTF-8 bytes: three BitChat fragments of about
   469 bytes, DATASETS.md). `options.num_predict` is sized to that budget
-  (bytes / 4, 332 tokens), so the model stops near the cap and a run is bounded
-  at about 40 s. The system prompt asks for at most 6 steps and 120 words, so a
+  (bytes / 4, at most 256 tokens, about 1 KB), so the model stops before the
+  cap and a run is bounded at about 30 s alone and 73 s with four in parallel. The system prompt asks for at most 6 steps and 120 words, so a
   normal answer is well under the cap.
 
 ## Mesh message format
@@ -142,12 +144,12 @@ the phone's timeout).
 | `OLLAMA_CONTEXT_LENGTH` | `8192` | Sent as `options.num_ctx` in `/api/chat`. |
 | `OLLAMA_KEEP_ALIVE` | `-1` | Sent as `keep_alive` with every request, so the model stays loaded even when the Ollama server runs with its 5-minute default. |
 | `OLLAMA_NUM_PARALLEL` | `4` | Must match the Ollama server's setting; it is the number of model runs the hub starts at once. The rest queue. |
-| `HUB_QUEUE_WAIT_SECONDS` | `45` | Longest wait for a model slot before the busy answer. |
+| `HUB_QUEUE_WAIT_SECONDS` | `25` | Longest wait for a model slot before the busy answer. |
 | `HUB_MAX_QUEUED` | `16` | Questions that may wait at once; more get the busy answer at once. |
 | `HUB_ANSWER_TIMEOUT_SECONDS` | `100` | Total deadline for one question from arrival (queue wait + model run); then the asker gets the retry answer. |
 | `HUB_MAX_ANSWER_BYTES` | `1407` | UTF-8 byte budget of the whole answer message, disclaimer included. |
 | `HUB_MAX_ANSWER_CHARS` | `1200` | Extra character cap on the model's text. Must be >= 1. |
-| `HUB_NUM_PREDICT` | byte budget / 4 (`332`) | `options.num_predict`, the model's token cap per answer. |
+| `HUB_NUM_PREDICT` | byte budget / 4, at most `256` | `options.num_predict`, the model's token cap per answer. |
 | `HUB_WARMUP` | `1` | At startup, load the model and log an error if the tag is not pulled. `0` skips it. |
 | `HUB_CALLBACK_ALLOW_HOSTS` | empty | Comma-separated extra callback hosts (host or host:port) beyond the built-in loopback/private/link-local/peer allowlist. |
 
@@ -214,9 +216,11 @@ curl -X POST http://10.0.0.2:8080/ask \
 
 ### Remote testing (the Spark is not next to you)
 
-The callback path needs the Spark to reach the caller, which does not work
-through an SSH tunnel. Use the synchronous path: run the responder on the
-Spark's loopback, forward the port, and ask with `wait: true`.
+The phones (or the iPhone simulator and Android emulator on a laptop) reach a
+remote Spark only through SSH. Run the responder on the Spark's loopback and
+forward the port. The synchronous path (`wait: true`) needs one forward and is
+the simplest. The async path also works with a reverse forward, because
+loopback callback hosts (`127.0.0.0/8`, `::1`, `localhost`) are always allowed.
 
 ```bash
 # on the Spark
@@ -229,8 +233,22 @@ curl -X POST http://127.0.0.1:8080/ask \
 # -> 200 {"sender":"phoneA","ack":"Received. Working on an answer.","answer":"1. ...","status":"answered"}
 ```
 
-Show `ack` first and `answer` second. Allow up to 120 s for the response. This
-is a development route, not the demo: the demo hub has no network.
+Show `ack` first and `answer` second. Allow up to 120 s for the response.
+
+Async with callbacks: add a reverse forward, so a listener on the laptop's
+port 9000 appears on the Spark's loopback.
+
+```bash
+# on the laptop: -L for /ask, -R for the callback
+ssh -N -L 8080:127.0.0.1:8080 -R 9000:127.0.0.1:9000 spark &
+curl -X POST http://127.0.0.1:8080/ask \
+  -H 'Content-Type: application/json' \
+  -d '{"sender":"phoneA","question":"How do I stop heavy bleeding?","callback_url":"http://127.0.0.1:9000/cb"}'
+# -> 202 with the ack at once; {"sender","answer","status"} is POSTed to the
+#    laptop's 127.0.0.1:9000/cb when the answer is ready.
+```
+
+This is a development route, not the demo: the demo hub has no network.
 
 ## Tests
 
