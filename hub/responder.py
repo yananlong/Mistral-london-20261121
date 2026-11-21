@@ -18,6 +18,7 @@ Endpoints:
                     "answer", "parts", "status"} when wait=true. "parts"
                     are the mesh messages to send, each <= 255 UTF-8 bytes.
 
+
 Message format (see BLUEPRINT_1.md): a question is question lines plus an
 optional "loc: <lat>,<lon>" line. The first mesh reply is the ack; the second
 carries the answer, which ends with the disclaimer.
@@ -40,6 +41,10 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import kb
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "protocol"))
+from make_vectors import HUB_ERROR_TEXT as PROTOCOL_HUB_ERROR_TEXT  # noqa: E402
+from make_vectors import compose_answer as protocol_compose_answer  # noqa: E402
+
 
 log = logging.getLogger("hub.responder")
 
@@ -863,8 +868,18 @@ def busy_answer():
 
 
 def answer_question(question, loc, timeout=None):
-    """Run the model and shape the answer. Raises ModelError/ModelTimeout."""
-    return answer_with_parts(question, loc, timeout)[0]
+    """Run the model and shape the answer. Raises ModelError/ModelTimeout.
+
+    Returns (answer, messages): `answer` is the full text for logs and evals,
+    `messages` is what the BitChat peer sends over the mesh.
+    """
+    raw = call_model(question, loc, timeout)
+    return finalize_answer(raw), mesh_messages(raw)
+
+
+def mesh_messages(raw):
+    """Build the mesh messages defined by protocol/README.md."""
+    return protocol_compose_answer(raw) or [PROTOCOL_HUB_ERROR_TEXT]
 
 
 def answer_with_parts(question, loc, timeout=None):
@@ -908,12 +923,20 @@ def produce_answer(server, request, arrived=None):
 
 
 def post_callback(callback_url, sender, answer, status="answered", parts=None):
-    """POST {sender, answer, parts, status} to the BitChat peer so it can relay over the mesh."""
+    """POST the answer and mesh messages to the BitChat peer."""
+    messages = parts or []
     req = urllib.request.Request(
         callback_url,
         data=json.dumps(
-            {"sender": sender, "answer": answer, "parts": parts or [], "status": status}
+            {
+                "sender": sender,
+                "answer": answer,
+                "messages": messages,
+                "parts": messages,
+                "status": status,
+            }
         ).encode("utf-8"),
+
         headers={"Content-Type": "application/json"},
         method="POST",
     )
@@ -943,6 +966,7 @@ def run_async(request, server, arrived=None):
         )
     except Exception as e:
         log.error("could not deliver an answer to %s: %s", sender, e)
+
 
 
 # --- HTTP shell -----------------------------------------------------------------
@@ -1105,12 +1129,13 @@ class ResponderHandler(BaseHTTPRequestHandler):
             # "ack" lets a caller without a callback listener (remote testing
             # through an SSH tunnel) show both mesh messages from one response
             payload = {"sender": request["sender"], "ack": ACK, "answer": answer,
-                       "parts": parts, "status": status}
+                       "parts": parts, "messages": parts, "status": status}
             if status == "answered":
                 self._send_json(200, payload)
             else:
                 payload["error"] = detail
                 self._send_json(503 if status == "busy" else 502, payload)
+
             return
         # The ack never waits on the model or on a free slot: the question
         # queues in its worker thread, and the answer follows by callback.
