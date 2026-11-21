@@ -131,7 +131,7 @@ The stretch goals come after step 6:
 
 ## Out of scope for the MVP
 
-- Cloud services of any kind, including the Mistral API and cloud Voxtral. [SETUP_VOXTRAL.md](SETUP_VOXTRAL.md) covers the cloud path, which can only make audio before a disaster.
+- Cloud services of any kind, including the Mistral API and cloud Voxtral. [SETUP_VOXTRAL.md](SETUP_VOXTRAL.md) and `voxtral/tts.py` cover the cloud path, which can only make audio before a disaster.
 - Images and audio over the mesh.
 - Plant and fungus identification, because a wrong answer can poison someone.
 - A connected volunteer who forwards requests to cloud Mistral. That was the earlier design.
@@ -139,6 +139,7 @@ The stretch goals come after step 6:
 ## Open questions
 
 - [ ] Do we fork the BitChat iOS app, or build our own app that runs beside stock BitChat?
+- [ ] The `bitchat/` submodule points at the upstream repository, so we cannot push changes to it. Do we create a team fork of BitChat and point the submodule at it?
 - [ ] Which phones do we demo on? The fork runs on iOS only.
 - [ ] Which Mac mini do we have, with which chip and how much memory? Memory limits the model size.
 - [ ] Which model and inference server answer fast enough over two hops?
