@@ -15,9 +15,9 @@ android {
         minSdk = 31                                   // createOnDeviceSpeechRecognizer
         ndk {
             abiFilters += "arm64-v8a"                 // CMakeLists.txt refuses other ABIs
-            // Emulator testing: ./gradlew -PministralEmulator=true ... also builds x86_64
-            // (CMakeLists.txt allows it only with -DMINISTRAL_EMULATOR=ON, passed below).
-            if (project.hasProperty("ministralEmulator")) abiFilters += "x86_64"
+            // Emulator testing: -PministralEmulator=true builds arm64 without i8mm (Apple Silicon emulator);
+            // -PministralEmulator=x86_64 also builds x86_64 (Intel host). Both pass -DMINISTRAL_EMULATOR=ON below.
+            if (project.findProperty("ministralEmulator") == "x86_64") abiFilters += "x86_64"
         }
         externalNativeBuild {
             cmake {

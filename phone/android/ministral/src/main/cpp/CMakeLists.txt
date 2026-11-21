@@ -43,6 +43,10 @@ if(ANDROID_ABI STREQUAL "x86_64")
     # emulator CPUs); use native dispatch instead.
     set(GGML_CPU_ARM_ARCH "" CACHE STRING "" FORCE)
     set(GGML_NATIVE ON CACHE BOOL "" FORCE)
+elseif(MINISTRAL_EMULATOR)
+    # arm64 emulator on Apple Silicon: the guest CPU reports dotprod + fp16 but NOT i8mm
+    # (checked on an M3 host, emulator 37.3, API 37 image), so drop i8mm to avoid SIGILL.
+    set(GGML_CPU_ARM_ARCH "armv8.2-a+dotprod+fp16" CACHE STRING "" FORCE)
 else()
     set(GGML_CPU_ARM_ARCH "armv8.6-a+i8mm+dotprod+fp16" CACHE STRING "" FORCE)
 endif()
