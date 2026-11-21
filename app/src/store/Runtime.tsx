@@ -1,38 +1,51 @@
 import { createContext, PropsWithChildren, useContext, useEffect, useSyncExternalStore } from 'react';
 import { AskController } from '../ask/AskController';
-import { QuestionThread } from '../ask/QuestionThread';
-import { BriefingStore } from '../briefing/BriefingStore';
-import { demoBriefing } from '../briefing/demo';
-import { RelayStore } from '../relay/RelayStore';
+import { NewsKey } from '../content/scenario';
 import { demoLocation, deviceLocation, LocationSource, LocationStore } from '../location/LocationStore';
+import { SosController } from '../sos/SosController';
 import { TransportSelection } from '../transport/factory';
 import { MeshStore } from './MeshStore';
+
+/** A tiny observable value, for state the screens share. */
+export class ValueStore<T> {
+  private listeners = new Set<() => void>();
+  constructor(private value: T) {}
+  getSnapshot = (): T => this.value;
+  subscribe = (listener: () => void): (() => void) => {
+    this.listeners.add(listener);
+    return () => { this.listeners.delete(listener); };
+  };
+  set(value: T): void { if (value !== this.value) { this.value = value; this.listeners.forEach(listener => listener()); } }
+}
 
 export class AppRuntime {
   readonly mesh: MeshStore;
   readonly ask: AskController;
+  readonly sos: SosController;
   readonly location = new LocationStore();
-  readonly relay: RelayStore;
-  readonly questions: QuestionThread;
-  /** Starts with what the phone itself knows; news arrives over the mesh. */
-  readonly briefing = new BriefingStore(demoBriefing('nothing'));
+  /** Which briefing is showing. Stored on the phone until the hub can broadcast news. */
+  readonly news = new ValueStore<NewsKey>('some');
   readonly kind;
   readonly simulation;
   private unsubscribe: (() => void) | undefined;
   constructor(private readonly selection: TransportSelection, private readonly locationSource: LocationSource = selection.transport.kind === 'simulated' ? demoLocation : deviceLocation) {
     this.mesh = new MeshStore(selection.transport);
     this.ask = new AskController(this.mesh);
-    this.relay = new RelayStore(this.mesh);
-    this.questions = new QuestionThread(this.ask, this.mesh);
+    this.sos = new SosController(this.mesh, () => {
+      const position = this.location.getSnapshot();
+      return position.kind === 'ready' ? position.position : null;
+    });
     this.kind = selection.transport.kind;
     this.simulation = selection.simulation;
   }
   start(): void {
     if (this.unsubscribe) return;
-    this.questions.start();
     this.unsubscribe = this.selection.transport.subscribe(event => {
       this.mesh.receive(event);
-      if (event.type === 'message') { this.ask.receive(event.message); this.relay.receive(event.message); }
+      if (event.type === 'message') this.ask.receive(event.message);
+      // Anything waiting to go out gets another chance after every change.
+      this.ask.flush();
+      this.sos.flush();
     });
     void this.location.start(this.locationSource);
     void this.selection.transport.start('Phone A').catch(() => {
@@ -43,8 +56,7 @@ export class AppRuntime {
     this.unsubscribe?.();
     this.unsubscribe = undefined;
     this.ask.dispose();
-    this.relay.dispose();
-    this.questions.dispose();
+    this.sos.dispose();
     this.location.dispose();
     void this.selection.transport.stop().catch(() => {});
   }
@@ -70,19 +82,19 @@ export function useAsk() {
   const { ask } = useRuntime();
   return useSyncExternalStore(ask.subscribe, ask.getSnapshot, ask.getSnapshot);
 }
+export function useAskHistory() {
+  const { ask } = useRuntime();
+  return useSyncExternalStore(ask.subscribe, ask.getHistory, ask.getHistory);
+}
+export function useSos() {
+  const { sos } = useRuntime();
+  return useSyncExternalStore(sos.subscribe, sos.getSnapshot, sos.getSnapshot);
+}
+export function useNews() {
+  const { news } = useRuntime();
+  return useSyncExternalStore(news.subscribe, news.getSnapshot, news.getSnapshot);
+}
 export function useLocation() {
   const { location } = useRuntime();
   return useSyncExternalStore(location.subscribe, location.getSnapshot, location.getSnapshot);
-}
-export function useRelay() {
-  const { relay } = useRuntime();
-  return useSyncExternalStore(relay.subscribe, relay.getSnapshot, relay.getSnapshot);
-}
-export function useBriefing() {
-  const { briefing } = useRuntime();
-  return useSyncExternalStore(briefing.subscribe, briefing.getSnapshot, briefing.getSnapshot);
-}
-export function useQuestions() {
-  const { questions } = useRuntime();
-  return useSyncExternalStore(questions.subscribe, questions.getSnapshot, questions.getSnapshot);
 }

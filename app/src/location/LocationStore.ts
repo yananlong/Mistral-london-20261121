@@ -26,7 +26,9 @@ export const deviceLocation: LocationSource = async emit => {
 export function fixedLocation(state: LocationState): LocationSource {
   return async emit => { emit(state); return () => {}; };
 }
-export const demoLocation = fixedLocation({ kind: 'ready', position: { lat: 51.5007, lon: -0.1246 }, source: 'demo', accuracy: null });
+/** Demo position: Borough High Street, London — a short walk from the demo places in content/scenario.ts. */
+export const DEMO_POSITION = { lat: 51.5030, lon: -0.0920 };
+export const demoLocation = fixedLocation({ kind: 'ready', position: DEMO_POSITION, source: 'demo', accuracy: null });
 
 export class LocationStore {
   private state: LocationState = { kind: 'locating' };

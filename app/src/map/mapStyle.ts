@@ -18,8 +18,8 @@ import { tokens as t } from '../theme/tokens';
 export const MAP_MIN_ZOOM = 10;
 export const MAP_MAX_ZOOM = 18;
 export const INITIAL_ZOOM = 14;
-/** Demo position fallback: Westminster (matches the app's demo coordinates). */
-export const LONDON_CENTER = { lat: 51.5007, lon: -0.1246 };
+/** Fallback centre: the app's demo position, Borough High Street (LocationStore.DEMO_POSITION). */
+export const LONDON_CENTER = { lat: 51.5030, lon: -0.0920 };
 
 export interface StyleLayer {
   id: string;
