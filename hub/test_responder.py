@@ -716,6 +716,7 @@ class TestAnswerShaping(ResponderTestCase):
                        "Never suggest drinking untreated water",
                        "The hub has offline maps", "Name only places given in those facts",
                        "no live alerts, news or feeds", "no matching place nearby",
+                       "otherwise do not mention places",
                        "never name other hospitals", "The mesh only reaches people nearby",
                        "(litres, metres, °C)", "no Markdown"):
             self.assertIn(needle, prompt)
