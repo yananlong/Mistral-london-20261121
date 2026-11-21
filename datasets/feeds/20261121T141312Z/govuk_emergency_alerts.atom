@@ -1,0 +1,510 @@
+<?xml version='1.0' encoding='utf-8'?>
+<?xml-stylesheet href="feed.xsl" type="text/xsl"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="en-US">
+  <id>https://www.gov.uk/alerts/feed.atom</id>
+  <title>Emergency Alerts</title>
+  <updated>2026-11-21T00:00:02.622413+00:00</updated>
+  <author>
+    <name>Emergency Alerts Service</name>
+    <uri>https://www.gov.uk/contact/govuk</uri>
+  </author>
+  <link href="https://www.gov.uk/alerts/feed.atom" rel="self" type="application/atom+xml"/>
+  <link href="https://www.gov.uk/alerts" rel="via" type="application/html"/>
+  <link href="https://www.gov.uk/alerts" rel="alternate" type="application/html"/>
+  <generator>gov.uk</generator>
+  <icon>/alerts/assets/images/favicon-7ba3f3e7.ico</icon>
+  <logo>/alerts/assets/images/govuk-opengraph-image-06d5b7ee.png</logo>
+  <rights>Released under the Open Government Licence (OGL), citation of publisher and online resource required on reuse.</rights>
+  <subtitle>GOV.UK Emergency Alerts</subtitle>
+  <entry>
+    <id>https://www.gov.uk/alerts/25-may-2021</id>
+    <title>East Suffolk</title>
+    <updated>2021-05-25T12:00:14.104546+00:00</updated>
+    <author>
+      <name>Emergency Alerts Service</name>
+      <uri>https://www.gov.uk/contact/govuk</uri>
+    </author>
+    <content type="xhtml">
+      <div xmlns="http://www.w3.org/1999/xhtml">
+        <div>
+          <p>
+            <strong>Stopped sending at 1:20pm (BST) on Tuesday 25 May 2021</strong>
+          </p>
+          <p>The UK government is testing Emergency Alerts in East Suffolk.
+
+Emergency alerts tell you what to do if there's a life-threatening event nearby.
+
+To find out more, call 0808 1697692 or search for gov.uk/alerts</p>
+        </div>
+      </div>
+    </content>
+    <link href="https://www.gov.uk/alerts/25-may-2021"/>
+    <summary>Alert area: East Suffolk. Sent: 1:00pm (BST) on Tuesday 25 May 2021 [2021-05-25 13:00 BST]. Stopped: 1:20pm (BST) on Tuesday 25 May 2021 [2021-05-25 13:20 BST]</summary>
+    <published>2021-05-25T13:00:14.104546+01:00</published>
+  </entry>
+  <entry>
+    <id>https://www.gov.uk/alerts/25-may-2021-2</id>
+    <title>East Suffolk</title>
+    <updated>2021-05-25T12:30:15.734424+00:00</updated>
+    <author>
+      <name>Emergency Alerts Service</name>
+      <uri>https://www.gov.uk/contact/govuk</uri>
+    </author>
+    <content type="xhtml">
+      <div xmlns="http://www.w3.org/1999/xhtml">
+        <div>
+          <p>
+            <strong>Stopped sending at 1:46pm (BST) on Tuesday 25 May 2021</strong>
+          </p>
+          <p>The UK government is testing Emergency Alerts in East Suffolk.
+
+Emergency alerts tell you what to do if there's a life-threatening event nearby.
+
+To find out more call 0808 1697692 or search for gov.uk/alerts</p>
+        </div>
+      </div>
+    </content>
+    <link href="https://www.gov.uk/alerts/25-may-2021-2"/>
+    <summary>Alert area: East Suffolk. Sent: 1:30pm (BST) on Tuesday 25 May 2021 [2021-05-25 13:30 BST]. Stopped: 1:46pm (BST) on Tuesday 25 May 2021 [2021-05-25 13:46 BST]</summary>
+    <published>2021-05-25T13:30:15.734424+01:00</published>
+  </entry>
+  <entry>
+    <id>https://www.gov.uk/alerts/29-jun-2021</id>
+    <title>Reading</title>
+    <updated>2021-06-29T12:00:12.651302+00:00</updated>
+    <author>
+      <name>Emergency Alerts Service</name>
+      <uri>https://www.gov.uk/contact/govuk</uri>
+    </author>
+    <content type="xhtml">
+      <div xmlns="http://www.w3.org/1999/xhtml">
+        <div>
+          <p>
+            <strong>Stopped sending at 2:01pm (BST) on Tuesday 29 June 2021</strong>
+          </p>
+          <p>The UK government is testing Emergency Alerts in Reading, Berkshire.
+
+Emergency alerts tell you what to do if there's a life-threatening event nearby.
+
+To find out more, call 0808 1697692 or search for gov.uk/alerts</p>
+        </div>
+      </div>
+    </content>
+    <link href="https://www.gov.uk/alerts/29-jun-2021"/>
+    <summary>Alert area: Reading. Sent: 1:00pm (BST) on Tuesday 29 June 2021 [2021-06-29 13:00 BST]. Stopped: 2:01pm (BST) on Tuesday 29 June 2021 [2021-06-29 14:01 BST]</summary>
+    <published>2021-06-29T13:00:12.651302+01:00</published>
+  </entry>
+  <entry>
+    <id>https://www.gov.uk/alerts/23-apr-2023</id>
+    <title>England, Northern Ireland, Scotland</title>
+    <updated>2023-04-23T13:59:07.113824+00:00</updated>
+    <author>
+      <name>Emergency Alerts Service</name>
+      <uri>https://www.gov.uk/contact/govuk</uri>
+    </author>
+    <content type="xhtml">
+      <div xmlns="http://www.w3.org/1999/xhtml">
+        <div>
+          <p>
+            <strong>Stopped sending at 3:21pm (BST) on Sunday 23 April 2023</strong>
+          </p>
+          <p>This is a test of Emergency Alerts, a new UK government service that will warn you if there's a life-threatening emergency nearby.
+
+In a real emergency, follow the instructions in the alert to keep yourself and others safe.
+
+Visit gov.uk/alerts for more information.
+
+This is a test. You do not need to take any action.</p>
+        </div>
+      </div>
+    </content>
+    <link href="https://www.gov.uk/alerts/23-apr-2023"/>
+    <summary>Alert area: England, Northern Ireland, Scotland. Sent: 2:59pm (BST) on Sunday 23 April 2023 [2023-04-23 14:59 BST]. Stopped: 3:21pm (BST) on Sunday 23 April 2023 [2023-04-23 15:21 BST]</summary>
+    <published>2023-04-23T14:59:07.113824+01:00</published>
+  </entry>
+  <entry>
+    <id>https://www.gov.uk/alerts/23-apr-2023-2</id>
+    <title>Wales</title>
+    <updated>2023-04-23T13:59:36.000584+00:00</updated>
+    <author>
+      <name>Emergency Alerts Service</name>
+      <uri>https://www.gov.uk/contact/govuk</uri>
+    </author>
+    <content type="xhtml">
+      <div xmlns="http://www.w3.org/1999/xhtml">
+        <div>
+          <p>
+            <strong>Stopped sending at 3:21pm (BST) on Sunday 23 April 2023</strong>
+          </p>
+          <p>Prawf o wasanaeth Rhybuddion Argyfwng Llywodraeth y DU yw hwn. Bydd yn eich rhybuddio os oes argyfwng gerllaw sy'n peryglu bywyd.
+
+Mewn argyfwng go iawn, dilynwch y cyfarwyddiadau yn y rhybudd i'ch cadw chi ac eraill yn Vogel.
+
+Ewch i gov.uk/alerts i wybod mwy.
+
+Prawf yw hwn. Does dim angen i chi wneud dim.
+
+This is a test of Emergency Alerts, a new UK government service that will warn you if there's a life-threatening emergency nearby.
+
+In a real emergency, follow the instructions in the alert to keep yourself and others safe.
+
+Visit gov.uk/alerts for more information.
+
+This is a test. You do not need to take any action.</p>
+        </div>
+      </div>
+    </content>
+    <link href="https://www.gov.uk/alerts/23-apr-2023-2"/>
+    <summary>Alert area: Wales. Sent: 2:59pm (BST) on Sunday 23 April 2023 [2023-04-23 14:59 BST]. Stopped: 3:21pm (BST) on Sunday 23 April 2023 [2023-04-23 15:21 BST]</summary>
+    <published>2023-04-23T14:59:36.000584+01:00</published>
+  </entry>
+  <entry>
+    <id>https://www.gov.uk/alerts/23-feb-2024</id>
+    <title>Plymouth</title>
+    <updated>2024-02-23T12:06:02.969020+00:00</updated>
+    <author>
+      <name>Emergency Alerts Service</name>
+      <uri>https://www.gov.uk/contact/govuk</uri>
+    </author>
+    <content type="xhtml">
+      <div xmlns="http://www.w3.org/1999/xhtml">
+        <div>
+          <p>
+            <strong>Stopped sending at 5:58pm (GMT) on Friday 23 February 2024</strong>
+          </p>
+          <p>Issued by Plymouth City Council. The WWII bomb found in Keyham will be transported today 23 February 2024 at 2pm to Torpoint Ferry slipway via Saltash Road. A time limited cordon will be in place along this route between 2pm until an estimated 5pm. You are asked to leave and stay away from the cordoned area for this time period.
+
+For more information about the route, cordon and support - go to the Plymouth City Council website. Visit gov.uk/alerts for more information.</p>
+        </div>
+      </div>
+    </content>
+    <link href="https://www.gov.uk/alerts/23-feb-2024"/>
+    <summary>Alert area: Plymouth. Sent: 12:06pm (GMT) on Friday 23 February 2024 [2024-02-23 12:06 GMT]. Stopped: 5:58pm (GMT) on Friday 23 February 2024 [2024-02-23 17:58 GMT]</summary>
+    <published>2024-02-23T12:06:02.969020+00:00</published>
+  </entry>
+  <entry>
+    <id>https://www.gov.uk/alerts/23-may-2024</id>
+    <title>River Roe and River Ive from Highbridge to Stockdalewath</title>
+    <updated>2024-05-23T02:18:52.278448+00:00</updated>
+    <author>
+      <name>Emergency Alerts Service</name>
+      <uri>https://www.gov.uk/contact/govuk</uri>
+    </author>
+    <content type="xhtml">
+      <div xmlns="http://www.w3.org/1999/xhtml">
+        <div>
+          <p>
+            <strong>Stopped sending at 6:37am (BST) on Thursday 23 May 2024</strong>
+          </p>
+          <p> From the Environment Agency. Severe flooding is happening now, 23rd May on River Roe and River Ive from Highbridge to Stockdalewath, in the Stockdalewath Area in the parish of Dalston. Flood waters are expected to rise rapidly. Flooding is likely to cut off the area. Floodwater is a threat to life - do not enter. Remain in a safe location. Flood water may contain dangerous debris. Be aware of your surroundings and stay safe. Do not drive through or attempt to enter flood water. Follow instructions of emergency services in your area. Call 999 if in immediate danger. Be especially cautious at night when it is harder to see floodwater. For more information search gov.uk/alerts or search for 'Check for flooding'</p>
+        </div>
+      </div>
+    </content>
+    <link href="https://www.gov.uk/alerts/23-may-2024"/>
+    <summary>Alert area: River Roe and River Ive from Highbridge to Stockdalewath. Sent: 3:18am (BST) on Thursday 23 May 2024 [2024-05-23 03:18 BST]. Stopped: 6:37am (BST) on Thursday 23 May 2024 [2024-05-23 06:37 BST]</summary>
+    <published>2024-05-23T03:18:52.278448+01:00</published>
+  </entry>
+  <entry>
+    <id>https://www.gov.uk/alerts/6-dec-2024</id>
+    <title>Bath and North East Somerset, Bristol, City of, Devon, North Somerset, Somerset, South Gloucestershire</title>
+    <updated>2024-12-06T18:58:01.366736+00:00</updated>
+    <author>
+      <name>Emergency Alerts Service</name>
+      <uri>https://www.gov.uk/contact/govuk</uri>
+    </author>
+    <content type="xhtml">
+      <div xmlns="http://www.w3.org/1999/xhtml">
+        <div>
+          <p>
+            <strong>Stopped sending at 11:00am (GMT) on Saturday 07 December 2024</strong>
+          </p>
+          <p>Issued by the UK Government
+
+A RED warning for wind has been issued in your area. Extremely strong winds associated with Storm Darragh are expected to cause significant disruption from 3.00am on Saturday 07 December 2024. Strong winds can cause flying debris, falling trees and large waves around coastal areas, all of which can present a danger to life. Stay indoors if you can. It is not safe to drive in these conditions.
+
+The storm may damage infrastructure causing power cuts and disruption to mobile phone coverage. Consider gathering torches, batteries, a mobile phone power pack and other essential items you already have at home.
+
+Stay up to date with the weather forecast for your area and follow advice from emergency services, network operators and local authorities. For more information search online for 'gov.uk/alerts' or Met Office warnings and advice.</p>
+        </div>
+      </div>
+    </content>
+    <link href="https://www.gov.uk/alerts/6-dec-2024"/>
+    <summary>Alert area: Bath and North East Somerset, Bristol, City of, Devon, North Somerset, Somerset, South Gloucestershire. Sent: 6:58pm (GMT) on Friday 06 December 2024 [2024-12-06 18:58 GMT]. Stopped: 11:00am (GMT) on Saturday 07 December 2024 [2024-12-07 11:00 GMT]</summary>
+    <published>2024-12-06T18:58:01.366736+00:00</published>
+  </entry>
+  <entry>
+    <id>https://www.gov.uk/alerts/6-dec-2024-2</id>
+    <title>Bridgend, Carmarthenshire, Ceredigion, Conwy, Gwynedd, Isle of Anglesey, Monmouthshire, Neath Port Talbot, Newport, Pembrokeshire, Swansea, Vale of Glamorgan</title>
+    <updated>2024-12-06T19:01:25.406298+00:00</updated>
+    <author>
+      <name>Emergency Alerts Service</name>
+      <uri>https://www.gov.uk/contact/govuk</uri>
+    </author>
+    <content type="xhtml">
+      <div xmlns="http://www.w3.org/1999/xhtml">
+        <div>
+          <p>
+            <strong>Stopped sending at 11:00am (GMT) on Saturday 07 December 2024</strong>
+          </p>
+          <p>Cyhoeddir gan Lywodraeth y DU
+
+Am ragor o wybodaeth, chwiliwch ar-lein am 'gov.uk/alerts' neu rybuddion a chyngor y Swyddfa Dywydd.
+
+Issued by the UK Government
+
+A RED warning for wind has been issued in your area. Extremely strong winds associated with Storm Darragh are expected to cause significant disruption from 3.00am on Saturday 07 December 2024. Strong winds can cause flying debris, falling trees and large waves around coastal areas, all of which can present a danger to life. Stay indoors if you can. It is not safe to drive in these conditions.
+
+The storm may damage infrastructure causing power cuts and disruption to mobile phone coverage. Consider gathering torches, batteries, a mobile phone power pack and other essential items you already have at home.
+
+Stay up to date with the weather forecast for your area and follow advice from emergency services, network operators and local authorities. For more information search online for 'gov.uk/alerts' or Met Office warnings and advice.</p>
+        </div>
+      </div>
+    </content>
+    <link href="https://www.gov.uk/alerts/6-dec-2024-2"/>
+    <summary>Alert area: Bridgend, Carmarthenshire, Ceredigion, Conwy, Gwynedd, Isle of Anglesey, Monmouthshire, Neath Port Talbot, Newport, Pembrokeshire, Swansea, Vale of Glamorgan. Sent: 7:01pm (GMT) on Friday 06 December 2024 [2024-12-06 19:01 GMT]. Stopped: 11:00am (GMT) on Saturday 07 December 2024 [2024-12-07 11:00 GMT]</summary>
+    <published>2024-12-06T19:01:25.406298+00:00</published>
+  </entry>
+  <entry>
+    <id>https://www.gov.uk/alerts/6-dec-2024-3</id>
+    <title>Cardiff</title>
+    <updated>2024-12-06T19:41:12.248632+00:00</updated>
+    <author>
+      <name>Emergency Alerts Service</name>
+      <uri>https://www.gov.uk/contact/govuk</uri>
+    </author>
+    <content type="xhtml">
+      <div xmlns="http://www.w3.org/1999/xhtml">
+        <div>
+          <p>
+            <strong>Stopped sending at 11:01am (GMT) on Saturday 07 December 2024</strong>
+          </p>
+          <p>Cyhoeddir gan Lywodraeth y DU
+
+Am ragor o wybodaeth, chwiliwch ar-lein am 'gov.uk/alerts' neu rybuddion a chyngor y Swyddfa Dywydd.
+
+Issued by the UK Government
+
+A RED warning for wind has been issued in your area. Extremely strong winds associated with Storm Darragh are expected to cause significant disruption from 3.00am on Saturday 07 December 2024. Strong winds can cause flying debris, falling trees and large waves around coastal areas, all of which can present a danger to life. Stay indoors if you can. It is not safe to drive in these conditions.
+
+The storm may damage infrastructure causing power cuts and disruption to mobile phone coverage. Consider gathering torches, batteries, a mobile phone power pack and other essential items you already have at home.
+
+Stay up to date with the weather forecast for your area and follow advice from emergency services, network operators and local authorities. For more information search online for 'gov.uk/alerts' or Met Office warnings and advice.</p>
+        </div>
+      </div>
+    </content>
+    <link href="https://www.gov.uk/alerts/6-dec-2024-3"/>
+    <summary>Alert area: Cardiff. Sent: 7:41pm (GMT) on Friday 06 December 2024 [2024-12-06 19:41 GMT]. Stopped: 11:01am (GMT) on Saturday 07 December 2024 [2024-12-07 11:01 GMT]</summary>
+    <published>2024-12-06T19:41:12.248632+00:00</published>
+  </entry>
+  <entry>
+    <id>https://www.gov.uk/alerts/6-jan-2025</id>
+    <title>River Soar at caravan parks near Barrow upon Soar</title>
+    <updated>2025-01-06T22:18:37.052665+00:00</updated>
+    <author>
+      <name>Emergency Alerts Service</name>
+      <uri>https://www.gov.uk/contact/govuk</uri>
+    </author>
+    <content type="xhtml">
+      <div xmlns="http://www.w3.org/1999/xhtml">
+        <div>
+          <p>
+            <strong>Stopped sending at 12:21pm (GMT) on Tuesday 07 January 2025</strong>
+          </p>
+          <p> Issued by Environment Agency. Severe flooding is happening now on 6th January at Proctor's Pleasure Park near Barrow upon Soar area. Flooding is likely to cut off the area and may contain dangerous debris. Emergency services are evacuating the caravan park and a rest centre has been opened at the Methodist Church Hall (North Street, Barrow upon Soar, LE12 8QA), go there now if it is safe to do so. Avoid contact with floodwater if possible. For more information search gov.uk/alerts or search for 'Check for flooding'.</p>
+        </div>
+      </div>
+    </content>
+    <link href="https://www.gov.uk/alerts/6-jan-2025"/>
+    <summary>Alert area: River Soar at caravan parks near Barrow upon Soar. Sent: 10:18pm (GMT) on Monday 06 January 2025 [2025-01-06 22:18 GMT]. Stopped: 12:21pm (GMT) on Tuesday 07 January 2025 [2025-01-07 12:21 GMT]</summary>
+    <published>2025-01-06T22:18:37.052665+00:00</published>
+  </entry>
+  <entry>
+    <id>https://www.gov.uk/alerts/23-jan-2025</id>
+    <title>Northern Ireland</title>
+    <updated>2025-01-23T17:25:02.856562+00:00</updated>
+    <author>
+      <name>Emergency Alerts Service</name>
+      <uri>https://www.gov.uk/contact/govuk</uri>
+    </author>
+    <content type="xhtml">
+      <div xmlns="http://www.w3.org/1999/xhtml">
+        <div>
+          <p>
+            <strong>Stopped sending at 2:03pm (GMT) on Friday 24 January 2025</strong>
+          </p>
+          <p>Issued by the UK and NI Governments
+
+A RED warning for wind has been issued. Extremely strong winds associated with Storm Éowyn are expected to cause significant disruption from 07:00am on Friday 24 January 2025. Strong winds can present a danger to life, causing flying debris, falling trees and large waves around coastal areas. Stay indoors if you can. It is not safe to drive in these conditions.
+
+The storm may damage infrastructure causing power cuts and disruption to mobile phone coverage. Consider gathering torches, batteries, a mobile phone power pack and other essential items you already have at home.
+
+Stay up to date with the weather forecast and follow advice from emergency services, network operators and local authorities. For more information search online for gov.uk/alerts and Met Office warnings and advice.</p>
+        </div>
+      </div>
+    </content>
+    <link href="https://www.gov.uk/alerts/23-jan-2025"/>
+    <summary>Alert area: Northern Ireland. Sent: 5:25pm (GMT) on Thursday 23 January 2025 [2025-01-23 17:25 GMT]. Stopped: 2:03pm (GMT) on Friday 24 January 2025 [2025-01-24 14:03 GMT]</summary>
+    <published>2025-01-23T17:25:02.856562+00:00</published>
+  </entry>
+  <entry>
+    <id>https://www.gov.uk/alerts/23-jan-2025-2</id>
+    <title>Argyll and Bute, City of Edinburgh, Clackmannanshire, Dumfries and Galloway, East Ayrshire, East Dunbartonshire, East Lothian, East Renfrewshire, Falkirk, Fife, Glasgow City, Inverclyde, Midlothian, North Ayrshire, North Lanarkshire, Renfrewshire, Scottish Borders, South Ayrshire, South Lanarkshire, Stirling, West Dunbartonshire, West Lothian</title>
+    <updated>2025-01-23T17:50:06.436836+00:00</updated>
+    <author>
+      <name>Emergency Alerts Service</name>
+      <uri>https://www.gov.uk/contact/govuk</uri>
+    </author>
+    <content type="xhtml">
+      <div xmlns="http://www.w3.org/1999/xhtml">
+        <div>
+          <p>
+            <strong>Stopped sending at 4:20pm (GMT) on Friday 24 January 2025</strong>
+          </p>
+          <p>Issued by the UK and Scottish Governments
+
+A RED warning for wind has been issued. Extremely strong winds associated with Storm Éowyn are expected to cause significant disruption from 10am on Friday 24 January 2025. Strong winds can present a danger to life, causing flying debris, falling trees and large waves around coastal areas. Stay indoors if you can. It is unsafe to drive in these conditions. Avoid coastal areas.
+
+The storm may damage infrastructure causing power cuts and disruption to mobile phone coverage. Consider gathering torches, batteries, a mobile phone power pack and other essential items you already have at home.
+
+Stay up to date with the weather forecast and follow advice from emergency services, network operators and local authorities. Search online for gov.uk/alerts and Met Office warnings and advice.</p>
+        </div>
+      </div>
+    </content>
+    <link href="https://www.gov.uk/alerts/23-jan-2025-2"/>
+    <summary>Alert area: Argyll and Bute, City of Edinburgh, Clackmannanshire, Dumfries and Galloway, East Ayrshire, East Dunbartonshire, East Lothian, East Renfrewshire, Falkirk, Fife, Glasgow City, Inverclyde, Midlothian, North Ayrshire, North Lanarkshire, Renfrewshire, Scottish Borders, South Ayrshire, South Lanarkshire, Stirling, West Dunbartonshire, West Lothian. Sent: 5:50pm (GMT) on Thursday 23 January 2025 [2025-01-23 17:50 GMT]. Stopped: 4:20pm (GMT) on Friday 24 January 2025 [2025-01-24 16:20 GMT]</summary>
+    <published>2025-01-23T17:50:06.436836+00:00</published>
+  </entry>
+  <entry>
+    <id>https://www.gov.uk/alerts/7-sep-2025</id>
+    <title>England, Northern Ireland, Scotland, Wales</title>
+    <updated>2025-09-07T14:00:04.667177+00:00</updated>
+    <author>
+      <name>Emergency Alerts Service</name>
+      <uri>https://www.gov.uk/contact/govuk</uri>
+    </author>
+    <content type="xhtml">
+      <div xmlns="http://www.w3.org/1999/xhtml">
+        <div>
+          <p>
+            <strong>Stopped sending at 3:20pm (BST) on Sunday 07 September 2025</strong>
+          </p>
+          <p>This is a test of Emergency Alerts, a UK government service that will warn you if there's a life-threatening emergency nearby.
+
+You do not need to take any action. In a real emergency, follow the instructions in the alert to keep yourself and others safe.
+
+Find simple and effective advice on how to prepare for emergencies at gov.uk/prepare.
+
+Visit gov.uk/alerts for more information or to view this message in Welsh.
+Ewch i gov.uk/alerts am ragor o wybodaeth neu i weld y neges hon yn y Gymraeg.</p>
+        </div>
+      </div>
+    </content>
+    <link href="https://www.gov.uk/alerts/7-sep-2025"/>
+    <summary>Alert area: England, Northern Ireland, Scotland, Wales. Sent: 3:00pm (BST) on Sunday 07 September 2025 [2025-09-07 15:00 BST]. Stopped: 3:20pm (BST) on Sunday 07 September 2025 [2025-09-07 15:20 BST]</summary>
+    <published>2025-09-07T15:00:04.667177+01:00</published>
+  </entry>
+  <entry>
+    <id>https://www.gov.uk/alerts/8-jan-2026</id>
+    <title>Isles of Scilly</title>
+    <updated>2026-01-08T15:03:48.410830+00:00</updated>
+    <author>
+      <name>Emergency Alerts Service</name>
+      <uri>https://www.gov.uk/contact/govuk</uri>
+    </author>
+    <content type="xhtml">
+      <div xmlns="http://www.w3.org/1999/xhtml">
+        <div>
+          <p>
+            <strong>Stopped sending at 11:06pm (GMT) on Thursday 08 January 2026</strong>
+          </p>
+          <p>Issued by the UK Government.
+
+A RED wind warning has been issued for the Isles of Scilly. Extremely strong winds are expected to cause significant disruption, with winds peaking from 4:00 pm on Thursday 8 January 2026. Strong winds can present a danger to life. Stay indoors if you can and consider gathering torches and other essential items you already have at home.
+
+Stay up to date with Met Office warnings and follow advice from emergency services, network operators and local authorities. For more information search online for gov.uk/alerts.</p>
+        </div>
+      </div>
+    </content>
+    <link href="https://www.gov.uk/alerts/8-jan-2026"/>
+    <summary>Alert area: Isles of Scilly. Sent: 3:03pm (GMT) on Thursday 08 January 2026 [2026-01-08 15:03 GMT]. Stopped: 11:06pm (GMT) on Thursday 08 January 2026 [2026-01-08 23:06 GMT]</summary>
+    <published>2026-01-08T15:03:48.410830+00:00</published>
+  </entry>
+  <entry>
+    <id>https://www.gov.uk/alerts/8-jan-2026-2</id>
+    <title>Cornwall</title>
+    <updated>2026-01-08T17:00:08.160457+00:00</updated>
+    <author>
+      <name>Emergency Alerts Service</name>
+      <uri>https://www.gov.uk/contact/govuk</uri>
+    </author>
+    <content type="xhtml">
+      <div xmlns="http://www.w3.org/1999/xhtml">
+        <div>
+          <p>
+            <strong>Stopped sending at 11:06pm (GMT) on Thursday 08 January 2026</strong>
+          </p>
+          <p>Issued by the UK Government.
+
+A RED warning for wind has been issued to large parts of Cornwall. Extremely strong winds are expected to cause significant disruption, with winds peaking from 6:00pm on Thursday 8 January 2026. Strong winds can present a danger to life. Stay indoors if you can and consider gathering torches and other essential items you already have at home.
+
+Stay up to date with Met Office warnings and follow advice from emergency services, network operators and local authorities. For more information search online for gov.uk/alerts.</p>
+        </div>
+      </div>
+    </content>
+    <link href="https://www.gov.uk/alerts/8-jan-2026-2"/>
+    <summary>Alert area: Cornwall. Sent: 5:00pm (GMT) on Thursday 08 January 2026 [2026-01-08 17:00 GMT]. Stopped: 11:06pm (GMT) on Thursday 08 January 2026 [2026-01-08 23:06 GMT]</summary>
+    <published>2026-01-08T17:00:08.160457+00:00</published>
+  </entry>
+  <entry>
+    <id>https://www.gov.uk/alerts/14-aug-2026</id>
+    <title>Wales</title>
+    <updated>2026-08-14T17:57:08.953056+00:00</updated>
+    <author>
+      <name>Emergency Alerts Service</name>
+      <uri>https://www.gov.uk/contact/govuk</uri>
+    </author>
+    <content type="xhtml">
+      <div xmlns="http://www.w3.org/1999/xhtml">
+        <div>
+          <p>
+            <strong>Stopped sending at 11:00pm (BST) on Friday 14 August 2026</strong>
+          </p>
+          <p>Anfonwyd gan Lywodraeth y DU
+
+Mae yna berygl difrifol o dân ar draws y genedl. Ni ddylai trigolion, tirfeddianwyr nac ymwelwyr ymgymryd ag unrhyw weithgaredd a allai achosi tân, gan gynnwys barbeciwiau tafladwy, pyllau tân, llosgyddion gardd neu dân gwyllt. Gall hyd yn oed fflam fach ddatblygu'n gyflym yn dân gwyllt mawr, gan beryglu bywydau, cartrefi, busnesau ac ymatebwyr brys.
+
+Dilynwch y diweddariadau swyddogol ac adroddwch arwyddion o dân ar unwaith drwy ffonio 999. Edrychwch ar gov.uk/alerts am fwy o wybodaeth</p>
+        </div>
+      </div>
+    </content>
+    <link href="https://www.gov.uk/alerts/14-aug-2026"/>
+    <summary>Alert area: Wales. Sent: 6:57pm (BST) on Friday 14 August 2026 [2026-08-14 18:57 BST]. Stopped: 11:00pm (BST) on Friday 14 August 2026 [2026-08-14 23:00 BST]</summary>
+    <published>2026-08-14T18:57:08.953056+01:00</published>
+  </entry>
+  <entry>
+    <id>https://www.gov.uk/alerts/14-aug-2026-2</id>
+    <title>England, Wales</title>
+    <updated>2026-08-14T18:01:17.700655+00:00</updated>
+    <author>
+      <name>Emergency Alerts Service</name>
+      <uri>https://www.gov.uk/contact/govuk</uri>
+    </author>
+    <content type="xhtml">
+      <div xmlns="http://www.w3.org/1999/xhtml">
+        <div>
+          <p>
+            <strong>Stopped sending at 11:00pm (BST) on Friday 14 August 2026</strong>
+          </p>
+          <p>Issued by the UK Government
+
+There is a very high risk of wildfires nationally. Residents, landowners and visitors should not undertake any activity that could start a fire, including disposable barbecues, firepits, garden incinerators or fireworks. Even a small flame can rapidly develop into a major wildfire placing lives, homes, businesses and emergency responders at risk.
+
+Follow official updates and report signs of fire immediately by calling 999. Search gov.uk/alerts for more information.</p>
+        </div>
+      </div>
+    </content>
+    <link href="https://www.gov.uk/alerts/14-aug-2026-2"/>
+    <summary>Alert area: England, Wales. Sent: 7:01pm (BST) on Friday 14 August 2026 [2026-08-14 19:01 BST]. Stopped: 11:00pm (BST) on Friday 14 August 2026 [2026-08-14 23:00 BST]</summary>
+    <published>2026-08-14T19:01:17.700655+01:00</published>
+  </entry>
+<script src="/alerts/assets/javascripts/vendor/xslt-polyfill/xslt-polyfill.min.js" xmlns="http://www.w3.org/1999/xhtml"/></feed>
