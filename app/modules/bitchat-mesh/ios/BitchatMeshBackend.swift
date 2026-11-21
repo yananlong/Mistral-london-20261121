@@ -13,10 +13,12 @@ final class BitchatMeshBackend: MeshBackend, TransportEventDelegate, TransportPe
     private var seenIDs = Set<String>()
     private var seenOrder: [String] = []
     private let seenLimit = 2_048
+    private let maxMessageBytes = 255
 
     func start(nickname: String) throws {
-        guard let validNickname = InputValidator.validateNickname(nickname) else {
-            throw MeshBackendError(code: "INVALID_NICKNAME", message: "Nickname must contain 1–50 valid characters.")
+        guard let validNickname = InputValidator.validateNickname(nickname),
+              validNickname.utf8.count <= 255 else {
+            throw MeshBackendError(code: "INVALID_NICKNAME", message: "Nickname must contain 1–50 valid characters and fit in 255 UTF-8 bytes.")
         }
         if let service {
             service.setNickname(validNickname)
@@ -31,6 +33,12 @@ final class BitchatMeshBackend: MeshBackend, TransportEventDelegate, TransportPe
         self.router = MessageRouter(transports: [service], outboxStore: MessageOutboxStore(keychain: keychain))
         service.eventDelegate = self
         service.peerEventsDelegate = self
+        service.addPeerAuthenticatedObserver { [weak self, weak service] peerID, _ in
+            Task { @MainActor [weak self, weak service] in
+                guard let self, let service, self.service === service else { return }
+                self.router?.retrySecurePrivateMessagesAfterAuthentication(for: [peerID])
+            }
+        }
         service.setNickname(validNickname)
         service.startServices()
         publishPeers()
@@ -62,29 +70,20 @@ final class BitchatMeshBackend: MeshBackend, TransportEventDelegate, TransportPe
     }
 
     func sendPublic(_ text: String) throws {
-        let bytes = text.utf8.count
-        guard bytes <= Int(UInt16.max), text.count <= InputValidator.Limits.maxMessageLength else {
-            throw MeshBackendError(code: "MESSAGE_TOO_LONG", message: "Public message has \(bytes) UTF-8 bytes and \(text.count) characters; maximum is 65535 bytes and 60000 characters.")
-        }
-        if bytes == Int(UInt16.max) {
-            let probe = BitchatPacket(type: MessageType.message.rawValue, senderID: Data(repeating: 0, count: 8), recipientID: nil, timestamp: 0, payload: Data(text.utf8), signature: nil, ttl: 1)
-            guard probe.toBinaryData(padding: false) != nil else {
-                throw MeshBackendError(code: "MESSAGE_TOO_LONG", message: "Public message has \(bytes) UTF-8 bytes and cannot fit in a BitChat v1 frame.")
-            }
-        }
+        try validateMessageLength(text)
         let service = try requireService()
         service.sendMessage(text, mentions: [])
     }
 
     func sendPrivate(peerID: String, text: String) throws {
-        let bytes = text.utf8.count
-        guard bytes <= 255 else {
-            throw MeshBackendError(code: "MESSAGE_TOO_LONG", message: "Private message has \(bytes) UTF-8 bytes; maximum is 255 bytes.")
+        try validateMessageLength(text)
+        let suppliedID = PeerID(str: peerID)
+        guard suppliedID.prefix == .empty,
+              (suppliedID.isShort || suppliedID.isNoiseKeyHex),
+              suppliedID.routingData != nil else {
+            throw MeshBackendError(code: "INVALID_PEER_ID", message: "A 16- or 64-digit hexadecimal mesh peer ID is required.")
         }
-        let id = PeerID(str: peerID)
-        guard id.prefix == .empty, id.isShort else {
-            throw MeshBackendError(code: "INVALID_PEER_ID", message: "A 16-digit hexadecimal mesh peer ID is required.")
-        }
+        let id = suppliedID.toShort()
         _ = try requireService()
         router?.sendPrivate(text, to: id, recipientNickname: knownNames[id] ?? "Unknown", messageID: UUID().uuidString)
     }
@@ -104,12 +103,14 @@ final class BitchatMeshBackend: MeshBackend, TransportEventDelegate, TransportPe
         guard let service else { return }
         switch event {
         case let .publicMessageReceived(peerID, nickname, content, _, messageID):
+            let peerID = peerID.toShort()
             guard peerID != service.myPeerID else { return }
             let id = messageID ?? UUID().uuidString
             guard remember(id: id, from: peerID) else { return }
             knownNames[peerID] = nickname
             onEvent?(.message(NativeMessage(id: id, from: peerID.id, fromNickname: nickname, text: content, channel: .public, receivedAt: Date())))
         case let .noisePayloadReceived(peerID, type, payload, _):
+            let peerID = peerID.toShort()
             guard peerID != service.myPeerID else { return }
             if type == .delivered || type == .readReceipt {
                 if let id = String(data: payload, encoding: .utf8) {
@@ -137,6 +138,13 @@ final class BitchatMeshBackend: MeshBackend, TransportEventDelegate, TransportPe
             publishBluetoothState(state)
         default:
             break
+        }
+    }
+
+    private func validateMessageLength(_ text: String) throws {
+        let bytes = text.utf8.count
+        guard bytes <= maxMessageBytes else {
+            throw MeshBackendError(code: "MESSAGE_TOO_LONG", message: "Message has \(bytes) UTF-8 bytes; maximum is \(maxMessageBytes) bytes.")
         }
     }
 
