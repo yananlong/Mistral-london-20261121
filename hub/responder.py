@@ -4,7 +4,8 @@
 A BitChat peer (the demo Mac) POSTs plain-text mesh questions here over the
 local link, and this server answers them with the local Ollama model. No
 cloud API is ever called. The only outbound HTTP is the local Ollama
-endpoint and the caller's callback_url.
+endpoint and the caller's callback_url, whose host must be local/private
+(see callback_host_allowed).
 
 Endpoints:
     GET  /health -> 200 {"status": "ok"}
@@ -19,6 +20,7 @@ carries the answer, which ends with the disclaimer.
 Python 3 standard library only: the hub is offline and needs no pip installs.
 """
 
+import ipaddress
 import json
 import logging
 import os
@@ -27,6 +29,7 @@ import socket
 import sys
 import threading
 import urllib.error
+import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -47,6 +50,9 @@ SYSTEM_PROMPT = (
 
 MAX_BODY_BYTES = 1 << 20  # mesh messages are short text; 1 MiB is generous
 CALLBACK_TIMEOUT_SECONDS = 30
+MAX_QUESTION_CHARS = 4000  # per-field cap: a question is a short mesh text
+MAX_SENDER_CHARS = 64
+BUSY_REASON = "the hub is already answering too many questions right now"
 
 LOC_LINE_RE = re.compile(
     r"^\s*loc:\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$", re.IGNORECASE
@@ -77,18 +83,20 @@ def parse_loc(lat, lon):
 def parse_question(text):
     """Split a mesh message into (question, loc).
 
-    The format is question lines plus an optional "loc: <lat>,<lon>" line.
-    The loc line is stripped from the question and returned as structured
-    data, or None when the message has no loc line.
+    The format is question lines plus one optional trailing
+    "loc: <lat>,<lon>" line (BLUEPRINT_1.md). Only the last line can be the
+    loc line; a loc-looking line anywhere else is ordinary question text.
+    More than one loc-looking line is ambiguous and rejected.
     """
+    lines = text.splitlines()
+    loc_indexes = [i for i, line in enumerate(lines) if LOC_LINE_RE.match(line)]
+    if len(loc_indexes) > 1:
+        raise ValueError("multiple loc lines; at most one trailing 'loc:' line is allowed")
     loc = None
-    lines = []
-    for line in text.splitlines():
-        m = LOC_LINE_RE.match(line)
-        if m:
-            loc = parse_loc(m.group(1), m.group(2))
-        else:
-            lines.append(line)
+    if loc_indexes and loc_indexes[0] == len(lines) - 1:
+        m = LOC_LINE_RE.match(lines[-1])
+        loc = parse_loc(m.group(1), m.group(2))
+        lines = lines[:-1]
     question = "\n".join(lines).strip()
     if not question:
         raise ValueError("question text is empty")
@@ -110,7 +118,43 @@ def parse_loc_field(value):
 # --- request validation (boundary) --------------------------------------------
 
 
-def validate_ask_payload(body):
+def callback_host_allowed(url, peer_host=None):
+    """True only when the callback URL can never leave the local link.
+
+    The hub must never DNS-resolve and POST to an arbitrary internet host:
+    answers can echo the question, and no question may reach a cloud host.
+    Allowed: an operator allowlist (HUB_CALLBACK_ALLOW_HOSTS, comma-separated
+    hosts or host:port), the peer we are serving, localhost / *.local names
+    (mDNS stays on the link), and IP literals in loopback/private/link-local
+    ranges. Everything else is rejected with 400 before any DNS lookup.
+    """
+    try:
+        parsed = urllib.parse.urlparse(url)
+        port = parsed.port
+    except ValueError:
+        return False
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        return False
+    host = parsed.hostname.lower()
+    candidates = {host}
+    if port is not None:
+        candidates.add("%s:%d" % (host, port))
+    allow = os.environ.get("HUB_CALLBACK_ALLOW_HOSTS", "")
+    allowed = {entry.strip().lower() for entry in allow.split(",") if entry.strip()}
+    if candidates & allowed:
+        return True
+    if peer_host and host == peer_host.strip().lower():
+        return True
+    if host == "localhost" or host.endswith(".local"):
+        return True
+    try:
+        addr = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return bool(addr.is_loopback or addr.is_private or addr.is_link_local)
+
+
+def validate_ask_payload(body, peer_host=None):
     """Validate a parsed JSON POST /ask body and narrow it to an AskRequest.
 
     Returns {sender, question, loc, callback_url, wait}. Raises ValueError on
@@ -121,15 +165,26 @@ def validate_ask_payload(body):
     sender = body.get("sender")
     if not isinstance(sender, str) or not sender.strip():
         raise ValueError("sender must be a non-empty string")
+    if len(sender) > MAX_SENDER_CHARS:
+        raise ValueError("sender is too long (max %d chars)" % MAX_SENDER_CHARS)
     raw_question = body.get("question")
     if not isinstance(raw_question, str) or not raw_question.strip():
         raise ValueError("question must be a non-empty string")
+    if len(raw_question) > MAX_QUESTION_CHARS:
+        raise ValueError("question is too long (max %d chars)" % MAX_QUESTION_CHARS)
     callback_url = body.get("callback_url")
-    if callback_url is not None and (
-        not isinstance(callback_url, str)
-        or not callback_url.startswith(("http://", "https://"))
-    ):
-        raise ValueError("callback_url must be an http(s) URL")
+    if callback_url is not None:
+        if (
+            not isinstance(callback_url, str)
+            or not callback_url.startswith(("http://", "https://"))
+        ):
+            raise ValueError("callback_url must be an http(s) URL")
+        if not callback_host_allowed(callback_url, peer_host):
+            raise ValueError(
+                "callback_url host %r is not allowed: it must be local/private, "
+                "the peer address, or listed in HUB_CALLBACK_ALLOW_HOSTS"
+                % urllib.parse.urlparse(callback_url).hostname
+            )
     wait = body.get("wait", False)
     if not isinstance(wait, bool):
         raise ValueError("wait must be a boolean")
@@ -146,7 +201,66 @@ def validate_ask_payload(body):
     }
 
 
-# --- configuration (environment, read per call) --------------------------------
+# --- configuration (environment) ------------------------------------------------
+
+
+def _env_number(name, default, cast):
+    """Read a numeric env var; fall back to the default (with a warning) on a bad value."""
+    raw = os.environ.get(name)
+    if raw is None or not raw.strip():
+        return default
+    try:
+        return cast(raw.strip())
+    except ValueError:
+        log.warning("ignoring invalid %s=%r; using the default %s", name, raw, default)
+        return default
+
+
+def env_int(name, default):
+    return _env_number(name, default, int)
+
+
+def env_float(name, default):
+    return _env_number(name, default, float)
+
+
+# name, cast, minimum, maximum (None = no upper bound); validated once at startup
+NUMERIC_ENV_SPECS = [
+    ("HUB_PORT", int, 1, 65535),
+    ("HUB_ANSWER_TIMEOUT_SECONDS", float, 0.001, None),
+    ("HUB_MAX_ANSWER_CHARS", int, 1, None),
+    ("OLLAMA_CONTEXT_LENGTH", int, 1, None),
+    ("OLLAMA_NUM_PARALLEL", int, 1, None),
+]
+
+
+def validate_numeric_env():
+    """Fail fast at startup on malformed numeric env vars (clear exit, not a per-request crash)."""
+    problems = []
+    for name, cast, lo, hi in NUMERIC_ENV_SPECS:
+        raw = os.environ.get(name)
+        if raw is None or not raw.strip():
+            continue
+        try:
+            value = cast(raw.strip())
+        except ValueError:
+            problems.append("%s=%r is not a number" % (name, raw))
+            continue
+        if value < lo or (hi is not None and value > hi):
+            problems.append("%s=%r is out of range" % (name, raw))
+    if problems:
+        sys.exit("invalid hub configuration: " + "; ".join(problems))
+
+
+def is_wildcard_bind(bind):
+    """True for any wildcard bind form: "", 0.0.0.0, ::, 0:0:0:0:0:0:0:0, [::], ..."""
+    text = bind.strip().strip("[]")
+    if not text:
+        return True
+    try:
+        return ipaddress.ip_address(text).is_unspecified
+    except ValueError:
+        return False  # a hostname; it must resolve to one specific address
 
 
 def ollama_base_url():
@@ -161,15 +275,21 @@ def model_name():
 
 
 def answer_timeout():
-    return float(os.environ.get("HUB_ANSWER_TIMEOUT_SECONDS", "120"))
+    return env_float("HUB_ANSWER_TIMEOUT_SECONDS", 120.0)
 
 
 def max_answer_chars():
-    return int(os.environ.get("HUB_MAX_ANSWER_CHARS", "1200"))
+    # never disabled: cap <= 0 would mean "no truncation"
+    return max(1, env_int("HUB_MAX_ANSWER_CHARS", 1200))
 
 
 def num_ctx():
-    return int(os.environ.get("OLLAMA_CONTEXT_LENGTH", "8192"))
+    return env_int("OLLAMA_CONTEXT_LENGTH", 8192)
+
+
+def max_concurrent_answers():
+    """Concurrent model runs the hub allows, sized from OLLAMA_NUM_PARALLEL (blueprint: 4)."""
+    return max(1, env_int("OLLAMA_NUM_PARALLEL", 4))
 
 
 # --- model call and answer shaping ---------------------------------------------
@@ -195,27 +315,48 @@ def build_chat_payload(question, loc):
 
 
 def call_model(question, loc):
-    """POST /api/chat to the local Ollama server; return the raw answer text."""
+    """POST /api/chat to the local Ollama server; return the raw answer text.
+
+    HUB_ANSWER_TIMEOUT_SECONDS is a total wall-clock deadline, not a
+    per-socket-operation timeout, so a trickling response cannot keep the
+    hub waiting past it.
+    """
     url = ollama_base_url() + "/api/chat"
-    req = urllib.request.Request(
-        url,
-        data=json.dumps(build_chat_payload(question, loc)).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
+    payload = build_chat_payload(question, loc)
     timeout = answer_timeout()
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            raw = resp.read()
-    except urllib.error.HTTPError as e:
-        raise ModelError("ollama returned HTTP %s" % e.code) from e
-    except urllib.error.URLError as e:
-        reason = getattr(e, "reason", e)
-        if isinstance(reason, (socket.timeout, TimeoutError)):
+    outcome = {}
+
+    def fetch():
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                outcome["raw"] = resp.read()
+        except Exception as e:  # mapped by the caller below
+            outcome["error"] = e
+
+    worker = threading.Thread(target=fetch, daemon=True)
+    worker.start()
+    worker.join(max(0.0, timeout))
+    if worker.is_alive():
+        raise ModelTimeout("ollama did not answer within %gs" % timeout)
+    if "error" in outcome:
+        e = outcome["error"]
+        if isinstance(e, urllib.error.HTTPError):
+            raise ModelError("ollama returned HTTP %s" % e.code) from e
+        if isinstance(e, urllib.error.URLError):
+            reason = getattr(e, "reason", e)
+            if isinstance(reason, (socket.timeout, TimeoutError)):
+                raise ModelTimeout("ollama did not answer within %gs" % timeout) from e
+            raise ModelError("ollama unreachable at %s: %s" % (url, reason)) from e
+        if isinstance(e, (socket.timeout, TimeoutError)):
             raise ModelTimeout("ollama did not answer within %gs" % timeout) from e
-        raise ModelError("ollama unreachable at %s: %s" % (url, reason)) from e
-    except (socket.timeout, TimeoutError) as e:
-        raise ModelTimeout("ollama did not answer within %gs" % timeout) from e
+        raise ModelError("model call failed: %s" % e) from e
+    raw = outcome["raw"]
     try:
         content = json.loads(raw.decode("utf-8"))["message"]["content"]
     except (ValueError, KeyError, TypeError) as e:
@@ -240,9 +381,9 @@ def truncate_at_sentence(text, cap):
 
 
 def finalize_answer(raw):
-    """Cap the answer length, then make sure the disclaimer is on it."""
+    """Cap the answer length, then make sure the answer ENDS with the disclaimer."""
     text = truncate_at_sentence(raw.strip(), max_answer_chars())
-    if DISCLAIMER not in text:
+    if not text.endswith(DISCLAIMER):
         text = text + "\n" + DISCLAIMER
     return text
 
@@ -271,22 +412,46 @@ def post_callback(callback_url, sender, answer):
         resp.read()
 
 
-def run_async(request):
-    """Worker-thread body: answer the question, then POST it to callback_url."""
+def busy_payload():
+    """The 429 body: the hub is saturated; the asker should retry."""
+    return {
+        "status": "busy",
+        "error": BUSY_REASON + "; please retry your question",
+        "answer": error_answer(BUSY_REASON),
+    }
+
+
+def run_async(request, slots=None):
+    """Worker-thread body: answer the question, then POST it to callback_url.
+
+    Never raises: whatever goes wrong after the 202 ack, the asker still gets
+    an answer (the retry error answer on failure), and the concurrency slot
+    is always released.
+    """
     sender = request["sender"]
     try:
-        answer = answer_question(request["question"], request["loc"])
-    except ModelError as e:
-        log.warning("model call failed for %s: %s", sender, e)
-        answer = error_answer(str(e))
-    if not request["callback_url"]:
-        log.warning("no callback_url for %s; answer not delivered", sender)
-        return
-    try:
-        post_callback(request["callback_url"], sender, answer)
+        try:
+            answer = answer_question(request["question"], request["loc"])
+        except Exception as e:  # ModelError and anything else: never drop the asker
+            reason = str(e) or e.__class__.__name__
+            log.warning("answering %s failed: %s", sender, reason)
+            answer = error_answer(reason)
+        if not request["callback_url"]:
+            log.warning("no callback_url for %s; answer not delivered", sender)
+            return
+        try:
+            post_callback(request["callback_url"], sender, answer)
+        except Exception as e:
+            log.warning(
+                "callback to %s failed (%s); retrying once", request["callback_url"], e
+            )
+            post_callback(request["callback_url"], sender, answer)
         log.info("answered %s (%d chars)", sender, len(answer))
-    except (urllib.error.URLError, OSError) as e:
-        log.error("callback to %s failed: %s", request["callback_url"], e)
+    except Exception as e:
+        log.error("could not deliver an answer to %s: %s", sender, e)
+    finally:
+        if slots is not None:
+            slots.release()
 
 
 # --- HTTP shell -----------------------------------------------------------------
@@ -295,12 +460,18 @@ def run_async(request):
 class ResponderHandler(BaseHTTPRequestHandler):
     server_version = "HubResponder/1.0"
     protocol_version = "HTTP/1.1"
+    timeout = 30  # bound how long a half-sent request can hold a thread
 
-    def _send_json(self, status, payload):
+    def _send_json(self, status, payload, close=False):
+        if close:
+            # the request body was not (fully) read; do not reuse the connection
+            self.close_connection = True
         body = json.dumps(payload).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
+        if close:
+            self.send_header("Connection", "close")
         self.end_headers()
         self.wfile.write(body)
 
@@ -317,13 +488,13 @@ class ResponderHandler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length") or 0)
         except ValueError:
-            self._send_json(400, {"error": "invalid Content-Length"})
+            self._send_json(400, {"error": "invalid Content-Length"}, close=True)
             return
         if length <= 0:
             self._send_json(400, {"error": "missing request body"})
             return
         if length > MAX_BODY_BYTES:
-            self._send_json(413, {"error": "request body too large"})
+            self._send_json(413, {"error": "request body too large"}, close=True)
             return
         raw = self.rfile.read(length)
         try:
@@ -332,26 +503,44 @@ class ResponderHandler(BaseHTTPRequestHandler):
             self._send_json(400, {"error": "body is not valid JSON"})
             return
         try:
-            request = validate_ask_payload(body)
+            request = validate_ask_payload(body, peer_host=self.client_address[0])
         except ValueError as e:
             self._send_json(400, {"error": str(e)})
             return
+        slots = self.server.answer_slots
         if request["wait"]:
-            try:
-                answer = answer_question(request["question"], request["loc"])
-            except ModelError as e:
-                self._send_json(
-                    502,
-                    {
-                        "sender": request["sender"],
-                        "answer": error_answer(str(e)),
-                        "error": str(e),
-                    },
-                )
+            if not slots.acquire(blocking=False):
+                self._send_json(429, busy_payload())
                 return
-            self._send_json(200, {"sender": request["sender"], "answer": answer})
+            try:
+                try:
+                    answer = answer_question(request["question"], request["loc"])
+                except Exception as e:  # ModelError and anything else
+                    reason = str(e) or e.__class__.__name__
+                    log.warning("model call failed for %s: %s", request["sender"], reason)
+                    self._send_json(
+                        502,
+                        {
+                            "sender": request["sender"],
+                            "answer": error_answer(reason),
+                            "error": reason,
+                        },
+                    )
+                    return
+                self._send_json(200, {"sender": request["sender"], "answer": answer})
+            finally:
+                slots.release()
             return
-        threading.Thread(target=run_async, args=(request,), daemon=True).start()
+        if not slots.acquire(blocking=False):
+            self._send_json(429, busy_payload())
+            return
+        try:
+            threading.Thread(
+                target=run_async, args=(request, slots), daemon=True
+            ).start()
+        except Exception:
+            slots.release()
+            raise
         self._send_json(202, {"status": "accepted", "ack": ACK})
 
     def log_message(self, fmt, *args):
@@ -362,22 +551,28 @@ class ResponderServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = True
 
+    def __init__(self, address, handler_class, max_concurrent=4):
+        super().__init__(address, handler_class)
+        # bounds concurrent model runs; sized from OLLAMA_NUM_PARALLEL (blueprint: 4)
+        self.answer_slots = threading.BoundedSemaphore(max(1, max_concurrent))
+
 
 def make_server(host, port):
-    return ResponderServer((host, port), ResponderHandler)
+    return ResponderServer((host, port), ResponderHandler, max_concurrent_answers())
 
 
 def main():
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
     )
+    validate_numeric_env()
     bind = os.environ.get("HUB_BIND", "127.0.0.1").strip()
-    if bind in ("", "0.0.0.0", "::"):
+    if is_wildcard_bind(bind):
         sys.exit(
             "refusing HUB_BIND=%r; bind the hub's specific local-link address, "
-            "never 0.0.0.0" % bind
+            "never a wildcard address (0.0.0.0, ::, ...)" % bind
         )
-    port = int(os.environ.get("HUB_PORT", "8080"))
+    port = env_int("HUB_PORT", 8080)
     server = make_server(bind, port)
     log.info(
         "hub responder on http://%s:%d, ollama at %s, model %s",
