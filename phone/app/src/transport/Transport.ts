@@ -14,6 +14,9 @@ export const PUBLIC_CHANNEL = 'public';
 /** Peer id used for messages this phone sends itself. */
 export const SELF_PEER_ID = 'me';
 
+/** Peer id of the hub (BLUEPRINT_1.md: the hub joins the mesh as one more peer). */
+export const HUB_PEER_ID = 'hub';
+
 /** A peer on the mesh. The hub is a peer too (BLUEPRINT_1.md). */
 export interface Peer {
   id: PeerId;
