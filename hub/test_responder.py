@@ -711,10 +711,11 @@ class TestAnswerShaping(ResponderTestCase):
     def test_system_prompt_safety_rules(self):
         prompt = responder.build_chat_payload("q?", None)["messages"][0]["content"]
         for needle in ("numbered steps", "most urgent action first", "999",
-                       "life may be at risk right now", "not with 999",
-                       "Never tell anyone to drink untreated water",
-                       "say first that you have no live information",
-                       "Never invent place names", "UK units", "no Markdown"):
+                       "in danger right now", "Do not add this step when nobody is in danger",
+                       "Never suggest drinking untreated water",
+                       "Name only places given in the dataset facts",
+                       "never name other hospitals", "The mesh only reaches people nearby",
+                       "(litres, metres, °C)", "no Markdown"):
             self.assertIn(needle, prompt)
 
     def test_sync_answer_carries_the_ack_for_callers_without_a_callback(self):
