@@ -23,9 +23,9 @@ export function DeveloperPanel() {
         <Button secondary selected={mode === 'offline'} title="Hub offline" onPress={() => simulation.setHubMode('offline')} />
         <Button secondary selected={mode === 'error'} title="Hub error" onPress={() => simulation.setHubMode('error')} />
       </View>
-      <View style={[styles.row, { justifyContent: 'space-between' }]}><Body style={{ flex: 1 }}>Phone B nearby</Body>
+      <View style={[styles.row, { justifyContent: 'space-between', minHeight: t.target }]}><Body style={{ flex: 1 }}>Phone B nearby</Body>
         <Switch accessibilityLabel="Phone B nearby" value={mesh.peers.some(peer => peer.nickname === 'Phone B')}
-          onValueChange={nearby => simulation.setPhoneNearby(nearby)} trackColor={{ false: t.color.border, true: t.color.primary }} />
+          onValueChange={nearby => simulation.setPhoneNearby(nearby)} hitSlop={{ top: t.space.sm, bottom: t.space.sm, left: t.space.sm, right: t.space.sm }} trackColor={{ false: t.color.border, true: t.color.primary }} />
       </View>
       <Button secondary title="Phone B sends a private message" onPress={() => simulation.sendPhoneMessage('private')} />
       <Button secondary title="Phone B sends a public message" onPress={() => simulation.sendPhoneMessage('public')} />
