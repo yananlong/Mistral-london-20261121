@@ -7,7 +7,7 @@
 > init, `OSAllocatedUnfairLock` (iOS 16+).
 
 Files: `MinistralKit/MinistralEngine.swift` (engine), `ImagePrep.swift` (UIImage/CGImage to RGB),
-`EngineBenchmark.swift` (go/no-go harness). Model pair check on Linux: `scripts/check_model_pair.sh`.
+`EngineBenchmark.swift` (go/no-go harness, see section 5). Model pair check on Linux: `scripts/check_model_pair.sh`.
 
 ## 1. Add llama.cpp (SwiftPM binary target)
 
@@ -67,15 +67,16 @@ tokens; an in-flight image encode or prefill batch is not interruptible.
 
 ## 5. Benchmark (go/no-go)
 
-1. Put 5-10 jpgs in the app's `Documents/golden/` plus `prompts.json`: `{"kitchen.jpg": "List the objects you see.", ...}`.
-2. Run `try await EngineBenchmark(engine: engine).run()` from a debug button, on the real phone, in Release.
-3. It sweeps `maxImageSide` in [448, 640, 896] x 2 repeats (logging a standalone image-encode probe per
-   image/size; multi-second encodes mean a CPU fallback), one text-only row, then 20 back-to-back runs at 640.
-4. Output: `Documents/bench-<timestamp>.csv` (appended row by row; a crash leaves a partial file, so
-   the soak must show 20 rows). Fill `manual_review_1to5`.
+Test plan, shared inputs, limits per device, soak conditions and the CSV column list: `../TEST_PLAN.md`.
+Reference photos and prompts: `../test/golden/` (`cases.json` plus 10 hand-taken JPEGs, copied to `Documents/golden/`).
 
-GO if: 0 crashes/errors in the 20-run soak (deadline/cancel stops count as failures), soak p95 total
-time <= 15 s, and manual answer quality is acceptable. Otherwise NO-GO.
+```swift
+var cfg = EngineBenchmark.Config()
+cfg.device = "iphone18pro"; cfg.tier = "full"   // "iphone17" + p95LimitSeconds = 25 for the 17
+try await EngineBenchmark(engine: engine, config: cfg).run()   // Release build, real phone
+```
+Output: `Documents/bench-<timestamp>.csv`, appended row by row (a crash leaves a partial file). Score answers in
+`scores.csv` and run `scripts/compare_device_runs.py` for the verdict.
 
 ## 6. Fallback order
 

@@ -18,7 +18,7 @@ public final class EngineBenchmark {
         public var sweepSides = [448, 640, 896]
         public var defaultSide = 640
         public var soakCount = 20
-        public var p95LimitSeconds = 15.0
+        public var p95LimitSeconds = 15.0                       // iPhone 18 Pro; set 25 for iPhone 17 (TEST_PLAN.md)
         public init() {}
     }
 
@@ -152,7 +152,7 @@ public final class EngineBenchmark {
         let c2 = soakP95 <= cfg.p95LimitSeconds
         lines.append("soak: \(soak.count)/\(cfg.soakCount) runs, \(soakErrors) errors   -> \(c1 ? "PASS" : "FAIL")")
         lines.append("soak p95 total: \(fmt(soakP95))s (limit \(cfg.p95LimitSeconds)s)   -> \(c2 ? "PASS" : "FAIL")")
-        lines.append("answer quality: MANUAL - fill usable in scores.csv, not the CSV; see phone/TEST_PLAN.md: \(csvPath)")
+        lines.append("answer quality: MANUAL - mark usable per case in scores.csv (phone/TEST_PLAN.md); CSV: \(csvPath)")
         lines.append("OVERALL (excluding manual review): \(c1 && c2 ? "PASS" : "FAIL")")
         let s = lines.joined(separator: "\n")
         print(s)

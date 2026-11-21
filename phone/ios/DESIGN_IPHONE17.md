@@ -46,7 +46,7 @@ Warmup off saves little memory; it trims the early peak and costs a slower first
 | bartowski `..-IQ4_XS.gguf` | 1,959,278,560 | 0b5576e556c54bccdf253d5019a5a4d7a7fb755fe50c052c6f59c7d06e03b7e4 |
 
 Notes: Q4_0 and IQ4_XS save only 0.1-0.2 GB versus Q4_K_M, so they are not worth the quality risk. Only Q3_K_M (about 0.35 GB saved) changes a tier. Its quality on vision answers is untested; the hash in `DeviceProfile.swift` is the unsloth one. The mmproj Q8_0 is the one already chosen. Neither repo has a Q8_0 mmproj in the tree (unsloth: BF16/F16/F32; bartowski: bf16/f16), so a smaller projector is not available from these repos.
-Make sure the projector pairs with the language model (use scripts/check_model_pair.sh once it exists); an unsloth LM with a ggml-org mmproj is an untested pairing.
+Make sure the projector pairs with the language model (use scripts/check_model_pair.sh); an unsloth LM with a ggml-org mmproj is an untested pairing.
 
 ## Lowest tier: vision cannot fit
 - textOnly: keep OS speech-to-text and run the model on transcribed or typed text. Photo features are disabled with a clear label.
@@ -72,7 +72,7 @@ First 15 minutes:
 3. (5 min) Load `lean`, then `full`, and run one image each. Record peak footprint and whether q8_0 KV with FA loads.
 4. (4 min) Set the tier thresholds in `DeviceProfile.swift` from measured numbers; decide whether `.full` can be allowed on this device.
 
-Go/no-go (same as the main phone, with one relaxed bar): 20 consecutive runs in airplane mode, 0 crashes, 95th-percentile time to answer at most 25 s (relaxed from 15 s for the iPhone 17 only; the main phone keeps 15 s), at least 8 of 10 answers judged usable. If the no-go bar fails on every vision tier, ship textOnly.
+Order of work, benchmark, soak, go/no-go limits (iPhone 17: p95 at most 25 s, 0 crashes in 20 runs, at least 8 of 10 usable) and the fail ladder are in `../TEST_PLAN.md`. The steps above are the iOS-specific first-15-minutes checks that plan refers to.
 
 ## iPhone 17 Pro, Pro Max and Air
 These 12 GB phones use the main phone's default (`full`) profile.
