@@ -26,4 +26,5 @@ for mode in ok slow error500 empty badjson; do
         sleep 0.05
     done
 done
-"$temp/hub-tests" "$root/protocol/vectors.json" "$temp"
+python3 -B "$here/reference_cases.py" "$root/protocol/make_vectors.py" > "$temp/reference-cases.json"
+"$temp/hub-tests" "$root/protocol/vectors.json" "$temp" "$temp/reference-cases.json"
