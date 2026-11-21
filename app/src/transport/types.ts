@@ -34,4 +34,5 @@ export interface SimulationControls {
   sendPhoneMessage(channel: 'public' | 'private'): void;
   sendPhoneLocation(): void;
   setPhoneNearby(nearby: boolean): void;
+  setBluetooth(on: boolean): void;
 }

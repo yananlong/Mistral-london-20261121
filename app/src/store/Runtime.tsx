@@ -1,5 +1,9 @@
 import { createContext, PropsWithChildren, useContext, useEffect, useSyncExternalStore } from 'react';
 import { AskController } from '../ask/AskController';
+import { QuestionThread } from '../ask/QuestionThread';
+import { BriefingStore } from '../briefing/BriefingStore';
+import { demoBriefing } from '../briefing/demo';
+import { RelayStore } from '../relay/RelayStore';
 import { demoLocation, deviceLocation, LocationSource, LocationStore } from '../location/LocationStore';
 import { TransportSelection } from '../transport/factory';
 import { MeshStore } from './MeshStore';
@@ -8,20 +12,27 @@ export class AppRuntime {
   readonly mesh: MeshStore;
   readonly ask: AskController;
   readonly location = new LocationStore();
+  readonly relay: RelayStore;
+  readonly questions: QuestionThread;
+  /** Starts with what the phone itself knows; news arrives over the mesh. */
+  readonly briefing = new BriefingStore(demoBriefing('nothing'));
   readonly kind;
   readonly simulation;
   private unsubscribe: (() => void) | undefined;
   constructor(private readonly selection: TransportSelection, private readonly locationSource: LocationSource = selection.transport.kind === 'simulated' ? demoLocation : deviceLocation) {
     this.mesh = new MeshStore(selection.transport);
     this.ask = new AskController(this.mesh);
+    this.relay = new RelayStore(this.mesh);
+    this.questions = new QuestionThread(this.ask, this.mesh);
     this.kind = selection.transport.kind;
     this.simulation = selection.simulation;
   }
   start(): void {
     if (this.unsubscribe) return;
+    this.questions.start();
     this.unsubscribe = this.selection.transport.subscribe(event => {
       this.mesh.receive(event);
-      if (event.type === 'message') this.ask.receive(event.message);
+      if (event.type === 'message') { this.ask.receive(event.message); this.relay.receive(event.message); }
     });
     void this.location.start(this.locationSource);
     void this.selection.transport.start('Phone A').catch(() => {
@@ -32,6 +43,8 @@ export class AppRuntime {
     this.unsubscribe?.();
     this.unsubscribe = undefined;
     this.ask.dispose();
+    this.relay.dispose();
+    this.questions.dispose();
     this.location.dispose();
     void this.selection.transport.stop().catch(() => {});
   }
@@ -60,4 +73,16 @@ export function useAsk() {
 export function useLocation() {
   const { location } = useRuntime();
   return useSyncExternalStore(location.subscribe, location.getSnapshot, location.getSnapshot);
+}
+export function useRelay() {
+  const { relay } = useRuntime();
+  return useSyncExternalStore(relay.subscribe, relay.getSnapshot, relay.getSnapshot);
+}
+export function useBriefing() {
+  const { briefing } = useRuntime();
+  return useSyncExternalStore(briefing.subscribe, briefing.getSnapshot, briefing.getSnapshot);
+}
+export function useQuestions() {
+  const { questions } = useRuntime();
+  return useSyncExternalStore(questions.subscribe, questions.getSnapshot, questions.getSnapshot);
 }

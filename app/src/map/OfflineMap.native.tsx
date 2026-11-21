@@ -1,7 +1,7 @@
 import { Component, lazy, PropsWithChildren, Suspense, useState } from 'react';
 import { TurboModuleRegistry } from 'react-native';
 import { File, Paths } from 'expo-file-system';
-import { Body, Button, Notice, styles } from '../components/ui';
+import { Button, Card, Txt } from '../components/ui';
 import { View } from 'react-native';
 import { OfflineMapProps, isInLondon } from './types';
 
@@ -21,19 +21,19 @@ class MapBoundary extends Component<PropsWithChildren, { kind: 'ready' | 'failed
   static getDerivedStateFromError() { return { kind: 'failed' }; }
   render() {
     return this.state.kind === 'failed'
-      ? <Notice>The offline map could not open. Your position and pins are still listed below.</Notice> : this.props.children;
+      ? <Card tone="quiet"><Txt>The map could not open. The place details are listed below.</Txt></Card> : this.props.children;
   }
 }
 
 export default function OfflineMap(props: OfflineMapProps) {
   const [file, setFile] = useState(findMap);
   const position = props.focus?.position ?? props.points.find(point => point.kind === 'self')?.position;
-  if (file.kind === 'unsupported') return <Notice>Offline map needs a development build. Your position and shared pins are listed below.</Notice>;
-  if ((position && !isInLondon(position)) || file.kind === 'missing') return <View style={styles.stack}>
-    <Notice>Map not downloaded for this area. Copy london.pmtiles to this app’s Documents folder before going offline.</Notice>
-    <Button secondary title="Check for downloaded map" onPress={() => setFile(findMap())} />
+  if (file.kind === 'unsupported') return <Card tone="quiet"><Txt>The map needs the full app. The place details are listed below.</Txt></Card>;
+  if ((position && !isInLondon(position)) || file.kind === 'missing') return <View style={{ gap: 12 }}>
+    <Card tone="quiet"><Txt>Map not downloaded for this area. Copy london.pmtiles to this app’s Documents folder.</Txt></Card>
+    <Button variant="outline" title="Check for downloaded map" onPress={() => setFile(findMap())} />
   </View>;
-  return <MapBoundary><Suspense fallback={<Body>Opening your offline London map…</Body>}>
+  return <MapBoundary><Suspense fallback={<Txt>Opening the map…</Txt>}>
     <MapCanvas {...props} uri={file.uri} />
   </Suspense></MapBoundary>;
 }

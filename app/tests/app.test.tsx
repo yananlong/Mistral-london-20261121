@@ -1,16 +1,21 @@
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react-native';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react-native';
+import { QUESTION_RETRY_MS } from '../src/ask/QuestionThread';
 import { MeshApp } from '../src/AppShell';
-import { demoLocation, fixedLocation, LocationSource } from '../src/location/LocationStore';
-import { ACK_TEXT, ACK_TIMEOUT_MS, ANSWER_LABEL, ANSWER_TIMEOUT_MS, decodeLocationShare, HUB_NICKNAME, MAX_MESSAGE_BYTES } from '../src/protocol';
-import { DISCLAIMER } from '../src/screens/AskScreen';
+import { HOW_IT_WORKS, SOS_RECIPIENT } from '../src/components/Dock';
+import { demoLocation, LocationSource } from '../src/location/LocationStore';
+import { ACK_TIMEOUT_MS, MAX_QUESTION_BYTES, utf8Bytes } from '../src/protocol';
+import { SOS_CANCEL_WIRE } from '../src/relay/RelayStore';
+import { QUIET_GRACE_MS } from '../src/screens/HomeScreen';
 import { AppRuntime } from '../src/store/Runtime';
 import { HUB_ID, SimulatedTransport } from '../src/transport/SimulatedTransport';
 import { createTransport } from '../src/transport/factory';
 import { TransportEvent } from '../src/transport/types';
 
-async function launch(options: ConstructorParameters<typeof SimulatedTransport>[0] = {}, source: LocationSource = demoLocation, transport = new SimulatedTransport(options)) {
+async function launch(options: ConstructorParameters<typeof SimulatedTransport>[0] = {}, source: LocationSource = demoLocation,
+  transport = new SimulatedTransport(options), scheme?: 'dark' | 'light') {
   const runtime = new AppRuntime({ transport, simulation: transport }, source);
-  await render(<MeshApp runtime={runtime} />);
+  await render(<MeshApp runtime={runtime} scheme={scheme} />);
+  await act(async () => {});
   return { runtime, transport };
 }
 
@@ -23,10 +28,13 @@ class OutOfOrderTransport extends SimulatedTransport {
     });
   }
 }
-const button = (name: string) => screen.getByRole('button', { name });
-const tap = async (name: string) => { await fireEvent.press(button(name)); };
-const tab = async (name: 'Ask' | 'Talk' | 'Locate') => { await fireEvent.press(screen.getByRole('tab', { name })); };
+const button = (name: string | RegExp) => screen.getByRole('button', { name });
+const tap = async (name: string | RegExp) => { await fireEvent.press(button(name)); };
 const advance = async (ms: number) => { await act(async () => { jest.advanceTimersByTime(ms); }); };
+const ask = async (text: string) => {
+  await fireEvent.changeText(screen.getByLabelText('Ask anything'), text);
+  await tap('Send');
+};
 
 beforeEach(() => { jest.useFakeTimers(); });
 afterEach(async () => { await cleanup(); jest.clearAllTimers(); jest.useRealTimers(); });
@@ -37,286 +45,230 @@ test('the app falls back to the simulated link when the native module is unavail
   expect(selection.simulation).toBeDefined();
 });
 
-describe('Ask on the real simulated link', () => {
-  test('the disclaimer stays outside the scrolling content', async () => {
+describe('What is going on', () => {
+  test('opens on the one fact, the six topics and the three questions', async () => {
     await launch();
-    await tab('Ask');
-    expect(screen.getByText(DISCLAIMER)).toBeTruthy();
-    expect(within(screen.getByTestId('main-scroll')).queryByText(DISCLAIMER)).toBeNull();
+    expect(screen.getByText('No phone signal.')).toBeTruthy();
+    expect(screen.getByText('Since 2:05pm.')).toBeTruthy();
+    expect(screen.getByText('Southwark, updated 2:05pm')).toBeTruthy();
+    expect(screen.getByText('What you can find')).toBeTruthy();
+    expect(button('Water, Nothing yet')).toBeTruthy();
+    expect(button('Family, Send a message')).toBeTruthy();
+    expect(button('First aid, On your phone')).toBeTruthy();
+    expect(screen.getByText('Calls, texts and internet stopped. 999 may not work.')).toBeTruthy();
+    expect(screen.getAllByText('Not known yet')).toHaveLength(2);
+    expect(screen.getByText('In danger? Ask for help.')).toBeTruthy();
   });
 
-  test('a suggestion goes from Sent to Received by hub to Answered with the label', async () => {
+  test('never talks about the connection', async () => {
     await launch();
-    await tab('Ask');
-    expect(screen.getByText('Simulated link')).toBeTruthy();
-    expect(screen.getByText(DISCLAIMER)).toBeTruthy();
-    await tap('Make water safe to drink');
-    expect(screen.getByText('Sent')).toBeTruthy();
+    for (const word of [/online/i, /offline/i, /connected/i, /nearby/i, /\bhub\b/i, /mesh/i, /peer/i]) {
+      expect(screen.queryByText(word)).toBeNull();
+    }
+  });
+
+  test('news replaces "Not known yet" and is tagged New', async () => {
+    const { runtime } = await launch();
+    await tap('Demo controls');
+    await tap('Some known');
+    expect(screen.getByText('Power is off.')).toBeTruthy();
+    expect(button('Water, 2 places')).toBeTruthy();
+    expect(button('Shelter, 1 place')).toBeTruthy();
+    expect(button('Food, Nothing yet')).toBeTruthy();
+    await tap('All known');
+    expect(screen.getByText('Back by about 8pm.')).toBeTruthy();
+    expect(screen.getByText('Broken power equipment in Bankside.')).toBeTruthy();
+    expect(screen.getByText('About 8pm. Not certain.')).toBeTruthy();
+    expect(screen.getAllByText('New')).toHaveLength(2);
+    expect(screen.queryByText('Not known yet')).toBeNull();
+    await tap('Fixed');
+    expect(screen.getByText('Power is back.')).toBeTruthy();
+    expect(runtime.briefing.getSnapshot().changed.has('why')).toBe(false);
+  });
+});
+
+describe('Did my message get through', () => {
+  test('a question goes Sending, Delivered, Answered, with the answer and where it came from', async () => {
+    const { transport } = await launch();
+    await ask('Where can I charge my phone?');
+    expect(screen.getByText('Sending')).toBeTruthy();
     await advance(800);
-    expect(screen.getByText('Received by hub')).toBeTruthy();
+    expect(screen.getByText('Delivered')).toBeTruthy();
     await advance(2500);
     expect(screen.getByText('Answered')).toBeTruthy();
-    expect(screen.getByText(ANSWER_LABEL)).toBeTruthy();
-    expect(screen.getByText(/1\. Use sealed bottled water/)).toBeTruthy();
-    expect(screen.getByText('3s elapsed')).toBeTruthy();
-    expect(button('Ask another question')).toBeTruthy();
+    expect(screen.getByText('Southwark Library, 450 m away. It has power. Bring your own cable. Open until 6pm.')).toBeTruthy();
+    expect(screen.getByText(/^Computer answer, /)).toBeTruthy();
+    expect(transport.hubInbox).toEqual(['Where can I charge my phone?']);
   });
 
-  test('out-of-order simulated mesh parts show progress and assemble the full answer', async () => {
+  test('out-of-order answer parts assemble the full answer', async () => {
     await launch({}, demoLocation, new OutOfOrderTransport());
-    await tab('Ask');
-    await tap('Make water safe to drink');
+    await ask('How do I make water safe to drink?');
     await advance(3300);
-    expect(screen.getByText('Received by hub')).toBeTruthy();
-    expect(screen.getByText('Answer arriving, 2 of 3')).toBeTruthy();
+    expect(screen.getByText('Delivered')).toBeTruthy();
     await advance(100);
     expect(screen.getByText('Answered')).toBeTruthy();
-    expect(screen.getByText('1. Use sealed bottled water if you have it.\n2. Boiling does not remove chemicals. Avoid water that may be chemically contaminated.\n3. For clear water with a biological risk, bring it to a rolling boil for at least 1 minute, then let it cool in a clean, covered container.')).toBeTruthy();
+    expect(screen.getByText(/1\. Use sealed bottled water if you have it\.\s2\. Boiling/)).toBeTruthy();
   });
 
-  test('remembers a hub that goes offline, times out, retries and answers', async () => {
+  test('a message that cannot get through says so and sends by itself later', async () => {
     const { transport } = await launch();
     await act(() => transport.setHubMode('offline'));
-    await tab('Ask');
-    await tap('Stop heavy bleeding');
-    expect(screen.getByText('Sent')).toBeTruthy();
-    await advance(ACK_TIMEOUT_MS - 1);
-    expect(screen.getByText('Sent')).toBeTruthy();
-    await advance(1);
-    expect(screen.getByText('Hub not reachable')).toBeTruthy();
-    expect(transport.sent[0].to).toBe(HUB_ID);
+    await ask('Is the tube running?');
+    expect(screen.getByText('Sending')).toBeTruthy();
+    await advance(ACK_TIMEOUT_MS);
+    expect(screen.getByText('Not sent yet')).toBeTruthy();
+    expect(screen.getByText('Not getting through right now')).toBeTruthy();
+    expect(screen.getByText('The app keeps trying. First aid and the news still work.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull();
     await act(() => transport.setHubMode('online'));
-    await tap('Retry');
+    await advance(QUESTION_RETRY_MS);
     await advance(3300);
     expect(screen.getByText('Answered')).toBeTruthy();
-    expect(transport.sent[1].text).toBe(transport.sent[0].text);
+    expect(screen.getByText('No tubes are running in central London. Buses are running.')).toBeTruthy();
+    expect(screen.queryByText('Not getting through right now')).toBeNull();
+    expect(transport.sent.filter(item => item.to === HUB_ID).map(item => item.text)).toEqual(['Is the tube running?', 'Is the tube running?']);
   });
 
-  test('hub error becomes Hub could not answer with retry', async () => {
-    await launch({ hubMode: 'error' });
-    await tab('Ask');
-    await tap('Treat a burn');
-    await advance(800);
-    expect(screen.getByText('Received by hub')).toBeTruthy();
-    await advance(2500);
-    expect(screen.getByText('Hub could not answer')).toBeTruthy();
-    expect(button('Retry')).toBeTruthy();
-  });
-
-  test('attachment is off by default, then adds a valid loc line to the hub wire', async () => {
-    const { transport } = await launch();
-    await tab('Ask');
-    const toggle = screen.getByRole('switch', { name: 'Attach my location' });
-    expect(toggle).toHaveProp('value', false);
-    await fireEvent(toggle, 'valueChange', true);
-    await tap('Keep warm with no power');
-    const wire = transport.hubInbox[0];
-    expect(wire.split('\n').pop()).toBe('loc: 51.50070,-0.12460');
-    expect(decodeLocationShare(wire)).toEqual({ note: 'How do I keep warm with no power?', lat: 51.5007, lon: -0.1246 });
-  });
-
-  test('a new question switches location attachment off again', async () => {
-    const { transport } = await launch();
-    await tab('Ask');
-    await fireEvent(screen.getByRole('switch', { name: 'Attach my location' }), 'valueChange', true);
-    await tap('Make water safe to drink');
-    expect(decodeLocationShare(transport.hubInbox[0])).not.toBeNull();
+  test('a failed answer shows No answer yet and tries again by itself', async () => {
+    const { transport } = await launch({ hubMode: 'error' });
+    await ask('How do I treat a burn?');
     await advance(3300);
-    await tap('Ask another question');
-    expect(screen.getByRole('switch', { name: 'Attach my location' })).toHaveProp('value', false);
-    await tap('Stop heavy bleeding');
-    expect(decodeLocationShare(transport.hubInbox[1])).toBeNull();
+    expect(screen.getByText('No answer yet')).toBeTruthy();
+    await act(() => transport.setHubMode('online'));
+    await advance(QUESTION_RETRY_MS + 3300);
+    expect(screen.getByText('Answered')).toBeTruthy();
   });
 
-  test('without attachment no coordinates travel to the hub', async () => {
+  test('a second question waits, then goes by itself after the first is answered', async () => {
     const { transport } = await launch();
-    await tab('Ask');
-    await tap('Carbon monoxide signs');
-    expect(decodeLocationShare(transport.hubInbox[0])).toBeNull();
+    await ask('Where can I charge my phone?');
+    await ask('Is the tube running?');
+    expect(screen.getByText('Not sent yet')).toBeTruthy();
+    expect(transport.hubInbox).toHaveLength(1);
+    await advance(3300);
+    expect(transport.hubInbox).toEqual(['Where can I charge my phone?', 'Is the tube running?']);
+    await advance(3300);
+    expect(screen.getAllByText('Answered')).toHaveLength(2);
   });
 
-  test('looks for the hub before its first sighting', async () => {
+  test('the question box stops at the 200-byte limit', async () => {
+    const { transport } = await launch();
+    await ask('🚑'.repeat(80));
+    expect(utf8Bytes(transport.hubInbox[0])).toBeLessThanOrEqual(MAX_QUESTION_BYTES);
+    expect(button('Send')).toBeDisabled();
+  });
+
+  test('Bluetooth off shows the one thing to do, with the button that does it', async () => {
+    const { transport } = await launch();
+    await act(() => transport.setBluetooth(false));
+    expect(screen.getByText('Bluetooth is off')).toBeTruthy();
+    expect(screen.getByText('Turn it on to send questions. First aid works without it.')).toBeTruthy();
+    await tap('Turn on Bluetooth');
+    expect(screen.queryByText('Bluetooth is off')).toBeNull();
+  });
+
+  test('with nobody to pass messages on, it says Not getting through and explains in one tap', async () => {
+    const { transport } = await launch({ hubMode: 'offline', phoneNearby: false });
+    expect(screen.queryByText('Not getting through right now')).toBeNull();
+    await advance(QUIET_GRACE_MS);
+    expect(screen.getByText('Not getting through right now')).toBeTruthy();
+    await tap('How does this work?');
+    expect(screen.getByText(HOW_IT_WORKS)).toBeTruthy();
+    await act(() => transport.setHubMode('online'));
+    expect(screen.queryByText('Not getting through right now')).toBeNull();
+  });
+});
+
+describe('Can I get help', () => {
+  test('SOS asks once, sends where you are, says who has it, and can be cancelled', async () => {
+    const { transport } = await launch();
+    await tap('SOS. Ask for help');
+    expect(screen.getByText('Send SOS?')).toBeTruthy();
+    expect(screen.getByText('It asks for help and sends where you are.')).toBeTruthy();
+    expect(transport.hubInbox).toHaveLength(0);
+    await tap('Send SOS');
+    expect(screen.getByText('Sending SOS')).toBeTruthy();
+    expect(transport.hubInbox[0]).toBe('SOS\nloc: 51.50070,-0.12460');
+    await advance(800);
+    expect(screen.getByText(`SOS delivered to ${SOS_RECIPIENT}.`)).toBeTruthy();
+    await tap('Cancel SOS');
+    expect(screen.getByText('In danger? Ask for help.')).toBeTruthy();
+    expect(transport.hubInbox[1]).toBe(SOS_CANCEL_WIRE);
+  });
+
+  test('cancel on the question sends nothing', async () => {
+    const { transport } = await launch();
+    await tap('SOS. Ask for help');
+    await tap('Cancel');
+    expect(screen.getByText('In danger? Ask for help.')).toBeTruthy();
+    expect(transport.sent).toHaveLength(0);
+  });
+
+  test('an SOS that cannot get through keeps trying by itself', async () => {
     const { transport } = await launch({ hubMode: 'offline' });
-    await tab('Ask');
-    expect(screen.getByText(/Looking for the hub/)).toBeTruthy();
-    expect(button('Make water safe to drink')).toBeDisabled();
-    expect(transport.sent).toHaveLength(0);
+    await tap('SOS. Ask for help');
+    await tap('Send SOS');
+    await advance(ACK_TIMEOUT_MS);
+    expect(screen.getByText('SOS not sent yet. The app keeps trying.')).toBeTruthy();
     await act(() => transport.setHubMode('online'));
-    expect(button('Make water safe to drink')).toBeEnabled();
+    await advance(QUESTION_RETRY_MS + 800);
+    expect(screen.getByText(`SOS delivered to ${SOS_RECIPIENT}.`)).toBeTruthy();
   });
+});
 
-  test('status and timers survive leaving Ask', async () => {
+describe('What can I find', () => {
+  test('a topic opens as a sheet with each place, how far, what is there and who said so', async () => {
     await launch();
-    await tab('Ask');
-    await tap('Food after a power cut');
-    await tab('Talk');
-    await advance(3300);
-    await tab('Ask');
-    expect(screen.getByText('Answered')).toBeTruthy();
-    expect(screen.getByText(/1\. Keep the fridge/)).toBeTruthy();
-    await tap('Ask another question');
-    expect(button('Make water safe to drink')).toBeTruthy();
+    await tap('Demo controls');
+    await tap('Some known');
+    await tap('Water, 2 places');
+    expect(screen.getByText('Where can I get drinking water?')).toBeTruthy();
+    expect(screen.getByText('Southwark Cathedral')).toBeTruthy();
+    expect(screen.getByText('300 m, 4 min walk')).toBeTruthy();
+    expect(screen.getByText('Free bottled water. Open until 8pm.')).toBeTruthy();
+    expect(screen.getAllByText('From Southwark Council, 2:30pm')).toHaveLength(2);
+    await tap('Close');
+    expect(screen.queryByText('Where can I get drinking water?')).toBeNull();
   });
 
-  test('after an ack, a missing answer fails at the answer timeout', async () => {
-    const { runtime, transport } = await launch();
-    await tab('Ask');
-    await tap('Make water safe to drink');
+  test('a topic with nothing yet can still be asked about', async () => {
+    const { transport } = await launch();
+    await tap('Food, Nothing yet');
+    expect(screen.getByText('Nobody has shared this yet. You can still ask.')).toBeTruthy();
+    await tap('Ask');
+    expect(transport.hubInbox).toEqual(['Where can I get food?']);
+    expect(screen.getByText('Sending')).toBeTruthy();
+  });
+
+  test('family gets a ready message as a text, and it says when it is delivered', async () => {
+    const { transport } = await launch();
+    await tap('Family, Send a message');
+    expect(screen.getByText('How can I reach my family?')).toBeTruthy();
+    expect(screen.getByText('Gets it as a text message, 07700 900123')).toBeTruthy();
+    await tap("Send I'm OK to Mum");
+    expect(transport.hubInbox[0]).toBe("FAMILY 07700900123: I'm OK.");
+    expect(screen.getByText('Sending')).toBeTruthy();
     await advance(800);
-    await act(() => transport.setHubMode('offline'));
-    await advance(ANSWER_TIMEOUT_MS - 1);
-    expect(screen.getByText('Received by hub')).toBeTruthy();
-    await act(() => runtime.ask.receive({ id: 'partial', from: HUB_ID, fromNickname: HUB_NICKNAME, text: '(1/3) First part', channel: 'private', receivedAt: Date.now() }));
-    expect(screen.getByText('Answer arriving, 1 of 3')).toBeTruthy();
-    await advance(1);
-    expect(screen.getByText('Hub could not answer')).toBeTruthy();
+    expect(screen.getByText('Delivered to Mum')).toBeTruthy();
   });
 
-  test('allows a late answer after an unreachable timeout and ignores duplicate replies', async () => {
-    const { runtime, transport } = await launch();
-    await act(() => transport.setHubMode('offline'));
-    await tab('Ask');
-    await tap('Treat a burn');
-    await advance(ACK_TIMEOUT_MS);
-    const reply = (text: string) => runtime.ask.receive({ id: 'late', from: HUB_ID, fromNickname: HUB_NICKNAME, text, channel: 'private', receivedAt: Date.now() });
-    await act(() => { reply(`(2/2) ${ANSWER_LABEL}`); reply('(1/2) 1. A late answer.'); });
-    expect(screen.getByText('Answered')).toBeTruthy();
-    await act(() => { reply(ACK_TEXT); reply('(1/2) 1. Duplicate answer.'); reply(`(2/2) ${ANSWER_LABEL}`); });
-    expect(screen.getByText('1. A late answer.')).toBeTruthy();
-    expect(screen.queryByText('1. Duplicate answer.')).toBeNull();
-  });
-
-  test('retry discards the previous attempt’s partial answer', async () => {
-    const { runtime, transport } = await launch();
-    await act(() => transport.setHubMode('offline'));
-    await tab('Ask');
-    await tap('Treat a burn');
-    await advance(ACK_TIMEOUT_MS);
-    const reply = (text: string) => runtime.ask.receive({ id: text, from: HUB_ID, fromNickname: HUB_NICKNAME, text, channel: 'private', receivedAt: Date.now() });
-    await act(() => reply('(1/2) Old answer'));
-    expect(screen.getByText('Answer arriving, 1 of 2')).toBeTruthy();
-    await tap('Retry');
-    expect(screen.queryByText('Answer arriving, 1 of 2')).toBeNull();
-    await act(() => reply(`(2/2) ${ANSWER_LABEL}`));
-    expect(screen.queryByText('Answered')).toBeNull();
-    await act(() => reply('(1/2) New answer'));
-    expect(screen.getByText('Answered')).toBeTruthy();
-    expect(screen.getByText('New answer')).toBeTruthy();
-  });
-
-  test('reset discards partial answers before a new question', async () => {
-    const { runtime, transport } = await launch();
-    await act(() => transport.setHubMode('offline'));
-    await tab('Ask');
-    await tap('Treat a burn');
-    await advance(ACK_TIMEOUT_MS);
-    const reply = (text: string) => runtime.ask.receive({ id: text, from: HUB_ID, fromNickname: HUB_NICKNAME, text, channel: 'private', receivedAt: Date.now() });
-    await act(() => reply('(1/2) Previous answer'));
-    await tap('Ask another question');
-    await tap('Stop heavy bleeding');
-    await act(() => reply(`(2/2) ${ANSWER_LABEL}`));
-    expect(screen.queryByText('Answered')).toBeNull();
-    await act(() => reply('(1/2) Current answer'));
-    expect(screen.getByText('Answered')).toBeTruthy();
-    expect(screen.getByText('Current answer')).toBeTruthy();
-  });
-
-  test('emoji questions stop at 200 bytes and fit with an attached location', async () => {
+  test('first aid works on the phone, one step at a time', async () => {
     const { transport } = await launch();
-    await tab('Ask');
-    await fireEvent(screen.getByRole('switch', { name: 'Attach my location' }), 'valueChange', true);
-    await fireEvent.changeText(screen.getByLabelText('Your question'), `${'😀'.repeat(50)}extra`);
-    expect(screen.getByLabelText('Your question')).toHaveProp('value', '😀'.repeat(50));
-    expect(screen.getByText('0 bytes remaining')).toBeTruthy();
-    await tap('Send question');
-    expect(transport.hubInbox[0]).toBe(`${'😀'.repeat(50)}\nloc: 51.50070,-0.12460`);
-    expect(new TextEncoder().encode(transport.hubInbox[0]).length).toBeLessThanOrEqual(MAX_MESSAGE_BYTES);
-  });
-
-  test('an over-limit question cannot bypass the composer', async () => {
-    const { runtime, transport } = await launch();
-    await act(() => runtime.ask.submit('😀'.repeat(51), null));
+    await act(() => transport.setBluetooth(false));
+    await tap('First aid, On your phone');
+    await tap('Heavy bleeding');
+    expect(screen.getByText('Heavy bleeding. Step 1 of 4')).toBeTruthy();
+    expect(screen.getByText('Press firmly on the wound with a clean cloth or dressing.')).toBeTruthy();
+    await tap('Next step');
+    expect(screen.getByText('Keep pressing. Do not lift it to look.')).toBeTruthy();
+    await tap('Back');
+    expect(screen.getByText('Heavy bleeding. Step 1 of 4')).toBeTruthy();
     expect(transport.sent).toHaveLength(0);
-    expect(runtime.ask.getSnapshot().state).toBe('idle');
   });
 });
 
-describe('Talk', () => {
-  test('no peers shows No one nearby', async () => {
-    await launch({ hubMode: 'offline', phoneNearby: false });
-    expect(screen.getByText('No one nearby')).toBeTruthy();
-  });
-  test('a sent public message appears in the thread', async () => {
-    const { transport } = await launch();
-    await fireEvent.changeText(screen.getByLabelText('Message'), 'We are safe at the gate.');
-    await tap('Send message');
-    expect(screen.getByText('We are safe at the gate.')).toBeTruthy();
-    expect(transport.sent[0]).toEqual({ to: 'public', text: 'We are safe at the gate.' });
-  });
-  test('the composer stops at 255 bytes and an over-limit message cannot be sent', async () => {
-    const { runtime, transport } = await launch();
-    await fireEvent.changeText(screen.getByLabelText('Message'), `${'😀'.repeat(63)}abcde`);
-    expect(screen.getByLabelText('Message')).toHaveProp('value', `${'😀'.repeat(63)}abc`);
-    expect(screen.getByText('0 bytes remaining')).toBeTruthy();
-    await tap('Send message');
-    expect(new TextEncoder().encode(transport.sent[0].text).length).toBe(MAX_MESSAGE_BYTES);
-    await expect(runtime.mesh.send('public', '😀'.repeat(64))).rejects.toThrow();
-    expect(transport.sent).toHaveLength(1);
-  });
-  test('an inbound private message is in Phone B’s private thread', async () => {
-    const { transport } = await launch();
-    await act(() => transport.sendPhoneMessage('private'));
-    expect(screen.queryByText('I’m at the north gate. Are you nearby?')).toBeNull();
-    await tap('Open private thread with Phone B');
-    expect(screen.getByText('I’m at the north gate. Are you nearby?')).toBeTruthy();
-  });
-  test('a location row opens Locate on that pin', async () => {
-    const { transport } = await launch();
-    await act(() => transport.sendPhoneLocation());
-    await tap('Open private thread with Phone B');
-    await tap('Open Phone B location in Locate');
-    expect(screen.getByText('Selected location · Phone B')).toBeTruthy();
-    expect(screen.getAllByText('51.50550, -0.11950').length).toBeGreaterThan(0);
-  });
-});
-
-describe('Locate', () => {
-  test('a location share produces a latest pin for Phone B', async () => {
-    const { transport } = await launch();
-    await act(() => transport.sendPhoneLocation());
-    await tab('Locate');
-    expect(screen.getByText('◆ Phone B')).toBeTruthy();
-    expect(screen.getByText('51.50550, -0.11950')).toBeTruthy();
-    expect(screen.getByText(/Offline map needs a development build/)).toBeTruthy();
-  });
-  test('denied location permission is clear and sharing is disabled', async () => {
-    await launch({}, fixedLocation({ kind: 'denied' }));
-    await tab('Locate');
-    expect(screen.getByText(/Location permission denied/)).toBeTruthy();
-    expect(button('Share location')).toBeDisabled();
-  });
-  test('no position fix has a separate state', async () => {
-    await launch({}, fixedLocation({ kind: 'locating' }));
-    await tab('Locate');
-    expect(screen.getByText(/No position fix yet/)).toBeTruthy();
-  });
-  test('share recipient picker excludes the hub and emits the contract text', async () => {
-    const { transport } = await launch();
-    await tab('Locate');
-    await tap('Share location');
-    expect(screen.queryByRole('button', { name: 'Share with hub' })).toBeNull();
-    await tap('Share with public channel');
-    expect(transport.sent[0]).toEqual({ to: 'public', text: 'Shared location\nloc: 51.50070,-0.12460' });
-    expect(screen.getByText('Location shared with the public channel.')).toBeTruthy();
-  });
-});
-
-test('demo controls can take the hub offline and inject a Phone B location', async () => {
-  await launch();
-  await tap('Demo controls');
-  await tap('Hub offline');
-  expect(screen.getByText('Hub mode: offline')).toBeTruthy();
-  await tap('Phone B shares a location');
-  await tab('Locate');
-  expect(screen.getByText('◆ Phone B')).toBeTruthy();
+test('the light palette renders the same screen', async () => {
+  await launch({}, demoLocation, undefined, 'light');
+  expect(screen.getByText('No phone signal.')).toBeTruthy();
 });

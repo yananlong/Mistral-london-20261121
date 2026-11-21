@@ -8,8 +8,8 @@ import {
   type ViewStateChangeEvent,
 } from '@maplibre/maplibre-react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Body, Notice, styles } from '../components/ui';
-import { tokens as t } from '../theme/tokens';
+import { Card, Txt } from '../components/ui';
+import { fonts, tokens as t } from '../theme/tokens';
 import { OfflineMapProps } from './types';
 import { buildMapStyle, INITIAL_ZOOM, LONDON_CENTER, MAP_MAX_ZOOM, MAP_MIN_ZOOM } from './mapStyle';
 
@@ -43,9 +43,9 @@ export default function MapCanvas({ points, focus, uri }: OfflineMapProps & { ur
     cameraRef.current?.flyTo({ center: [center.lon, center.lat], zoom: Math.max(zoom, INITIAL_ZOOM), duration: 500 });
   };
 
-  if (state === 'failed') return <Notice>The offline map could not open. Check the London map file. Your coordinates and pins are below.</Notice>;
-  return <View style={styles.stack}>
-    {state === 'opening' && <Body>Opening your offline London map…</Body>}
+  if (state === 'failed') return <Card tone="quiet"><Txt>The map could not open. The place details are listed below.</Txt></Card>;
+  return <View style={{ gap: t.space.s2 }}>
+    {state === 'opening' && <Txt>Opening the map…</Txt>}
     <View>
       <Map
         style={local.map}
@@ -86,30 +86,30 @@ export default function MapCanvas({ points, focus, uri }: OfflineMapProps & { ur
         </Pressable>
       </View>
     </View>
-    <Body style={styles.small}>London · pan and pinch to explore · offline · © OpenStreetMap contributors · Protomaps</Body>
+    <Txt variant="caption">Pan and pinch to explore. © OpenStreetMap contributors, Protomaps</Txt>
   </View>;
 }
 
 const local = StyleSheet.create({
-  map: { height: MAP_HEIGHT, width: '100%', borderRadius: t.radius.md },
+  map: { height: MAP_HEIGHT, width: '100%', borderRadius: t.radius.m },
   controls: {
     position: 'absolute',
-    top: t.space.sm,
-    right: t.space.sm,
+    top: t.space.s2,
+    right: t.space.s2,
     flexDirection: 'column',
-    gap: t.space.xs,
+    gap: t.space.s1,
   },
   controlButton: {
     width: t.target,
     height: t.target,
-    borderRadius: t.radius.sm,
-    backgroundColor: t.color.surface,
+    borderRadius: t.radius.s,
+    backgroundColor: t.color.white,
     borderWidth: 1,
     borderColor: t.color.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  controlText: { color: t.color.ink, fontSize: t.font.subtitle, fontWeight: t.weight.bold },
-  pin: { maxWidth: 180, paddingHorizontal: t.space.sm, paddingVertical: t.space.xs, borderRadius: t.radius.pill, borderWidth: 2, borderColor: t.color.white },
-  pinText: { color: t.color.white, fontSize: t.font.small, fontWeight: t.weight.bold },
+  controlText: { color: t.color.ink, fontSize: 22, fontFamily: fonts.semibold },
+  pin: { maxWidth: 180, paddingHorizontal: t.space.s2, paddingVertical: t.space.s1, borderRadius: t.radius.tail, borderWidth: 2, borderColor: t.color.white },
+  pinText: { color: t.color.white, fontSize: 13, fontFamily: fonts.semibold },
 });

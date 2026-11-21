@@ -4,7 +4,7 @@ import { MeshStore } from '../store/MeshStore';
 import { InboundMessage, PeerId } from '../transport/types';
 import { AskEvent, askReducer } from './machine';
 
-interface Attempt { question: string; wire: string; to: PeerId; startedAt: number }
+interface Attempt { id: number; question: string; wire: string; to: PeerId; startedAt: number }
 interface AnswerProgress { received: number; total: number }
 interface ActiveAttempt { attempt: Attempt; progress: AnswerProgress | null }
 export type AskSession =
@@ -18,6 +18,7 @@ export class AskController {
   private listeners = new Set<() => void>();
   private timer: ReturnType<typeof setTimeout> | undefined;
   private parts: AnswerPart[] = [];
+  private serial = 0;
   constructor(private readonly mesh: MeshStore) {}
   getSnapshot = (): AskSession => this.session;
   subscribe = (listener: () => void): (() => void) => {
@@ -48,7 +49,7 @@ export class AskController {
     if (!to || !question || utf8Bytes(question) > MAX_QUESTION_BYTES || askReducer(this.session.state, 'submit') !== 'sent' || this.session.state !== 'idle') return;
     const wire = encodeQuestion(question, location);
     if (utf8Bytes(wire) > MAX_MESSAGE_BYTES) return;
-    const attempt: Attempt = { question, wire, to, startedAt: Date.now() };
+    const attempt: Attempt = { id: ++this.serial, question, wire, to, startedAt: Date.now() };
     this.parts = [];
     this.publish({ state: 'sent', attempt, progress: null });
     this.send(attempt);

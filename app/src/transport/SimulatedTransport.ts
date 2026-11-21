@@ -1,4 +1,5 @@
 import { ACK_TEXT, HUB_EMPTY_TEXT, HUB_ERROR_TEXT, HUB_NICKNAME, MAX_MESSAGE_BYTES, utf8Bytes, encodeLocationShare } from '../protocol';
+import { RELAY_ACK_TEXT, SOS_CANCEL_WIRE, SOS_WIRE } from '../relay/RelayStore';
 import { composeAnswer, parseQuestion } from './simulatedHub';
 import { HubMode, InboundMessage, Peer, SimulationControls, Transport, TransportEvent, peerId, PeerId } from './types';
 
@@ -15,12 +16,14 @@ const ANSWERS: Record<string, string> = {
   food: '1. Keep the fridge and freezer doors closed.\n2. A fridge usually keeps food cold for about 4 hours without power.\n3. Discard perishable food if it has been too warm or you are unsure. Never taste food to check it is safe.',
   carbon: '1. Get everyone into fresh air immediately. Do not re-enter the building.\n2. Signs include headache, dizziness, nausea, weakness, confusion and breathlessness.\n3. Call 999 or 112 if you can and say you suspect carbon monoxide poisoning.',
   burn: '1. Cool the burn under cool or lukewarm running water for 20 minutes.\n2. Remove jewellery and loose clothing near it, leaving anything stuck to the skin.\n3. Cover loosely with cling film laid over it. Use no ice or creams. Seek urgent help for a large, deep, chemical or electrical burn.',
+  charge: 'Southwark Library, 450 m away. It has power. Bring your own cable. Open until 6pm.',
+  tube: 'No tubes are running in central London. Buses are running.',
   generic: '1. Move away from immediate danger if you can do so safely.\n2. Contact 999 or 112 if you can reach them.\n3. Ask people nearby for help and follow local emergency instructions when available. This is a canned demo response; no model has run.',
 };
 
 function answerFor(question: string): string {
   const text = question.toLowerCase();
-  const topic = /water|drink/.test(text) ? 'water' : /bleed/.test(text) ? 'bleeding'
+  const topic = /charg/.test(text) ? 'charge' : /tube|underground|train/.test(text) ? 'tube' : /water|drink/.test(text) ? 'water' : /bleed/.test(text) ? 'bleeding'
     : /warm|power/.test(text) && !/food|fridge/.test(text) ? 'warm'
     : /fridge|food/.test(text) ? 'food' : /carbon|monoxide/.test(text) ? 'carbon'
     : /burn/.test(text) ? 'burn' : 'generic';
@@ -36,6 +39,7 @@ export class SimulatedTransport implements Transport, SimulationControls {
   private mode: HubMode = 'online';
   private state: 'running' | 'stopped' = 'stopped';
   private phoneNearby = true;
+  private bluetooth = true;
   private serial = 0;
   private hubAvailableAt = 0;
 
@@ -50,7 +54,7 @@ export class SimulatedTransport implements Transport, SimulationControls {
   }
 
   private emit(event: TransportEvent): void { this.listeners.forEach(listener => listener(event)); }
-  private peers(): Peer[] { return [...(this.phoneNearby ? [PHONE] : []), ...(this.mode === 'offline' ? [] : [HUB])]; }
+  private peers(): Peer[] { return !this.bluetooth ? [] : [...(this.phoneNearby ? [PHONE] : []), ...(this.mode === 'offline' ? [] : [HUB])]; }
   private announcePeers(): void { if (this.state === 'running') this.emit({ type: 'peers', peers: this.peers() }); }
 
   async start(_nickname: string): Promise<void> {
@@ -82,7 +86,10 @@ export class SimulatedTransport implements Transport, SimulationControls {
     this.emit({ type: 'message', message });
   }
 
-  private checkRunning(): void { if (this.state !== 'running') throw new Error('The link is stopped. Start it before sending.'); }
+  private checkRunning(): void {
+    if (this.state !== 'running') throw new Error('The link is stopped. Start it before sending.');
+    if (!this.bluetooth) throw new Error('Bluetooth is off.');
+  }
   private checkMessage(text: string): void { if (utf8Bytes(text) > MAX_MESSAGE_BYTES) throw new Error('The message exceeds the mesh byte limit.'); }
 
   async sendPublic(text: string): Promise<void> {
@@ -97,6 +104,10 @@ export class SimulatedTransport implements Transport, SimulationControls {
     this.sent.push({ to, text });
     if (to !== HUB_ID || this.mode === 'offline') return;
     this.hubInbox.push(text);
+    if (text === SOS_CANCEL_WIRE || text.split('\n')[0] === SOS_WIRE || text.startsWith('FAMILY ')) {
+      this.later(800, () => { if (this.mode !== 'offline') this.inbound(HUB, RELAY_ACK_TEXT, 'private'); });
+      return;
+    }
     const question = parseQuestion(text);
     const queuedFor = Math.max(0, this.hubAvailableAt - Date.now());
     if (question.kind === 'empty') {
@@ -114,6 +125,12 @@ export class SimulatedTransport implements Transport, SimulationControls {
   }
 
   getHubMode(): HubMode { return this.mode; }
+  setBluetooth(on: boolean): void {
+    if (this.state !== 'running') return;
+    this.bluetooth = on;
+    this.emit({ type: 'state', state: on ? 'running' : 'bluetooth_off' });
+    this.emit({ type: 'peers', peers: on ? this.peers() : [] });
+  }
   setHubMode(mode: HubMode): void { this.mode = mode; this.announcePeers(); }
   setPhoneNearby(nearby: boolean): void { this.phoneNearby = nearby; this.announcePeers(); }
   sendPhoneMessage(channel: 'public' | 'private'): void {
