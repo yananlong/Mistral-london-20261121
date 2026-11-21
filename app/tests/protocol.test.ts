@@ -54,6 +54,14 @@ test('simulated answers split long Unicode lines without splitting a character',
   ]);
 });
 
+test('trimming matches the reference for Unicode whitespace and byte-order marks', () => {
+  expect(composeAnswer('\u0085\u001e')).toBeNull();
+  expect(composeAnswer('\ufeff')).toEqual([`(1/2) \ufeff`, `(2/2) ${ANSWER_LABEL}`]);
+  expect(classifyHubReply('(1/2) \ufeff')).toEqual({ kind: 'answer_part', index: 1, total: 2, text: '\ufeff' });
+  expect(parseQuestion('\u0085')).toEqual({ kind: 'empty', body: '', loc: null });
+  expect(decodeLoc('loc:\u008551.5,\u001e-0.1')).toEqual({ lat: 51.5, lon: -0.1 });
+});
+
 test('answer assembly follows the latest total and replaces duplicate indexes', () => {
   expect(assembleAnswer([
     { index: 1, total: 2, text: 'old' },

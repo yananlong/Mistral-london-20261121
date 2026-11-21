@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Body, Button, Card, Heading, Notice, styles } from '../components/ui';
-import { decodeLocationShare, HUB_NICKNAME, MAX_MESSAGE_BYTES, MAX_QUESTION_BYTES, prefixBytes, utf8Bytes } from '../protocol';
+import { decodeLocationShare, HUB_NICKNAME, MAX_MESSAGE_BYTES, MAX_QUESTION_BYTES, prefixBytes, trim, utf8Bytes } from '../protocol';
 import { MapFocus } from '../map/types';
 import { ThreadKey } from '../store/MeshStore';
 import { useAsk, useMesh, useRuntime } from '../store/Runtime';
@@ -22,7 +22,7 @@ export function TalkScreen({ openPin, openAsk }: { openPin: (focus: MapFocus) =>
   const remaining = limit - utf8Bytes(text);
   const hubBusy = ask.state === 'sent' || ask.state === 'received';
   const send = async () => {
-    if (!text.trim() || utf8Bytes(text) > limit || sendState === 'sending') return;
+    if (!trim(text) || utf8Bytes(text) > limit || sendState === 'sending') return;
     if (isHub) {
       if (hubBusy) return;
       runtime.ask.reset();
@@ -33,7 +33,7 @@ export function TalkScreen({ openPin, openAsk }: { openPin: (focus: MapFocus) =>
     }
     setSendState('sending');
     setError('');
-    try { await runtime.mesh.send(thread, text.trim()); setText(''); }
+    try { await runtime.mesh.send(thread, trim(text)); setText(''); }
     catch { setError('The message could not be sent. Check the link and try again.'); }
     finally { setSendState('idle'); }
   };
@@ -73,7 +73,7 @@ export function TalkScreen({ openPin, openAsk }: { openPin: (focus: MapFocus) =>
       {remaining <= 50 && <Body style={styles.small}>{remaining} bytes remaining</Body>}
       {error !== '' && <Body accessibilityRole="alert">{error}</Body>}
       <Button title={isHub ? 'Ask hub' : sendState === 'sending' ? 'Sending…' : 'Send message'}
-        disabled={!text.trim() || sendState === 'sending' || (isHub && hubBusy) || mesh.link !== 'running'} onPress={() => { void send(); }} />
+        disabled={!trim(text) || sendState === 'sending' || (isHub && hubBusy) || mesh.link !== 'running'} onPress={() => { void send(); }} />
     </Card>
   </View>;
 }
