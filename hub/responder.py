@@ -1071,6 +1071,17 @@ class ResponderHandler(BaseHTTPRequestHandler):
             self._send_json(400, {"error": "missing request body"})
             return
         if length > MAX_BODY_BYTES:
+            # Drain a bounded amount first: closing while the client is still
+            # sending resets the connection and the client never sees the 413.
+            left = min(length, 4 * MAX_BODY_BYTES)
+            try:
+                while left > 0:
+                    chunk = self.rfile.read(min(65536, left))
+                    if not chunk:
+                        break
+                    left -= len(chunk)
+            except OSError:
+                pass
             self._send_json(413, {"error": "request body too large"}, close=True)
             return
         raw = self.rfile.read(length)
