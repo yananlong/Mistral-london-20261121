@@ -1,93 +1,106 @@
 # Team plan (open draft)
 
-An open plan for the team. Edit freely. Nothing here is decided until the team agrees. See [README.md](README.md) for the concept.
+An open plan for the team. Edit freely. Nothing here is decided until the team agrees. [README.md](README.md) has the concept, and [BLUEPRINT_1.md](BLUEPRINT_1.md) has the MVP architecture and build order.
 
-**Status pipeline:** queued → received by volunteer → processed → returned
+The MVP gives people three capabilities with no internet. They can talk over the BitChat mesh, locate themselves on an offline map with an on-device vision model, and ask a Mistral model that runs on an offline Mac mini hub.
 
 ---
 
 ## 1. Sharpening the concept
 
-Mesh messaging apps and off-grid AI projects already exist. What makes ours different is that a **consenting human volunteer** is the person's route to the AI. It runs on ordinary phones, and the person reviews every draft before using it.
+Mesh messaging apps and off-grid AI projects already exist. Our difference is one Mistral model on an offline Mac mini, shared by everyone in mesh range, with no internet anywhere in the system. The phones spend no battery on inference, and the hub has the memory for a larger model and a library of survival guides. The same phones message each other and find their position on an offline map.
 
-- **Trust is the product.** The person chooses to share their location, the volunteer accepts explicitly, and the reply is always labelled as a draft and not emergency advice.
-- **Templates, not chat.** For example "Message to family", "I need water or medical help", "Nearest shelter". Short requests suit a slow link and stressed people.
-- **Every handoff is visible.** The four-step status tracker carries the demo for both roles.
+- **No internet anywhere.** The phones are in airplane mode, and the Mac mini has no network connection. The demo shows this at the start.
+- **Works with stock BitChat.** The hub answers plain-text private messages, so a person with the stock BitChat app can ask it questions. Our app adds the map, the vision model and a better Ask screen.
+- **Trust is the product.** The person chooses whether to share their location, and every answer is labelled as AI-generated and not verified emergency advice.
+- **Templates, not chat.** The Ask screen offers suggested questions, for example "How do I make water safe to drink?" or "How do I stop heavy bleeding?". Short questions and answers suit a slow link and stressed people.
 - **Built for bad conditions.** Big tap targets, high contrast in sunlight, scalable text, low battery use.
 
 ## 2. Prior art: does this already exist?
 
-Parts of it do. The whole flow doesn't.
+Parts of it do. The closest precedent, [bitchat-gateway](https://github.com/spcpza/bitchat-gateway), uses the same pattern of a BitChat peer that answers questions, but it sends them to an AI service on the internet. [critique.md](critique.md) covers it and other precedents in more detail.
 
 | Project | Link | Where the AI runs | Hardware | What we learn |
 |---|---|---|---|---|
-| Bitchat | Bluetooth mesh + Nostr | No AI | Phones | The mesh we'd like to use, but it has no public API, only community ports that haven't been audited. |
+| BitChat | Bluetooth mesh + Nostr | No AI | Phones | The mesh we build on. It has no bot API, so the hub needs a modified BitChat build. Community ports haven't been audited. |
+| bitchat-gateway | BitChat mesh | Internet AI, reached through a connected peer | Phones and a connected computer | The same peer pattern as our hub, but it needs internet. |
 | Radio LLM | Meshtastic LoRa radio | A server at the other end of the radio link | LoRa radios | AI over a mesh works, but you need dedicated radios. |
 | net0 | ESP32 relay nodes | Gemini dispatch dashboard | Custom nodes | Saves reports locally first, so they aren't lost if the AI can't be reached. |
 | Meshnet | Bluetooth mesh | A web server summarises mesh traffic | Phones | The AI only reads the traffic; it doesn't reply to people. |
 | Flood Ready | QR codes between devices | On-device, in the browser | Phones | QR relay is a real, fully offline fallback. |
 | Bridgefy / Briar | Bluetooth / Wi-Fi mesh | No AI | Phones | Audits found security flaws in Bridgefy, so trust has to be designed in. |
-| **Us** | Nearby offline link | Mistral, through a volunteer | Two ordinary phones | A person in the loop on both ends. |
+| **Us** | BitChat mesh | A Mistral model on an offline Mac mini | Ordinary phones and a Mac mini | No internet anywhere, and stock BitChat users can ask the hub too. |
 
 ## 3. Hard constraints
 
 - **A web app can't send messages phone to phone over Bluetooth.** Web Bluetooth only connects to accessories, runs only in Chromium and doesn't work on iOS. A real offline link needs a native app, a local Wi-Fi network or QR codes.
-- **Native offline links don't work across platforms.** Apple's Multipeer and Google's Nearby can't talk to each other, so both demo phones need the same OS. QR codes work across both.
+- **Native offline links don't work across platforms.** Apple's Multipeer and Google's Nearby can't talk to each other, so a fallback on either one needs demo phones on the same OS. QR codes work across both. BitChat also has an [Android app](https://github.com/permissionlesstech/bitchat-android). Test messaging between iOS and Android before you rely on it.
+- **The hub stays in one place and needs power.** Phones reach it only within Bluetooth range, either directly or through other phones on the mesh. The Mac mini's memory sets the largest model that it can run.
 - **No one needs to pay.** A free Apple ID can install the app onto our own iPhones from Xcode (it re-signs every 7 days, about 3 devices). Android APKs install freely. Only TestFlight needs the $99 account, and we don't need it.
 
 ## 4. Open decision: which stack?
 
 Whatever we pick, the UI should sit on one small `Transport` interface (send, receive, peers), so how messages move can change without redoing the design.
 
+The blueprint proposes a Swift fork of BitChat. BitChat's mesh, its iOS app and the macOS app that the hub runs are all written in Swift.
+
 | Option | Pros | Cons |
 |---|---|---|
-| **Expo (React Native)** | Least setup. Design in Expo Go with live changes on real phones. Real offline link later via `expo-nearby-connections`. React skills carry over. | The offline link needs one development build, made on one laptop. |
-| **Swift (iOS only)** | Native feel. Multipeer is built in. Same language as Bitchat. | Everyone needs Xcode and a Mac. iOS only. |
+| **Swift fork of BitChat (iOS)** | The mesh already works. The hub's macOS build shares the code. Multipeer is built in as a fallback. | Everyone who builds it needs Xcode and a Mac. iOS only. |
+| **Expo (React Native)** | Least setup. Design in Expo Go with live changes on real phones. Real offline link later via `expo-nearby-connections`. React skills carry over. | Reaching BitChat users or the hub means wrapping BitChat's Swift code in a native module. The offline link needs one development build, made on one laptop. |
 | **React web app** | Fastest to start. Fine for a design prototype. | No Bluetooth. A real handoff needs QR codes or a local Wi-Fi network. |
 
 ## 5. Open decision: how does the message move?
 
+This decision covers messages between phones and questions from phones to the hub. The blueprint proposes BitChat for both, with Multipeer as the fallback.
+
 | Option | Truly offline? | Effort | Demo risk | Notes |
 |---|---|---|---|---|
 | Simulated link | No | Very low | None | Enough to design every screen and state. |
-| QR codes | Yes | Low | Low | Works on any phone and across iOS and Android. Each handoff is a visible gesture. |
-| Local Wi-Fi + server | Yes (network with no internet) | Medium | Medium | Needs network setup at the venue. |
-| Multipeer / Nearby | Yes | Medium | Medium | Native only, and both phones need the same OS. |
-| Bitchat | Yes (multi-hop mesh) | High | High | Closest to the vision. Try it for a fixed timebox before committing. |
+| QR codes | Yes | Low | Low | Works on any phone and across iOS and Android. Each handoff is a visible gesture. The Mac mini needs a webcam to read codes. |
+| Local Wi-Fi and server | Yes (network with no internet) | Medium | Medium | The Mac mini serves the model over a Wi-Fi router that has no internet uplink. Phones must be in range of the router. It doesn't carry messages between phones. |
+| Multipeer or Nearby | Yes | Medium | Medium | Native only, and both phones need the same OS. Multipeer also runs on macOS, but it has no multi-hop relay. |
+| BitChat | Yes (multi-hop mesh) | High | High | Proposed. One mesh carries Talk and Ask, and stock BitChat users can join. The hub needs a modified macOS build. Try it for a fixed timebox before committing. |
 
 ## 6. Design workstream
 
-**Person (offline):** open the app → see coordinates → choose whether to share them → pick a template and add details → send → watch the status → review the draft → copy or share it.
+The phone has three flows:
 
-**Volunteer (online):** see an incoming request → accept or decline → preview exactly what goes to Mistral → send → return the reply.
+- **Talk.** Open the app and see who is nearby. Message one person or the public channel.
+- **Locate.** Open the map and see your position. Use the camera to orient yourself, and share your location if you choose.
+- **Ask.** Pick a suggested question or type one, and choose whether to attach your location. Send it, watch the status and read the answer.
 
-**States to design:** no one nearby, connecting, declined, timed out, Mistral error, location permission denied, mock mode.
+The hub has no screen. For the demo, a terminal log on the Mac mini shows each question and each model run.
+
+Design these states: no one nearby, hub not reachable, answer still coming, no position fix yet, map not downloaded for this area, location permission denied, and camera permission denied. [The blueprint's state table](BLUEPRINT_1.md#message-format) lists the Ask states.
 
 Other deliverables:
-- Status tracker spec: one shared component and the visual heart of the demo.
+- Ask status component: one shared component that every question uses, and the part of the demo that the audience watches.
+- Map styles for the position marker and for shared location pins.
 - Tokens: colour, type, spacing and radius, with a calm palette rather than an alarming one.
-- Copy: plain language, draft labels, the disclaimer.
-- Demo script: a two-minute story, beat by beat, with phone A in airplane mode.
+- Copy: plain language, the AI answer label, the disclaimer.
 - Tool: Figma or straight in code (to decide).
 
-## 7. Rough phasing
+The demo script is in [the blueprint](BLUEPRINT_1.md#demo-script).
 
-1. **Design on a simulated link.** Build every screen and state, with a mock Mistral response so we don't need a key or a connection.
-2. **Real Mistral call.** The volunteer's phone calls the Mistral Agent with a short system prompt for drafts. The API key stays out of git.
-3. **Real offline link.** Swap in the transport the team chose. Run the full round trip on two phones, with phone A in airplane mode.
-4. **Stretch:** Bitchat (only after a timeboxed spike), then offline maps.
+## 7. Build order
+
+[BLUEPRINT_1.md](BLUEPRINT_1.md#build-order) has the build order, and each step ends in a check. Design can start on a simulated link with a mock answer before the hub works.
 
 ## 8. Open questions for the team
 
-- [ ] Which stack: Expo, Swift or web? How many of us have a Mac with Xcode?
-- [ ] Which phones do we have for the demo? Two iPhones, two Androids, or one of each? (One of each means QR codes.)
-- [ ] Do we spend an hour on a Bitchat spike, and who takes it?
-- [ ] Do we use a Mistral Agent (Agents API) or plain chat completions with a fixed prompt?
+- [ ] How many of us have a Mac with Xcode? Each person who builds the Swift fork needs one.
+- [ ] Who owns each workstream: the hub, the phone app, the vision model and design?
+- [ ] Who brings the Mac mini to the venue?
 - [ ] What's the name and tagline?
+
+[BLUEPRINT_1.md](BLUEPRINT_1.md#open-questions) has the technical open questions.
 
 ## Sources
 
-- [Bitchat](https://github.com/permissionlesstech/bitchat)
+- [BitChat](https://github.com/permissionlesstech/bitchat)
+- [BitChat for Android](https://github.com/permissionlesstech/bitchat-android)
+- [bitchat-gateway](https://github.com/spcpza/bitchat-gateway)
 - [Radio LLM](https://www.producthunt.com/products/off-grid-llm-over-radio)
 - [net0](https://devpost.com/software/net0)
 - [Meshnet](https://devpost.com/software/meshnet)

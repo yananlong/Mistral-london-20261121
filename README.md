@@ -1,29 +1,35 @@
-# Offline communication and access to Mistral
+# Talk, locate and ask Mistral without internet
 
-When infrastructure fails, a community can become the connection. This Mistral AI hackathon project explores how a person without internet access can communicate, share their location and reach a Mistral Agent through a nearby connected volunteer.
+In a disaster, cell towers and internet access can fail. Phones still have Bluetooth, satellite positioning and a camera. This Mistral AI hackathon project uses them to give people three capabilities with no internet anywhere in the system:
 
-## The experience
+- **Talk.** Message people nearby over a Bluetooth mesh. We build on [BitChat](https://github.com/permissionlesstech/bitchat), which relays messages from phone to phone for up to 7 hops.
+- **Locate.** See where you are on a map that you downloaded in advance. A teammate is building an on-device computer vision model that helps you orient yourself on that map. You can share your position with people on the mesh.
+- **Ask.** Send a question over the mesh to a Mac mini that has no internet connection. The Mac mini runs an open-weight Mistral model and sends the answer back over the mesh. Questions cover water, food, first aid and power.
 
-1. A person opens the app on their phone without internet access. They can view their available coordinates and choose whether to share them.
-2. They send a request over a nearby offline connection to a volunteer. We aim to integrate with Bitchat's Bluetooth mesh.
-3. The volunteer explicitly accepts the request. Their connected device sends it to a Mistral Agent.
-4. The agent prepares a concise response, such as a message to family containing the person's supplied location and needs.
-5. The volunteer's device returns the response over the offline connection. The person reviews the draft before using it.
+## How it works
 
-The app should show the request's progress: **queued → received by volunteer → processed → returned**. The offline user remains disconnected from the internet throughout.
+In the proposed design, each phone runs our fork of the BitChat app, with the offline map and the vision model added. The Mac mini joins the same mesh as one more BitChat peer, called the hub. When the hub receives a private message, it runs the question through a local Mistral model and replies to the sender. The hub is an ordinary BitChat peer, so a person with the stock BitChat app can ask it questions too.
+
+[BLUEPRINT_1.md](BLUEPRINT_1.md) has the architecture, message format, build order, fallbacks and open questions.
 
 ## Hackathon scope
 
-Our first goal is a working round trip between two real devices, with a Mistral Agent processing the request. We will validate Bitchat integration early. If it proves too large for the hackathon, we will demonstrate a direct nearby connection and treat Bitchat compatibility as future work.
+The MVP is all three capabilities working on real phones. Every phone is in airplane mode with Bluetooth on, and the Mac mini has no internet connection.
 
-Location coordinates are the starting point; locally stored maps are a stretch goal. The remote agent requires a working communication path to a volunteer with connectivity and access to Mistral. We will use a fictional disaster scenario for the demo and present generated content as a draft, not verified emergency advice.
+The demo uses a fictional disaster scenario. Every answer from the hub is labelled as AI-generated and not verified emergency advice.
 
 ## Demo
 
-With phone A in airplane mode and Bluetooth enabled, the user shares their coordinates and asks for help drafting a message to family. A nearby volunteer accepts the request on a connected device. A Mistral Agent creates the draft, which returns to phone A over the local connection. The interface makes each handoff visible.
+Phones A and B are in airplane mode, and the Mac mini has Wi-Fi off and Ethernet unplugged. Phone A messages phone B, finds its position on the offline map and shares it with phone B. A judge then uses phone A to ask the hub a survival question, and the answer arrives over the mesh. The beat-by-beat version is in [the blueprint's demo script](BLUEPRINT_1.md#demo-script).
 
 ## Project status
 
-This is a hackathon concept. The features, Bitchat integration and technical approach are yet to be built and validated.
+This repository holds planning documents only. The app, the hub and the vision model are not built or tested yet.
 
-See [PLAN.md](PLAN.md) for the open team plan: prior art, constraints, options and open questions.
+| File | Contents |
+| --- | --- |
+| [BLUEPRINT_1.md](BLUEPRINT_1.md) | MVP architecture, message format, demo script, build order and open questions. |
+| [PLAN.md](PLAN.md) | The open team plan: concept, prior art, platform constraints, stack and transport options, and the design workstream. |
+| [IDEA.md](IDEA.md) | The original brainstorm with six survival needs. |
+| [critique.md](critique.md) | The evidence that the demo should collect, and a commercial critique. |
+| [SETUP_VOXTRAL.md](SETUP_VOXTRAL.md) | Mistral API key and cloud Voxtral TTS setup. The MVP uses no cloud services. |
