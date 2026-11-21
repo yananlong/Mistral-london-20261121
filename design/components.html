@@ -590,8 +590,9 @@ function topicsHTML(news, live) {
   }).join('');
 }
 
-/* Sheet bodies, one per topic */
-function sheetBody(k, news, live) {
+/* Sheet bodies, one per topic. `places` overrides the broadcast state, e.g. when the
+   sheet is opened from a chat answer that named specific places */
+function sheetBody(k, news, live, places) {
   const t = TOPICS.find(x => x.k === k);
   const top = `<div class="sh-top">${ic(t.icon, 's32')}${live ? `<button type="button" class="btn line sm" data-a="close">${ic('close', 's20')}Close</button>` : ''}</div><h3 class="sh-h">${t.q}</h3>`;
   if (k === 'firstaid') return top + `<div class="plist">${['Bleeding', 'Not breathing', 'Burns', 'Broken bone', 'Very cold'].map(g => `<div class="guide">${ic('medical_services', 's20')}${g}${ic('expand_more', 's20')}</div>`).join('')}</div><p class="note" style="margin-top:12px">These guides are on your phone. They always work.</p>`;
@@ -601,7 +602,7 @@ function sheetBody(k, news, live) {
       <div class="acts">${btn('safe', '', "I'm OK")}${btn('help', 'line', 'I need help')}</div>
       <div class="fam"></div>`;
   }
-  const p = placesFor(k, news);
+  const p = places || placesFor(k, news);
   if (!p) return top + `<div class="mapbox">${mapHTML([], 'Map of your area: only you on it so far')}</div><div class="empty">${notKnown}<p>Nobody has shared this yet.</p>${live ? `<button type="button" class="btn line sm" data-a="ask" data-q="${t.q}">${ic('arrow_upward', 's20')}Ask anyway</button>` : ''}</div>`;
   return top + `<div class="mapbox">${mapHTML(p, `Map: ${p.length} ${p.length === 1 ? 'place' : 'places'} near you, numbered like the list`)}</div>
     <div class="plist">${p.map((x, i) => `<div class="pl"><span class="pn">${i + 1}</span><div><b>${x.n}</b><span class="d">${x.d}</span><p>${x.t}</p><p class="src">${x.s}</p></div></div>`).join('')}</div>`;
@@ -645,12 +646,13 @@ function sosHTML(mode, live) {
 function setSos(el, mode, live, animate) { el.classList.toggle('big', mode === 'confirm'); put(el, sosHTML(mode, live), animate); }
 
 /* ---------- The phone ---------- */
-const P = { conn: null, news: null, sos: null, sheet: null, pending: [] };
+const P = { conn: null, news: null, sos: null, sheet: null, sheetPlaces: null, pending: [] };
 const phone = $('#phone'), notice = $('#notice'), pbrief = $('#pbrief'), scroller = $('#scroll'),
       psos = $('#psos'), sheet = $('#sheet'), thread = $('#thread');
 pbrief.innerHTML = briefHTML();
-/* Topics sit right under the headline, before the questions, so people see what exists first */
-$('.qa', pbrief).insertAdjacentHTML('beforebegin', '<div class="find-h"><h3>What you can find</h3></div><div class="topics" id="ptopics"></div>');
+/* The briefing (what's happening, the three questions) comes first, on its own.
+   "What you can find" is the utility layer: it sits below a rule, clearly divided from the top */
+$('.qa', pbrief).insertAdjacentHTML('afterend', '<div class="find-h"><h3>What you can find</h3></div><div class="topics" id="ptopics"></div>');
 const ptopics = $('#ptopics');
 
 function setState(conn, news, animate = true) {
@@ -668,9 +670,9 @@ function setState(conn, news, animate = true) {
 }
 
 /* Sheet */
-function renderSheet() { sheet.innerHTML = sheetBody(P.sheet, P.news, true); sheet.setAttribute('aria-label', TOPICS.find(t => t.k === P.sheet).label); }
-function openSheet(k) { P.sheet = k; renderSheet(); phone.classList.add('sheet-open'); setTimeout(() => { const c = $('[data-a="close"]', sheet); if (c) c.focus({ preventScroll: true }); }, 50); }
-function closeSheet() { P.sheet = null; phone.classList.remove('sheet-open'); }
+function renderSheet() { sheet.innerHTML = sheetBody(P.sheet, P.news, true, P.sheetPlaces); sheet.setAttribute('aria-label', TOPICS.find(t => t.k === P.sheet).label); }
+function openSheet(k, places) { P.sheet = k; P.sheetPlaces = places || null; renderSheet(); phone.classList.add('sheet-open'); setTimeout(() => { const c = $('[data-a="close"]', sheet); if (c) c.focus({ preventScroll: true }); }, 50); }
+function closeSheet() { P.sheet = null; P.sheetPlaces = null; phone.classList.remove('sheet-open'); }
 ptopics.addEventListener('click', e => { const b = e.target.closest('.topic'); if (!b) return; stopStory(); openSheet(b.dataset.k); });
 $('#scrim').addEventListener('click', () => { stopStory(); closeSheet(); });
 sheet.addEventListener('click', e => {
@@ -734,12 +736,14 @@ if (HUBON) {
   });
 }
 
-/* Questions: answered from what the server knows, labelled as a computer answer */
+/* Questions: answered from what the server knows, labelled as a computer answer.
+   A place answer (topic key in slot 2) also carries a map the answer can open */
 const REPLIES = [
-  [/charg|battery|power/i, 'Southwark Library, 450 m away. It has power. Bring your own cable. Open until 6pm.', COUNCIL + ', 2:40pm'],
-  [/water|drink/i, 'Southwark Cathedral, 300 m away, has free bottled water until 8pm.', COUNCIL + ', 2:30pm'],
-  [/food|eat/i, 'Nobody has shared where to get food yet.', COUNCIL + ', 2:50pm'],
-  [/tube|train|bus/i, 'No tubes are running in central London. Buses are running.', 'Transport for London, 2:50pm'],
+  [/charg|battery|power/i, 'charge', 'Southwark Library, 450 m away. Generator power. Bring your own cable. Open until 6pm.', COUNCIL + ', 2:40pm'],
+  [/water|drink/i, 'water', 'Southwark Cathedral, 300 m away, has free bottled water until 8pm.', COUNCIL + ', 2:30pm'],
+  [/food|eat/i, 'food', 'Nobody has shared where to get food yet.', COUNCIL + ', 2:50pm'],
+  [/shelter|warm|sleep|rest/i, 'shelter', 'Harper Road rest centre, 900 m away. Warm room, beds, hot drinks. Open all night.', COUNCIL + ', 2:50pm'],
+  [/tube|train|bus/i, null, 'No tubes are running in central London. Buses are running.', 'Transport for London, 2:50pm'],
 ];
 const toBottom = () => requestAnimationFrame(() => scroller.scrollTo({ top: scroller.scrollHeight, behavior: RM ? 'auto' : 'smooth' }));
 function sendQuestion(text) {
@@ -751,12 +755,20 @@ function sendQuestion(text) {
   const dv = $('.dv', box);
   const r = REPLIES.find(([re]) => re.test(text));
   dv._then = () => {
-    box.insertAdjacentHTML('beforeend', `<div class="reply arrive"><p>${r ? r[1] : 'There is no information about this yet.'}</p><p class="src">Computer answer, from ${r ? r[2] : COUNCIL + ' information'}</p></div>`);
+    box.insertAdjacentHTML('beforeend', `<div class="reply arrive"><p>${r ? r[2] : 'There is no information about this yet.'}</p><p class="src">Computer answer, from ${r ? r[3] : COUNCIL + ' information'}</p></div>`);
+    const p = r && r[1] ? (PLACES[r[1]] || []) : [];
+    if (p.length) box.insertAdjacentHTML('beforeend', `<div class="mcard arrive"><div class="mapbox">${mapHTML(p, `Map: ${p.length} ${p.length === 1 ? 'place' : 'places'} near you, numbered like the list`)}</div>
+      <div class="mrow"><span><b>${p[0].n}</b> <span class="d">${p[0].d}</span></span><button type="button" class="btn line sm" data-a="map" data-k="${r[1]}">${ic('location_on', 's20')}Open map</button></div></div>`);
     toBottom();
   };
   toBottom();
   queue(dv, LBL.q);
 }
+thread.addEventListener('click', e => {
+  const b = e.target.closest('[data-a="map"]'); if (!b) return;
+  if (e.isTrusted) stopStory();
+  openSheet(b.dataset.k, PLACES[b.dataset.k]);
+});
 $('#ask').addEventListener('submit', e => { e.preventDefault(); stopStory(); sendQuestion($('#q').value); $('#q').value = ''; });
 
 /* SOS */
@@ -790,11 +802,11 @@ function syncControls() {
 const later = (i, ms, fn) => setTimeout(() => { if (SI === i) fn(); }, RM ? 0 : ms);
 const STORY = [
   { conn: 'off',   news: 'none',  d: 4000, reset: 1, t: 'No phone signal anywhere. Bluetooth is off, so the app asks you to turn it on.' },
-  { conn: 'ok',    news: 'none',  d: 5000, ask: 'Where can I charge my phone?', t: 'You ask where to charge your phone. The bars fill as it goes, and the answer comes back.' },
+  { conn: 'ok',    news: 'none',  d: 5600, ask: 'Where can I charge my phone?', map: 'charge', t: 'You ask where to charge your phone. The answer comes back with a map, and opens it.' },
   { conn: 'ok',    news: 'some',  d: 4000, top: 1, t: 'The first news arrives. What isn\'t known yet says so.' },
   { conn: 'ok',    news: 'some',  d: 5200, family: 1, t: 'You tap Family and send "I\'m OK". Mum gets it as a text message.' },
   { conn: 'ok',    news: 'some',  d: 4600, sos: 1, t: 'Someone is hurt. You press SOS. It asks once, then sends.' },
-  { conn: 'ok',    news: 'all',   d: 4200, top: 1, clearSos: 1, t: 'More news: why it happened, and when it will be fixed. More places to find.' },
+  { conn: 'ok',    news: 'all',   d: 4200, top: 1, clearSos: 1, t: 'More news: why it happened. When it will be fixed is not known yet. More places to find.' },
   { conn: 'stuck', news: 'all',   d: 4600, ask: 'Is the tube running?', t: 'You ask again, but it can\'t get through. The app says so plainly and keeps trying.' },
   { conn: 'ok',    news: 'all',   d: 4600, t: 'It gets through by itself. The answer arrives. Nothing to tap.' },
   { conn: 'ok',    news: 'fixed', d: 4400, top: 1, t: 'Power is back.' },
@@ -819,6 +831,7 @@ function go(i) {
   setState(s.conn, s.news);
   if (s.top) scroller.scrollTo({ top: 0, behavior: RM ? 'auto' : 'smooth' });
   if (s.ask) later(i, 700, () => sendQuestion(s.ask));
+  if (s.map) later(i, 3600, () => { const b = $('#thread [data-a="map"]'); if (b) b.click(); });
   if (s.sos) { setSosMode('confirm'); later(i, 1600, sendSos); }
   if (s.family) later(i, 600, () => { openSheet('family'); later(i, 900, () => $('[data-a="safe"]', sheet).click()); });
   clearTimeout(timer);

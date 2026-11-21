@@ -266,7 +266,7 @@ button { font: inherit; color: inherit; }
       <p>White, black, and three colours that each mean one thing.</p>
     </div>
     <h1>Know what's happening.</h1>
-    <div class="cover-foot">Fictional scenario: a power cut in south London, mobile networks down.</div>
+    <div class="cover-foot">Fictional scenario: a total blackout across the UK — no power, no signal, no internet.</div>
   </div>
 </header>
 
@@ -355,7 +355,7 @@ button { font: inherit; color: inherit; }
       <div class="sec-head"><h2>The cards.</h2><p>The hub picks one of these and fills in the words. The phone draws it. The model never invents a layout.</p></div>
       <div class="kit">
         <figure>
-          <div class="card line"><span class="pill wait"><span class="g" aria-hidden="true">●</span>Watching</span><h4>Why the power is off</h4><p>You'll get a message when the hub hears.</p></div>
+          <div class="card line"><span class="pill wait"><span class="g" aria-hidden="true">●</span>Watching</span><h4>Why the disruption</h4><p>You'll get a message when the hub hears.</p></div>
           <figcaption><b>Not known yet</b>Turns "I don't know" into a follow-up.</figcaption>
         </figure>
         <figure>
@@ -371,7 +371,7 @@ button { font: inherit; color: inherit; }
           <figcaption><b>Check-in</b>Shows each step until it's delivered.</figcaption>
         </figure>
         <figure>
-          <div class="card line"><span class="pill ok"><span class="g" aria-hidden="true">✓</span>Power back</span><h4>Bermondsey is back on</h4><p>Parts of Southwark are still off.</p><div class="src" style="margin:0"><span class="tag">Official</span>UK Power Networks, 16:05</div></div>
+          <div class="card line"><span class="pill ok"><span class="g" aria-hidden="true">✓</span>Power back</span><h4>The UK is back on</h4><p>Power, signal and internet restored across the UK.</p><div class="src" style="margin:0"><span class="tag">Official</span>National Grid, 16:05</div></div>
           <figcaption><b>Update</b>Arrives without being asked.</figcaption>
         </figure>
         <figure>
@@ -397,8 +397,8 @@ button { font: inherit; color: inherit; }
         <div class="tok"><div class="sw" style="background:#E7F3EC"></div><b>Green tint</b><span>#E7F3EC. Behind green text.</span></div>
       </div>
       <div class="typescale">
-        <div class="r"><span class="m">Briefing, 46 medium, −4.5%</span><span style="font-size:46px;font-weight:500;letter-spacing:-.045em;line-height:1">Power is off.</span></div>
-        <div class="r"><span class="m">Second line, 30 medium, grey</span><span style="font-size:30px;font-weight:500;letter-spacing:-.035em;color:var(--ink-2);line-height:1.05">Expected back by 20:00.</span></div>
+        <div class="r"><span class="m">Briefing, 46 medium, −4.5%</span><span style="font-size:46px;font-weight:500;letter-spacing:-.045em;line-height:1">Power disruption.</span></div>
+        <div class="r"><span class="m">Second line, 30 medium, grey</span><span style="font-size:30px;font-weight:500;letter-spacing:-.035em;color:var(--ink-2);line-height:1.05">Across the UK since 14:20.</span></div>
         <div class="r"><span class="m">Step, 24 medium</span><span style="font-size:24px;font-weight:500;letter-spacing:-.025em">Call 999, or get someone else to.</span></div>
         <div class="r"><span class="m">Message, 17 regular</span><span style="font-size:17px">Nobody has said why yet.</span></div>
         <div class="r"><span class="m">Source, 13 regular</span><span style="font-size:13px;color:var(--ink-2)">UK Power Networks, 14:20</span></div>
@@ -461,10 +461,10 @@ button { font: inherit; color: inherit; }
 
   function home() {
     const n = add(`<section class="brief">
-      <div class="where">Southwark, now</div>
-      <h3 class="big">Power is off.</h3>
-      <p class="big2">Expected back by 20:00.</p>
-      <div class="src"><span class="tag">Official</span>UK Power Networks, 14:20</div>
+      <div class="where">Across the UK, now</div>
+      <h3 class="big">Power disruption.</h3>
+      <p class="big2">Since 14:20. When it ends: not known.</p>
+      <div class="src"><span class="tag">Official</span>National Grid, 14:20</div>
       <div class="sosbar"><span><span aria-hidden="true">▲ </span>999 still works, even on SOS only.</span>${CALL}</div>
       <div class="label">Near you</div>
       <div class="near">
@@ -475,7 +475,7 @@ button { font: inherit; color: inherit; }
       </div>
       <button class="more" aria-expanded="false" aria-controls="earlier"><span class="chev" aria-hidden="true">›</span>2 earlier updates</button>
       <div class="earlier" id="earlier" hidden>
-        <div class="item">Mobile networks are down across the area.<div class="src"><span class="tag">Hub</span>14:10</div></div>
+        <div class="item">No power, mobile signal or internet anywhere in the UK.<div class="src"><span class="tag">Official</span>National Grid, 14:20</div></div>
         <div class="item">A rest centre is open in Southwark Cathedral hall.<div class="src"><span class="tag">Official</span>Southwark Council, 14:12</div></div>
       </div>
     </section>`);
@@ -498,7 +498,7 @@ button { font: inherit; color: inherit; }
       const w = add(hub('Nobody has said yet.', '<b>Hub</b>2 phones away', `${pill('wait', 'Watching for the cause')}<div class="ai">AI answer. Not verified emergency advice.</div>`));
       later(() => {
         w.querySelector('.pill').outerHTML = pill('ok', 'Answered');
-        add(hub('A fault at a substation in Bankside. Engineers are on site.', '<span class="tag">Official</span>UK Power Networks, 14:46'));
+        add(hub('A fault in the national grid. Engineers are on site.', '<span class="tag">Official</span>National Grid, 14:46'));
       }, 5000);
     } else if (q === 'map') {
       const m = add(`<div class="turn hub" style="max-width:100%;width:100%"><div class="who"><b>Your phone</b>works offline</div>
