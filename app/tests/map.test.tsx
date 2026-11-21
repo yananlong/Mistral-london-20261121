@@ -21,3 +21,10 @@ test('native map pins show the sharer’s nickname at the shared coordinates', a
   expect(pin).toHaveProp('accessibilityLabel', '-0.1195,51.5055');
   expect(within(pin).getByText('Responder Sam')).toBeTruthy();
 });
+
+test('map is navigable: zoom in/out and recenter controls are present', async () => {
+  await render(<MapCanvas uri="file:///london.pmtiles" focus={null} points={[]} />);
+  expect(screen.getByLabelText('Zoom in')).toBeTruthy();
+  expect(screen.getByLabelText('Zoom out')).toBeTruthy();
+  expect(screen.getByLabelText('Center on selected position')).toBeTruthy();
+});
