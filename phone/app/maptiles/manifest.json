@@ -1,0 +1,22 @@
+{
+  "source": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+  "attribution": "(c) OpenStreetMap contributors",
+  "demoCenter": {
+    "lat": 51.5074,
+    "lon": -0.1278
+  },
+  "fullBounds": [
+    -0.52,
+    51.28,
+    0.34,
+    51.72
+  ],
+  "zooms": [
+    11,
+    16
+  ],
+  "tileCount": 393,
+  "bytes": 14689766,
+  "extension": ".jpg",
+  "generatedUtc": "2026-11-21T16:52:01+00:00"
+}

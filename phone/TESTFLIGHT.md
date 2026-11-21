@@ -56,6 +56,12 @@ Then integrate the native pieces that already exist in this repo:
   and keep questions going to the hub (fallback order, README section 6).
 - [ ] `cd phone/app && npm install && npx pod-install` (or `cd ios && pod install`)
   so `react-native-maps` links.
+- [ ] Bundle the offline map: add `phone/app/maptiles/` to the app target in
+  Xcode as a folder reference (iOS), and copy it into
+  `android/app/src/main/assets/` (Android). 393 OSM tiles, z11–z16, ~15 MB;
+  regenerate with `python3 phone/app/scripts/fetch_map_tiles.py`. The app
+  renders them via `LocalTile` (`src/locate/tiles.ts`) and shows the
+  © OpenStreetMap attribution.
 
 ## 4. Signing, capabilities, Info.plist
 

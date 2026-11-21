@@ -30,12 +30,20 @@ this repo (see `PLAN.md` and `BLUEPRINT_1.md` at the repo root). iPhone only.
   `sent -> receivedByHub -> answered`, and `sent -> hubNotReachable` on
   timeout with retry back to `sent`. Timeouts configurable.
 - `src/locate/locLine.ts` — format/parse for the `loc: <lat>,<lon>` line.
-- `src/locate/tiles.ts` — London demo region and the bundled-tiles check.
+- `src/locate/tiles.ts` — London demo region, the Web-Mercator tile math, the
+  bundled-tile zoom range (z11–z16) and the coverage check.
+- `maptiles/london/{z}/{x}/{y}.jpg` — the actual offline map: 393 standard
+  OpenStreetMap raster tiles for the London demo region (~15 MB, JPEG q80),
+  fetched once by `scripts/fetch_map_tiles.py` (see `maptiles/manifest.json`).
+  Add `maptiles/` to the app bundle (Xcode target resources on iOS,
+  `android/app/src/main/assets/` on Android — see `../TESTFLIGHT.md`).
+  Map data © OpenStreetMap contributors; the map shows the attribution.
 - `src/screens/` — Talk (peer list, public channel, 1:1, "no one nearby"),
-  Locate (offline map, own position, Share location, received pins, and the
-  no-fix / permission-denied / map-not-downloaded states), Ask (suggested
-  questions, free text, optional loc: attachment, four states with Retry, AI
-  answer label).
+  Locate (navigable offline map: pan/pinch zoom clamped to the bundled z11–z16
+  pyramid, on-map +/− zoom and center-on-me buttons, own position, Share
+  location, received pins, attribution, and the no-fix / permission-denied /
+  map-not-downloaded states), Ask (suggested questions, free text, optional
+  loc: attachment, four states with Retry, AI answer label).
 - `src/theme/tokens.ts` — calm palette, 56pt tap targets, high contrast,
   scalable text.
 - `__tests__/` — jest tests for the ask state machine, the loc: line round
@@ -44,12 +52,16 @@ this repo (see `PLAN.md` and `BLUEPRINT_1.md` at the repo root). iPhone only.
 ## Map dependency tradeoff
 
 Locate uses `react-native-maps` with a `LocalTile` source for the bundled
-London tiles: one dependency, and it gives the user-location marker and
-overlays on Apple Maps for free. The tradeoff vs maplibre + PMTiles is that
-PMTiles packs a whole offline region into one compact file and renders fully
-custom styles, which scales better for larger areas; react-native-maps needs a
-per-tile directory in the bundle. For the London demo region the simpler
-dependency wins; switching later only touches `LocateScreen`.
+London tiles (`maptiles/london/{z}/{x}/{y}.jpg`, standard OSM raster tiles
+fetched by `scripts/fetch_map_tiles.py`): one dependency, and it gives the
+user-location marker and overlays on Apple Maps for free. The tradeoff vs
+maplibre + PMTiles is that PMTiles packs a whole offline region into one
+compact file and renders fully custom styles, which scales better for larger
+areas; react-native-maps needs a per-tile directory in the bundle. For the
+London demo region the simpler dependency wins; switching later only touches
+`LocateScreen` + `tiles.ts`. To re-fetch or extend the tiles:
+`python3 scripts/fetch_map_tiles.py` (idempotent; throttled, with a proper
+User-Agent — do not bulk-download large areas from tile.openstreetmap.org).
 
 ## Connecting the real backend
 
@@ -81,7 +93,6 @@ already done and what is still missing (the Xcode project shell).
   ready-made seam for it.
 - Real satellite positioning and permission flow (a simulated stand-in is in
   `src/locate/usePosition.ts`).
-- The actual London tile download.
 - React Navigation — tabs are plain state to keep dependencies minimal.
 
 ## Commands
