@@ -457,6 +457,7 @@ footer { padding: 48px 0 64px; color: var(--ink-2); font-size: 15px; }
 </main>
 <footer class="wrap">Built from the tokens in <a href="system.html">system.html</a>. Rules in <a href="PRINCIPLES.md">PRINCIPLES.md</a>. Fictional places and times.</footer>
 
+<script src="transport.js"></script>
 <script>
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const $ = (s, el = document) => el.querySelector(s);
@@ -688,6 +689,51 @@ function sendFamily(text, box) {
   queue($('.dv', box), LBL.fam);
 }
 
+/* ---------- Transport hookup — ?transport=hub (default ?transport=sim keeps the demo below) ----------
+   With ?transport=hub, sendQuestion goes through TransportKit (design/transport.js →
+   HubTransport, CONTRACT.md §3) and the delivery component walks the four Ask states:
+   Sending → Delivered → Answered, or Not sent yet (+ Retry) after 30 s without an ack. */
+const HUB = (typeof TransportKit !== 'undefined') ? TransportKit.createTransport() : null;
+const HUBON = !!(HUB && HUB.kind === 'hub');
+const hubNodes = new Map();
+const escHtml = s => { const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; };
+function sendQuestionHub(text) {
+  text = (text || '').trim() || 'Where can I charge my phone?';
+  const id = HUB.send({ type: 'ask', text, loc: null });
+  const box = document.createElement('div');
+  box.innerHTML = messageHTML(text);
+  box.firstChild.classList.add('arrive');
+  thread.appendChild(box);
+  hubNodes.set(id, { dv: $('.dv', box), box, retryBtn: null });
+  toBottom();
+}
+if (HUBON) {
+  HUB.onAskState((id, state) => {
+    const n = hubNodes.get(id);
+    if (!n) return;
+    if (n.retryBtn) { n.retryBtn.remove(); n.retryBtn = null; }
+    if (state === 'sent') setDv(n.dv, 1, LBL.q[0]);
+    else if (state === 'received') setDv(n.dv, 2, LBL.q[1], 'ok');
+    else if (state === 'answered') setDv(n.dv, 3, LBL.q[2], 'ok');
+    else if (state === 'unreachable') {
+      setWaiting(n.dv);
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'btn line sm'; b.textContent = 'Retry';
+      b.addEventListener('click', () => HUB.retry(id));
+      n.retryBtn = b; n.dv.appendChild(b);
+    }
+  });
+  HUB.onMessage(m => {
+    if (m.type !== 'answer' && m.type !== 'error') return;
+    const n = hubNodes.get(m.ask_id);
+    if (!n) return;
+    const txt = m.type === 'answer' ? TransportKit.stripDisclaimer(m.text) : (m.error || 'Something went wrong.');
+    n.box.insertAdjacentHTML('beforeend',
+      `<div class="reply arrive"><p>${escHtml(txt).replace(/\n/g, '<br>')}</p><p class="src">AI answer. Not verified emergency advice.</p></div>`);
+    toBottom();
+  });
+}
+
 /* Questions: answered from what the server knows, labelled as a computer answer */
 const REPLIES = [
   [/charg|battery|power/i, 'Southwark Library, 450 m away. It has power. Bring your own cable. Open until 6pm.', COUNCIL + ', 2:40pm'],
@@ -697,6 +743,7 @@ const REPLIES = [
 ];
 const toBottom = () => requestAnimationFrame(() => scroller.scrollTo({ top: scroller.scrollHeight, behavior: RM ? 'auto' : 'smooth' }));
 function sendQuestion(text) {
+  if (HUBON) return sendQuestionHub(text); /* ?transport=hub: send through the transport */
   text = (text || '').trim() || 'Where can I charge my phone?';
   const box = document.createElement('div');
   box.innerHTML = messageHTML(text); box.firstChild.classList.add('arrive');

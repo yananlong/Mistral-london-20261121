@@ -428,6 +428,7 @@ button { font: inherit; color: inherit; }
   </section>
 </main>
 
+<script src="transport.js"></script>
 <script>
 (function () {
   const screen = document.getElementById('screen');
@@ -484,6 +485,7 @@ button { font: inherit; color: inherit; }
   }
 
   function ask(q, text) {
+    if (HUB) return hubAsk(text); /* ?transport=hub: send through the transport, not the scripted timers */
     const m = add(`<div class="turn me"><div class="who">You</div><div class="bub"></div></div>`);
     m.querySelector('.bub').textContent = text;
     const t = add(`<div class="typing" aria-label="Answering"><i></i><i></i><i></i></div>`);
@@ -575,6 +577,89 @@ button { font: inherit; color: inherit; }
     if (!v) return; i.value = ''; ask(route(v), v);
   });
   document.getElementById('reset').addEventListener('click', () => { timers.forEach(clearTimeout); timers = []; screen.innerHTML = ''; closeMap(); home(); });
+
+  /* ===================== Transport hookup — ?transport=hub =====================
+     The default ?transport=sim leaves the scripted demo above exactly as it was.
+     With ?transport=hub (optionally &hub=http://<hub>:8787) questions go through
+     TransportKit (design/transport.js → HubTransport, CONTRACT.md §3). Each question
+     renders the four Ask states as .pill components (icon + word + colour):
+     Sent → Received → Answered, or Not getting through after 30 s with Retry.
+     Received talk messages render as bubbles; received loc messages drop a pin
+     on the map SVG in the sheet. Location is attached only when the switch is on. */
+  const DEMO_LOC = '51.50070,-0.12460';
+  let HUB = null;
+  const askNodes = new Map();
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  function hubAsk(text) {
+    const loc = HUB.loc ? (HUB.pos || DEMO_LOC) : null; /* opted-in only (F3); demo coordinate until a fix arrives */
+    const id = HUB.t.send({ type: 'ask', text, loc });
+    const turn = add(`<div class="turn me"><div class="who">You</div><div class="bub"></div><div class="astate" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"></div></div>`);
+    turn.querySelector('.bub').textContent = text;
+    const typing = add(`<div class="typing" aria-label="Answering"><i></i><i></i><i></i></div>`);
+    askNodes.set(id, { turn, typing });
+  }
+
+  function setAskPill(id, kind, word, retry) {
+    const n = askNodes.get(id);
+    if (!n) return;
+    const box = n.turn.querySelector('.astate');
+    box.innerHTML = pill(kind, word) + (retry ? ' <button class="btn" type="button" style="min-height:44px">Retry</button>' : '');
+    const b = box.querySelector('button');
+    if (b) b.addEventListener('click', () => HUB.t.retry(id));
+  }
+
+  function addLocPin(loc, from) {
+    const svg = document.querySelector('.mapbox svg');
+    if (!svg) return;
+    const m = String(loc || '').match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
+    if (!m) return;
+    /* demo map sheet, viewBox 0 0 336 220: lon [-0.16,-0.09] → x, lat [51.49,51.52] → y */
+    const x = Math.max(10, Math.min(326, (parseFloat(m[2]) + 0.16) / 0.07 * 336));
+    const y = Math.max(10, Math.min(210, (51.52 - parseFloat(m[1])) / 0.03 * 220));
+    let g = svg.querySelector('g.locpins');
+    if (!g) { g = document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.setAttribute('class', 'locpins'); svg.appendChild(g); }
+    const pin = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    pin.setAttribute('transform', `translate(${x.toFixed(1)} ${y.toFixed(1)})`);
+    pin.innerHTML = `<title>${esc(from || 'Someone nearby')} shared ${esc(String(loc))}</title><circle r="12" fill="#000"/><circle r="8" fill="none" stroke="#fff" stroke-width="1.5"/><circle r="3.5" fill="#fff"/>`;
+    g.appendChild(pin);
+  }
+
+  (function initHub() {
+    if (typeof TransportKit === 'undefined') return;
+    const t = TransportKit.createTransport();
+    if (t.kind !== 'hub') return;
+    HUB = { t, loc: false, pos: null };
+    if (navigator.geolocation) navigator.geolocation.getCurrentPosition(p => { HUB.pos = p.coords.latitude + ',' + p.coords.longitude; }, () => {}, { timeout: 8000 });
+    const composer = document.getElementById('composer');
+    const sw = el(`<label class="switch" style="margin:0 16px 12px">Include my location<input type="checkbox" role="switch"></label>`);
+    composer.parentNode.insertBefore(sw, composer);
+    sw.querySelector('input').addEventListener('change', e => { HUB.loc = e.target.checked; });
+    t.onAskState((id, state) => {
+      if (!askNodes.has(id)) return;
+      if (state === 'sent') setAskPill(id, 'wait', 'Sent', false);
+      else if (state === 'received') setAskPill(id, 'wait', 'Received', false);
+      else if (state === 'answered') setAskPill(id, 'ok', 'Answered', false);
+      else if (state === 'unreachable') {
+        const n = askNodes.get(id);
+        if (n.typing) n.typing.remove();
+        setAskPill(id, 'sos', 'Not getting through', true);
+      }
+    });
+    t.onMessage(m => {
+      if (m.type === 'answer' || m.type === 'error') {
+        const n = askNodes.get(m.ask_id);
+        if (n && n.typing) n.typing.remove();
+        const txt = m.type === 'answer' ? TransportKit.stripDisclaimer(m.text) : (m.error || 'Something went wrong.');
+        add(hub(esc(txt).replace(/\n/g, '<br>'), '<b>Answer</b>', `<div class="ai">AI answer. Not verified emergency advice.</div>`));
+      } else if (m.type === 'talk') {
+        add(hub(esc(m.text), '<b>' + esc(m.from || 'Someone nearby') + '</b>'));
+      } else if (m.type === 'loc') {
+        addLocPin(m.loc, m.from);
+        add(hub('Shared a location — the pin is on the map.', '<b>' + esc(m.from || 'Someone nearby') + '</b>'));
+      }
+    });
+  })();
 
   home();
 })();
