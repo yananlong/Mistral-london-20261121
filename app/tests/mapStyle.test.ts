@@ -1,3 +1,4 @@
+import { validateStyleMin } from '@maplibre/maplibre-gl-style-spec';
 import { buildMapStyle, INITIAL_ZOOM, MAP_MAX_ZOOM, MAP_MIN_ZOOM } from '../src/map/mapStyle';
 import { tokens as t } from '../src/theme/tokens';
 
@@ -52,5 +53,9 @@ describe('buildMapStyle', () => {
   it('has a sane zoom range around the initial zoom', () => {
     expect(MAP_MIN_ZOOM).toBeLessThan(INITIAL_ZOOM);
     expect(INITIAL_ZOOM).toBeLessThan(MAP_MAX_ZOOM);
+  });
+
+  it('passes the official MapLibre style-spec validator', () => {
+    expect(validateStyleMin(style as unknown as Parameters<typeof validateStyleMin>[0])).toEqual([]);
   });
 });
