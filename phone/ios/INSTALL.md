@@ -3,8 +3,11 @@
 Install the patched BitChat from one Mac with Xcode over USB, and copy the model files into the app's
 Documents folder separately. Don't bundle the model into the app. Do every step that needs internet before the demo goes offline.
 
-Design: the on-device model lives inside the patched BitChat iOS app. Add MinistralKit and `llama.xcframework`
-(b12606) to its iOS target, as README.md section 1 describes. If the React Native app stays separate, the same steps apply to it.
+Design: the MVP phone app is the React Native app from BLUEPRINT_1.md. Add MinistralKit and `llama.xcframework`
+(b12606) to that app's iOS target, as README.md section 1 describes. The patched BitChat iOS app is built from the fork
+for its mesh code. Until the React Native app exists, it can host MinistralKit for the model benchmark (EngineBenchmark) only.
+
+`<APP_BUNDLE_ID>` below is the React Native app's bundle ID, or `chat.bitchat.<TEAM>` when using the BitChat benchmark host.
 
 ## 1. One-time setup per iPhone (needs internet, ~15 min per phone)
 
@@ -23,13 +26,13 @@ Design: the on-device model lives inside the patched BitChat iOS app. Add Minist
 git submodule update --init bitchat
 cd bitchat && cp Configs/Local.xcconfig.example Configs/Local.xcconfig
 # set DEVELOPMENT_TEAM = <your team ID>
-# bundle ID becomes chat.bitchat.<TEAM>; App Group becomes group.chat.bitchat.<TEAM>
+# BitChat's bundle ID becomes chat.bitchat.<TEAM> (this is <APP_BUNDLE_ID> for the benchmark host); App Group becomes group.chat.bitchat.<TEAM>
 ```
 - Add MinistralKit as a local package, and add the two Info.plist keys from README.md section 2
   (`UIFileSharingEnabled`, `LSSupportsOpeningDocumentsInPlace`) to `bitchat/Info.plist`.
 - Run the scheme "bitchat (iOS)" on each phone.
 - A free Apple ID (Personal Team) works with limits: the profile lasts 7 days, and each device holds at most
-  3 free-provisioned apps.
+  3 free-provisioned apps. The React Native app, BitChat and any extension (such as the share extension) each count toward that limit.
 - App Groups are the likely snag. BitChat's app and its share extension both use `$(APP_GROUP_ID)`
   (`bitchat/bitchat.entitlements`, `bitchatShareExtension/bitchatShareExtension.entitlements`). Forum reports suggest
   personal teams may not support App Groups; this is not confirmed by Apple docs. If signing fails on App Groups, choose one:
@@ -43,20 +46,29 @@ cd bitchat && cp Configs/Local.xcconfig.example Configs/Local.xcconfig
 
 ## 3. Copy the model files onto each phone
 
-1. On the Mac, download and verify the pair once with `scripts/check_model_pair.sh`: Q4_K_M plus the Q8_0 mmproj, ~2.6 GB total.
-2. Copy each file into Documents over USB (~1-2 min per phone):
+The model list is [models.json](models.json). A 12 GB phone (17 Pro, Pro Max, Air, 18 Pro) gets Q4_K_M plus the Q8_0
+projector (~2.6 GB). An 8 GB phone (17, 17e) also gets Q3_K_M (~4.4 GB) for the `tight` and `textOnly` tiers.
+
+1. On the Mac, download and verify the files once (SHA-256 checked, resumable):
    ```bash
-   cd models   # MODEL_DIR used by check_model_pair.sh
-   for f in Ministral-3-3B-Instruct-2512-Q4_K_M.gguf mmproj-Ministral-3-3B-Instruct-2512-Q8_0.gguf; do
-     xcrun devicectl device copy to --device <UDID> \
-       --domain-type appDataContainer --domain-identifier chat.bitchat.<TEAM> \
-       --user mobile --source "$f" --destination "Documents/$f"
-   done
+   scripts/fetch_ios_models.sh all ./models
    ```
-   `devicectl` doesn't copy directories, so loop over the golden photos and `cases.json` from `phone/test/golden/` into
-   `Documents/golden/` the same way. `--user mobile` comes from forum posts and is unconfirmed; if it errors, try omitting
-   it or using `--user root`. Fallback: Finder > the iPhone > Files tab, then drag the files onto the app.
-3. The files survive rebuilds as long as you don't delete the app or change the team or bundle ID.
+2. Copy models, the phone data bundle (`datasets/phone/`, ~0.9 GB, every file in its `manifest.json`) and the golden
+   test set into Documents over USB:
+   ```bash
+   xcrun devicectl list devices                                  # find the UDID
+   scripts/push_ios.sh <UDID> <APP_BUNDLE_ID> 12GB ./models      # or 8GB
+   scripts/push_ios.sh <UDID> <APP_BUNDLE_ID> 12GB ./models data # only re-push one part: models, data or golden
+   ```
+   `devicectl` doesn't copy directories, so the script copies one file at a time. `--user mobile` comes from forum posts
+   and is unconfirmed; if it errors, rerun with `DEVICECTL_USER=` (omit it) or `DEVICECTL_USER=root`. Also unconfirmed:
+   whether `devicectl` creates the `datasets/...` subfolders; if it doesn't, use the fallback.
+   Fallback: Finder > the iPhone > Files tab, then drag the files (and the `datasets` folder) onto the app.
+3. Before going offline, on each phone: enable Dictation (Settings > General > Keyboard) so iOS downloads the en-GB
+   on-device speech model, and download an Enhanced en-GB voice (Settings > Accessibility > Spoken Content > Voices).
+4. At launch the app calls `OfflineBundle.selectProfile()` and `OfflineBundle.verifyDatasets()` (README section 4);
+   both report missing or half-copied files.
+5. The files survive rebuilds as long as you don't delete the app or change the team or bundle ID.
 
 ## Skip
 

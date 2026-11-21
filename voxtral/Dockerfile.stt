@@ -1,0 +1,5 @@
+# vLLM 0.33 built on CUDA 13.0 (matches the GB10's driver 580; the NGC 26.05 image
+# uses CUDA 13.2 forward-compat, where cuFFT fails and the audio encoder crashes).
+FROM vllm/vllm-openai:v0.33.0-aarch64
+RUN uv pip install --system --no-cache "mistral-common[soundfile]" soxr librosa soundfile \
+ || pip install --no-cache-dir "mistral-common[soundfile]" soxr librosa soundfile

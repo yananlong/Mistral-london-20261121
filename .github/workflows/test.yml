@@ -1,0 +1,58 @@
+name: test
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  hub:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: hub responder unit + contract tests
+        run: |
+          cd hub
+          python3 -m unittest discover -s . -v
+
+  compare-selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: compare_device_runs.py self-test
+        run: python3 phone/test/selftest_compare.py
+
+  phone-app:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: phone/app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: install, typecheck, test
+        run: |
+          npm ci --no-audit --no-fund
+          npx tsc --noEmit
+          npm test
+
+  protocol-scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: phone<->hub protocol string check
+        run: bash scripts/check_phone_hub_protocol.sh
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: loc: line compatibility check
+        run: python3 scripts/check_loc_line_compat.py

@@ -1,0 +1,845 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Status Components</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;600&display=swap">
+<!-- Icons: Google Material Symbols, Rounded, filled (Apache 2.0). Only the icons used here are loaded. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,500,1,0&icon_names=arrow_upward,battery_charging_full,bluetooth,bluetooth_disabled,check,check_circle,close,expand_more,family_restroom,help,local_drink,location_on,medical_services,night_shelter,pause,person,play_arrow,power_off,replay,restaurant,schedule,signal_cellular_off,sos,warning&display=block">
+<style>
+/* ============ Tokens: the same as system.html ============ */
+:root {
+  --font: "Atkinson Hyperlegible Next", -apple-system, BlinkMacSystemFont, Roboto, Arial, sans-serif;
+
+  --ink: #FFFFFF; --ink-2: #9A9A9F; --on-ink: #000000;
+  --surface: #000000; --surface-2: #1C1C1E;
+  --line: #2C2C2E; --line-strong: #8E8E93;
+
+  --red: #FF6159; --red-fill: #D7000F; --on-fill: #FFFFFF; --red-tint: #3A0A0C;
+  --yellow: #FFD100;
+  --green: #30D158;
+
+  /* Friendly, not sharp: tags 4, small things 8, cards and buttons 12, sheets 16 */
+  --r-xs: 4px; --r-s: 8px; --r-m: 12px; --r-l: 16px;
+
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --t-press: 150ms; --t-change: 200ms; --t-sheet: 300ms;
+
+  --grid: rgba(215, 0, 15, .32);
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--surface); color: var(--ink); font-family: var(--font); font-size: 17px; line-height: 24px; -webkit-font-smoothing: antialiased; }
+h1, h2, h3, p, ol, ul { margin: 0; }
+ol, ul { padding: 0; list-style: none; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: inherit; }
+:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+a { color: inherit; text-underline-offset: 3px; }
+
+/* Icon font. Fixed width, so a missing font never spills its ligature name. */
+.i { font-family: "Material Symbols Rounded"; font-weight: normal; font-style: normal; font-size: 24px; line-height: 1; letter-spacing: normal; text-transform: none; white-space: nowrap; direction: ltr; font-feature-settings: "liga" 1; display: inline-block; width: 1em; height: 1em; overflow: hidden; flex: none; user-select: none; }
+.s16 { font-size: 16px; } .s20 { font-size: 20px; } .s32 { font-size: 32px; }
+
+/* ============ Page ============ */
+.wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+header.top { position: relative; isolation: isolate; border-bottom: 1px solid var(--line); }
+header.top::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  -webkit-mask-image: linear-gradient(#000, transparent 420px); mask-image: linear-gradient(#000, transparent 420px);
+  background-image: linear-gradient(90deg, var(--grid) 1px, transparent 1px), linear-gradient(0deg, var(--grid) 1px, transparent 1px);
+  background-size: calc(100% / 12) 100%, 100% 64px;
+}
+header.top .wrap { padding-top: 24px; padding-bottom: 72px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 24px; font-size: 15px; color: var(--ink-2); }
+.meta b { color: var(--ink); font-weight: 600; }
+.hero { display: grid; grid-template-columns: minmax(0, 1fr) 375px; gap: 72px; margin-top: 88px; align-items: start; }
+.hero h1 { font-size: clamp(40px, 5.6vw, 76px); line-height: 1.02; font-weight: 600; letter-spacing: -0.01em; }
+.lede { margin-top: 28px; max-width: 32rem; font-size: 20px; line-height: 28px; }
+.lede + .lede { margin-top: 12px; color: var(--ink-2); font-size: 17px; line-height: 24px; }
+@media (max-width: 920px) {
+  .hero { grid-template-columns: 1fr; gap: 0; }
+  .hero > div:first-child { display: contents; }
+  .phone-col { order: 1; margin-top: 40px; justify-self: center; width: 100%; max-width: 375px; }
+  .ctl { order: 2; }
+}
+
+section.part { padding: 96px 0; border-bottom: 1px solid var(--line); }
+.part-head { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 48px; align-items: end; }
+.part-head h2 { font-size: clamp(34px, 4.6vw, 52px); line-height: 1.04; font-weight: 600; letter-spacing: -0.01em; }
+.part-head p { color: var(--ink-2); max-width: 32rem; }
+@media (max-width: 860px) { .part-head { grid-template-columns: 1fr; } }
+.lbl { font-size: 15px; line-height: 20px; font-weight: 600; margin-bottom: 16px; }
+.note { font-size: 15px; line-height: 20px; color: var(--ink-2); }
+
+/* Buttons and toggles */
+.seg { display: flex; flex-wrap: wrap; gap: 8px; }
+.tog { min-height: 44px; padding: 0 16px; border-radius: var(--r-m); border: 1px solid var(--line); font-size: 15px; line-height: 20px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; transition: background-color var(--t-press) var(--ease), color var(--t-press) var(--ease), border-color var(--t-press) var(--ease); }
+.tog:hover { border-color: var(--line-strong); }
+.tog[aria-pressed="true"] { background: var(--ink); color: var(--on-ink); border-color: var(--ink); }
+.btn { min-height: 48px; padding: 0 18px; border-radius: var(--r-m); background: var(--ink); color: var(--on-ink); font-size: 15px; line-height: 20px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: transform var(--t-press) var(--ease); }
+.btn.line { background: none; color: var(--ink); border: 1px solid var(--line-strong); }
+.btn.sm { min-height: 44px; padding: 0 14px; }
+.btn.red { background: var(--red-fill); color: var(--on-fill); }
+.btn:active, .tog:active, .topic:active, .send:active { transform: scale(.97); }
+
+.ctl { margin-top: 48px; display: grid; gap: 24px; max-width: 36rem; }
+.ctl h3 { font-size: 13px; line-height: 16px; font-weight: 600; color: var(--ink-2); margin-bottom: 10px; }
+.story { border: 1px solid var(--line); border-radius: var(--r-l); padding: 16px; }
+.story-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 4px 4px 0; }
+.story-head p { font-weight: 600; }
+.steps { margin-top: 12px; display: grid; gap: 2px; counter-reset: s; }
+.steps button { position: relative; overflow: hidden; width: 100%; display: grid; grid-template-columns: 24px 1fr; gap: 12px; align-items: start; padding: 10px 12px; border-radius: var(--r-s); color: var(--ink-2); font-size: 15px; line-height: 20px; transition: background-color var(--t-change) var(--ease), color var(--t-change) var(--ease); }
+.steps button::before { counter-increment: s; content: counter(s); font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.steps button:hover { color: var(--ink); }
+.steps button.on { background: var(--surface-2); color: var(--ink); }
+.prog { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--ink); transform: scaleX(0); transform-origin: left; }
+.steps button.on.run .prog { animation: prog var(--d) linear forwards; }
+@keyframes prog { to { transform: scaleX(1); } }
+
+/* ============ The phone ============ */
+.phone { width: 100%; max-width: 375px; height: 780px; border-radius: 48px; background: var(--surface); box-shadow: 0 0 0 10px var(--surface-2); position: relative; overflow: hidden; display: flex; flex-direction: column; }
+.sb { height: 64px; flex: none; display: flex; justify-content: space-between; align-items: center; padding: 6px 26px 0; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.scroll { flex: 1; overflow-y: auto; padding: 8px 20px 24px; scrollbar-width: none; overscroll-behavior: contain; }
+.scroll::-webkit-scrollbar { display: none; }
+.dock { flex: none; padding: 8px 12px 28px; display: grid; gap: 8px; background: var(--surface); border-top: 1px solid var(--line); }
+
+/* ============ Components ============ */
+
+/* Status: a coloured icon and a plain word. No badge, no fill. */
+.status { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; line-height: 20px; font-weight: 600; color: var(--ink); }
+.status .i { font-size: 20px; }
+.status.wait .i { color: var(--yellow); }
+.status.done .i { color: var(--green); }
+
+/* Notice: only when the person has to know something. Otherwise nothing is shown. */
+/* In the phone it sits right above the question box, where people look when they send */
+#notice:empty { display: none; }
+.ntc { border: 1px solid var(--line); border-radius: var(--r-m); padding: 12px; background: var(--surface); }
+.ntc-top { display: grid; grid-template-columns: 24px 1fr; gap: 12px; align-items: start; }
+.ntc-top > .i { color: var(--yellow); }
+.ntc b { display: block; font-weight: 600; }
+.ntc p { margin-top: 2px; font-size: 15px; line-height: 20px; color: var(--ink-2); }
+.ntc .btn { margin-top: 12px; width: 100%; min-height: 44px; }
+.how { margin-top: 8px; border-top: 1px solid var(--line); }
+.how summary { min-height: 40px !important; }
+.how summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 15px; line-height: 20px; font-weight: 600; color: var(--ink-2); }
+.how summary::-webkit-details-marker { display: none; }
+.how summary .chev { margin-left: auto; transition: transform var(--t-change) var(--ease); }
+.how[open] summary .chev { transform: rotate(180deg); }
+.how p { font-size: 15px; line-height: 20px; color: var(--ink-2); padding-bottom: 6px; }
+
+/* Briefing: what's going on */
+.place { display: flex; align-items: center; gap: 8px; color: var(--ink-2); font-size: 15px; line-height: 20px; font-weight: 600; }
+.place .i { font-size: 20px; color: var(--ink); }
+.place .i.done { color: var(--green); }
+.display { margin-top: 10px; font-size: 44px; line-height: 46px; font-weight: 600; letter-spacing: -0.01em; }
+.sub { margin-top: 2px; font-size: 28px; line-height: 32px; font-weight: 600; color: var(--ink-2); }
+.qa { margin-top: 28px; border-top: 1px solid var(--line); }
+.row { padding: 12px 0 14px; border-bottom: 1px solid var(--line); }
+.row .q { font-size: 15px; line-height: 20px; font-weight: 600; color: var(--ink-2); margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+.row .src { margin-top: 2px; font-size: 13px; line-height: 18px; color: var(--ink-2); }
+.new { font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink); border: 1px solid var(--line-strong); border-radius: var(--r-xs); padding: 0 5px; }
+
+/* What you can find: icon first, so it works with little English */
+.find-h { margin-top: 32px; }
+.find-h h3 { font-size: 22px; line-height: 28px; font-weight: 600; }
+.topics { margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.topic { border: 1px solid var(--line); border-radius: var(--r-m); padding: 12px; display: grid; gap: 6px; align-content: start; min-height: 104px; transition: border-color var(--t-press) var(--ease), transform var(--t-press) var(--ease); }
+.topic:hover { border-color: var(--line-strong); }
+.topic > .i { font-size: 32px; }
+.topic b { font-weight: 600; line-height: 22px; }
+.av { font-size: 13px; line-height: 18px; color: var(--ink-2); display: flex; align-items: center; gap: 4px; }
+.av .i { font-size: 16px; }
+.av.has { color: var(--ink); }
+.av.has .i { color: var(--green); }
+.av.wait .i { color: var(--yellow); }
+
+/* Sheet: one topic at a time */
+.scrim { position: absolute; inset: 0; background: rgba(0, 0, 0, .7); opacity: 0; pointer-events: none; transition: opacity var(--t-sheet) var(--ease); z-index: 4; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: 86%; overflow-y: auto; background: var(--surface); border-top: 1px solid var(--line-strong); border-radius: var(--r-l) var(--r-l) 0 0; padding: 12px 20px 32px; transform: translateY(102%); transition: transform var(--t-sheet) var(--ease); z-index: 5; scrollbar-width: none; }
+.phone.sheet-open .scrim { opacity: 1; pointer-events: auto; }
+.phone.sheet-open .sheet { transform: none; }
+.sh-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.sh-h { margin-top: 12px; font-size: 28px; line-height: 32px; font-weight: 600; }
+.plist { margin-top: 12px; }
+.pl { padding: 14px 0; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 24px 1fr; gap: 10px; }
+.pl > .i { margin-top: 2px; }
+.pl b { font-weight: 600; display: block; }
+.pl .d { font-weight: 600; color: var(--ink-2); font-size: 15px; line-height: 20px; }
+.pl p { margin-top: 4px; }
+.pl .src { margin-top: 4px; font-size: 13px; line-height: 18px; color: var(--ink-2); }
+.empty { margin-top: 16px; display: grid; gap: 8px; justify-items: start; }
+.empty p { color: var(--ink-2); }
+.contact { margin-top: 16px; display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: var(--r-m); }
+.contact .av2 { width: 40px; height: 40px; border-radius: var(--r-s); background: var(--surface-2); display: grid; place-items: center; }
+.contact b { font-weight: 600; display: block; }
+.contact div > span { font-size: 13px; line-height: 18px; color: var(--ink-2); }
+.acts { margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.guide { display: flex; align-items: center; gap: 12px; min-height: 56px; border-bottom: 1px solid var(--line); font-weight: 600; width: 100%; }
+.guide .i:last-child { margin-left: auto; color: var(--ink-2); }
+
+/* Messages and what happened to them */
+.me { margin-top: 20px; display: grid; justify-items: end; gap: 8px; }
+.me .b { max-width: 85%; background: var(--ink); color: var(--on-ink); padding: 10px 14px; border-radius: var(--r-m) var(--r-m) var(--r-xs) var(--r-m); }
+.dv { width: 200px; display: grid; gap: 6px; }
+.bar3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.bar3 i { height: 4px; border-radius: 2px; background: var(--line); transition: background-color var(--t-change) var(--ease); }
+.bar3 i.on { background: var(--green); }
+.dst { font-size: 13px; line-height: 18px; color: var(--ink-2); text-align: right; display: flex; justify-content: flex-end; align-items: center; gap: 4px; }
+.dst .i { font-size: 16px; }
+.dst.ok { color: var(--ink); } .dst.ok .i { color: var(--green); }
+.dst.wait { color: var(--ink); } .dst.wait .i { color: var(--yellow); }
+.reply { margin-top: 12px; max-width: 88%; background: var(--surface-2); padding: 10px 14px; border-radius: var(--r-m) var(--r-m) var(--r-m) var(--r-xs); }
+.reply .src { margin-top: 4px; font-size: 13px; line-height: 18px; color: var(--ink-2); }
+
+/* SOS: pinned, never scrolls away */
+.sosbar { border: 1px solid #5A1A1C; background: var(--red-tint); border-radius: var(--r-m); padding: 8px 8px 8px 12px; }
+.sosbar .line { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+.sosbar .line > .i { color: var(--red); font-size: 22px; }
+.sosbar .line > .i.y { color: var(--yellow); }
+.sosbar .line > .i.g { color: var(--green); }
+.sosbar p { flex: 1; font-size: 15px; line-height: 20px; font-weight: 600; }
+.sosbar .h { font-size: 22px; line-height: 28px; }
+.sosbar .t { margin-top: 2px; font-weight: 400; }
+.sosbar .acts { grid-template-columns: 1fr auto; }
+.sosbar.big { padding: 14px; }
+.sosbar .btn.red { min-width: 76px; }
+.ask { display: flex; align-items: center; gap: 8px; height: 52px; border-radius: var(--r-m); border: 1px solid var(--line-strong); padding: 0 6px 0 16px; }
+.ask input { flex: 1; min-width: 0; background: none; border: 0; color: var(--ink); font: inherit; outline: none; }
+.ask input::placeholder { color: var(--ink-2); opacity: 1; }
+.ask:focus-within { border-color: var(--ink); }
+.send { width: 40px; height: 40px; border-radius: var(--r-s); background: var(--ink); color: var(--on-ink); display: grid; place-items: center; transition: transform var(--t-press) var(--ease); }
+
+/* ============ Motion: short, only for real changes. Nothing loops. ============ */
+.arrive { animation: arrive 220ms var(--ease) both; }
+@keyframes arrive { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+
+/* ============ Gallery sections ============ */
+.grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.gridf { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 16px; }
+@media (max-width: 1100px) { .grid4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .grid4, .grid3 { grid-template-columns: 1fr; } }
+.col { display: grid; gap: 12px; align-content: start; }
+.col .cap { font-size: 15px; line-height: 20px; color: var(--ink-2); }
+.col .cap b { color: var(--ink); font-weight: 600; display: block; }
+.panel { border: 1px solid var(--line); border-radius: var(--r-l); padding: 20px; }
+.panel.tight { padding: 16px; }
+.panel.msg { padding: 0 16px 16px; }
+.panel.blank { min-height: 100%; display: grid; align-content: end; padding: 12px; }
+.answers .panel { display: grid; gap: 10px; align-content: start; justify-items: start; }
+.answers .row { border: 0; padding: 0; }
+.legend > div { display: grid; grid-template-columns: 150px 1fr; gap: 16px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.legend p { color: var(--ink-2); font-size: 15px; line-height: 20px; }
+@media (max-width: 600px) { .legend > div { grid-template-columns: 1fr; gap: 4px; } }
+
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 16px; }
+.tile { border: 1px solid var(--line); border-radius: var(--r-m); padding: 16px; display: grid; grid-template-rows: 150px auto 1fr auto; gap: 10px; }
+.stage { display: grid; place-items: center; border-radius: var(--r-s); background: var(--surface-2); padding: 16px; overflow: hidden; }
+.stage > * { width: 100%; }
+.stage .row { border: 0; padding: 0; }
+.stage .me { margin: 0; }
+.tile h3 { font-size: 17px; line-height: 24px; font-weight: 600; margin-top: 4px; }
+.tile > p { font-size: 15px; line-height: 20px; color: var(--ink-2); }
+.tile .tog { justify-self: start; min-height: 40px; }
+
+.icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 8px; }
+.ico { display: grid; grid-template-columns: 48px 1fr; gap: 12px; align-items: center; padding: 12px; border-radius: var(--r-m); border: 1px solid var(--line); }
+.ico .c { width: 48px; height: 48px; border-radius: var(--r-m); display: grid; place-items: center; background: var(--surface-2); }
+.ico .c.sos { color: var(--red); } .ico .c.wait { color: var(--yellow); } .ico .c.done { color: var(--green); }
+.ico b { display: block; font-size: 15px; line-height: 20px; font-weight: 600; }
+.ico div > span { display: block; overflow-wrap: anywhere; font-size: 13px; line-height: 18px; color: var(--ink-2); }
+
+.words { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; }
+@media (max-width: 860px) { .words { grid-template-columns: 1fr; } }
+.rules { counter-reset: r; }
+.rules li { display: grid; grid-template-columns: 32px 1fr; gap: 12px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.rules li::before { counter-increment: r; content: counter(r); font-weight: 600; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.rules b { font-weight: 600; }
+.rules span { color: var(--ink-2); }
+table.vocab { width: 100%; border-collapse: collapse; font-size: 17px; line-height: 24px; }
+.vocab th { text-align: left; font-size: 13px; line-height: 16px; font-weight: 600; color: var(--ink-2); padding: 0 0 12px; border-bottom: 1px solid var(--ink); }
+.vocab td { padding: 12px 16px 12px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+.vocab td:first-child { color: var(--ink-2); text-decoration: line-through; text-decoration-color: var(--line-strong); width: 50%; }
+.vocab td.none { color: var(--ink-2); }
+
+.decide { margin-top: 48px; display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; padding: 20px; border-radius: var(--r-m); border: 1px solid var(--line); background: var(--surface-2); }
+.decide .q { grid-column: 1 / -1; font-weight: 600; }
+.decide .k { color: var(--ink-2); font-size: 15px; }
+.decide .v { font-size: 15px; line-height: 22px; }
+@media (max-width: 600px) { .decide { grid-template-columns: 1fr; } .decide .k { margin-top: 6px; } }
+footer { padding: 48px 0 64px; color: var(--ink-2); font-size: 15px; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="meta"><b>Status components</b><span>Draft 6, just ask</span><span>21 November 2026</span><a href="system.html">Visual system</a></div>
+
+    <div class="hero">
+      <div>
+        <h1>What's going on? What can I find? Did my message get through?</h1>
+        <p class="lede">No phone signal, no internet, and 999 may not work. You open the app and ask. If an answer can come back, it does. If your message can't get through, the app says so and keeps trying.</p>
+        <p class="lede">Play the story, or set it yourself. Tap a topic, ask a question, or press SOS.</p>
+
+        <div class="ctl">
+          <div class="story">
+            <div class="story-head">
+              <p>The story, step by step</p>
+              <button class="btn sm" id="play" type="button"><span class="i s20" aria-hidden="true">play_arrow</span><span>Play</span></button>
+            </div>
+            <ol class="steps" id="steps"></ol>
+          </div>
+          <div>
+            <h3 id="h-conn">Messages</h3>
+            <div class="seg" role="group" aria-labelledby="h-conn" id="seg-conn"></div>
+          </div>
+          <div>
+            <h3 id="h-news">News</h3>
+            <div class="seg" role="group" aria-labelledby="h-news" id="seg-news"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="phone-col">
+        <div class="phone" id="phone" aria-label="Phone preview">
+          <div class="sb"><span>2:31</span><span>61%</span></div>
+          <div class="scroll" id="scroll">
+            <div id="pbrief"></div>
+            <div id="thread" aria-live="polite"></div>
+          </div>
+          <div class="dock">
+            <div id="notice" aria-live="polite"></div>
+            <div class="sosbar" id="psos" aria-live="assertive"></div>
+            <form class="ask" id="ask">
+              <input id="q" type="text" placeholder="Ask anything" aria-label="Ask anything" autocomplete="off">
+              <button class="send" type="submit" aria-label="Send"><span class="i s20" aria-hidden="true">arrow_upward</span></button>
+            </form>
+          </div>
+          <div class="scrim" id="scrim"></div>
+          <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="Topic"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="part">
+    <div class="part-head">
+      <h2>Did my message get through?</h2>
+      <p>People can't tell signal, internet and Bluetooth apart, and they don't need to. So the app never says online, connected, or how many people are near. It only says what happened to your message.</p>
+    </div>
+    <p class="lbl">Each message shows what happened to it</p>
+    <div class="grid4" id="msg-gallery"></div>
+    <p class="lbl" style="margin-top:56px">The rest of the time, the app shows nothing about it</p>
+    <div class="grid3" id="notice-gallery"></div>
+    <div class="decide">
+      <p class="q">Decide: what the app says about getting through</p>
+      <span class="k">Never say</span><span class="v">Online, offline, connected, signal, internet, network, people near you, hubs. No bars, no counts, no map of other phones.</span>
+      <span class="k">Why</span><span class="v">"Connected" makes people think they have internet. A count of people nearby gives them nothing to act on, and can feel like tracking. What they care about is whether their question got an answer.</span>
+      <span class="k">When to warn</span><span class="v">As soon as the app knows a message can't get through: straight away if Bluetooth finds no other phones, or when a message has had no reply for 2 minutes.</span>
+      <span class="k">Open</span><span class="v">When nothing gets through, should the app suggest going somewhere busier, such as a station or a high street? It is the one thing a person can do about it, but it hints at how the app works.</span>
+    </div>
+  </section>
+
+  <section class="part">
+    <div class="part-head">
+      <h2>What's going on?</h2>
+      <p>One big line, one fact under it, then three questions. Every answer is a fact with its source, or "Not known yet". No promises, no reassurance, no guessing.</p>
+    </div>
+    <p class="lbl">Every answer is one of three things</p>
+    <div class="grid3 answers" id="answers"></div>
+    <p class="lbl" style="margin-top:56px">Four briefings</p>
+    <div class="grid4" id="brief-gallery"></div>
+  </section>
+
+  <section class="part">
+    <div class="part-head">
+      <h2>What can I find?</h2>
+      <p>People often don't know what to ask. So the screen shows what information exists, as six topics with a picture each. The picture works even for someone who reads little English. Each tile also says whether there is anything to find yet.</p>
+    </div>
+    <div class="grid3">
+      <div class="col"><div class="panel tight"><div class="topics" id="topics-gallery" style="margin:0"></div></div><p class="cap"><b>Six topics</b>The things people need first: water, a charged phone, food, family, a warm place, first aid.</p></div>
+      <div class="col"><div class="panel tight" id="sheet-water"></div><p class="cap"><b>Tap a topic</b>The question becomes the title. Each place shows how far, what's there, and who said so.</p></div>
+      <div class="col"><div class="panel tight" id="sheet-family"></div><p class="cap"><b>Family</b>Two ready messages, so nobody has to type. Mum gets it as a normal text message.</p></div>
+    </div>
+    <p class="lbl" style="margin-top:56px">What the line under each topic means</p>
+    <div class="legend" id="legend"></div>
+    <div class="decide">
+      <p class="q">Decide: the six topics</p>
+      <span class="k">Proposed</span><span class="v">Water, Charge phone, Food, Family, Shelter, First aid. They match the basic needs that rest centres and relief guides plan for first, and each has a picture people already know from signs.</span>
+      <span class="k">Language</span><span class="v">The app uses the phone's language. Pictures come first and words second, so a topic is still clear to someone who reads little English. The answers can be in any language the server's model speaks.</span>
+    </div>
+  </section>
+
+  <section class="part">
+    <div class="part-head">
+      <h2>Can I get help?</h2>
+      <p>999 may not work, so the app never says it does. SOS sends a request for help with where you are, the same way questions travel. It asks once before sending, then says plainly whether it was delivered.</p>
+    </div>
+    <div class="gridf" id="sos-gallery"></div>
+    <div class="decide">
+      <p class="q">Decide: who gets an SOS?</p>
+      <span class="k">Proposed</span><span class="v">Emergency services, and the family you chose.</span>
+      <span class="k">Needs</span><span class="v">A real way to reach emergency services from the server. Until we have one, the bar says "your family", not "emergency services".</span>
+    </div>
+  </section>
+
+  <section class="part">
+    <div class="part-head">
+      <h2>Motion</h2>
+      <p>Short and plain: things fade in, bars fill, sheets slide. Motion only shows a real change, such as a message sent or news arriving. Nothing pulses, glows or loops.</p>
+    </div>
+    <div class="tiles" id="tiles"></div>
+  </section>
+
+  <section class="part">
+    <div class="part-head">
+      <h2>Icons</h2>
+      <p>Google's Material Symbols, Rounded and filled, free under the Apache 2.0 licence. The topic icons follow public signs: a glass for water, a battery for charging, a knife and fork for food. The iPhone build uses the matching SF Symbol, shown under each name.</p>
+    </div>
+    <div class="icons" id="icons"></div>
+  </section>
+
+  <section class="part">
+    <div class="part-head">
+      <h2>Words</h2>
+      <p>The test: read the screen aloud to a 9-year-old. If they ask what something means, or it sounds chatty, change it.</p>
+    </div>
+    <div class="words">
+      <ol class="rules">
+        <li><p><b>Talk about the message, not the connection.</b> <span>"Delivered", "Not sent yet". Never "online" or "connected".</span></p></li>
+        <li><p><b>State the fact.</b> <span>"Power is off. Since 2:20pm." Not "We're sorry, it seems…".</span></p></li>
+        <li><p><b>No promises.</b> <span>Not "We'll tell you as soon as we hear". Just "Not known yet".</span></p></li>
+        <li><p><b>Say only what people can use.</b> <span>No counts of phones or people, no technical words.</span></p></li>
+        <li><p><b>Short words, short lines.</b> <span>One idea per line.</span></p></li>
+        <li><p><b>Pictures first.</b> <span>For people who read little English.</span></p></li>
+        <li><p><b>Never promise what may not work.</b> <span>Not "999 still works". Offer SOS.</span></p></li>
+      </ol>
+      <table class="vocab">
+        <thead><tr><th>Instead of</th><th>Say</th></tr></thead>
+        <tbody>
+          <tr><td>Online. Connected.</td><td class="none">Nothing. Show what happened to the message.</td></tr>
+          <tr><td>3 people near you</td><td class="none">Nothing.</td></tr>
+          <tr><td>You're out of connection</td><td>Not getting through right now.</td></tr>
+          <tr><td>Queued. Waiting for a route.</td><td>Not sent yet. The app keeps trying.</td></tr>
+          <tr><td>Passed on by 2 people</td><td>Sending</td></tr>
+          <tr><td>Nobody knows why yet.</td><td>Why? Not known yet.</td></tr>
+          <tr><td>We'll tell you as soon as we hear.</td><td class="none">Nothing. Show it when it arrives.</td></tr>
+          <tr><td>Back by about 8pm. This is their best guess.</td><td>About 8pm. Not certain.</td></tr>
+          <tr><td>Call 999</td><td>SOS</td></tr>
+          <tr><td>20:00</td><td>8pm</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+<footer class="wrap">Built from the tokens in <a href="system.html">system.html</a>. Rules in <a href="PRINCIPLES.md">PRINCIPLES.md</a>. Fictional places and times.</footer>
+
+<script>
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = (s, el = document) => el.querySelector(s);
+const ic = (n, c = '') => `<span class="i ${c}" aria-hidden="true">${n}</span>`;
+const wait = ms => new Promise(r => setTimeout(r, RM ? 0 : ms));
+const stat = (tone, icon, word) => `<span class="status ${tone}">${ic(icon)}${word}</span>`;
+
+/* ---------- Content ---------- */
+/* Three states, from the person's side. "ok" shows nothing at all. */
+const CONN = {
+  off:   { name: 'Bluetooth off' },
+  ok:    { name: 'Getting through' },
+  stuck: { name: 'Not getting through' },
+};
+const HOW = `<details class="how"><summary>${ic('help', 's20')}How does this work?${ic('expand_more', 'chev s20')}</summary>
+  <p>This app works with no phone signal and no internet.</p>
+  <p>Your phone passes your message to other phones by Bluetooth, until one of them can get an answer.</p>
+  <p>Nobody can read your messages on the way.</p></details>`;
+function noticeHTML(conn, live) {
+  if (conn === 'off') return `<div class="ntc"><div class="ntc-top">${ic('bluetooth_disabled')}<div><b>Bluetooth is off</b><p>Turn it on to send questions. First aid works without it.</p></div></div>
+    ${live ? `<button type="button" class="btn" data-a="bt">${ic('bluetooth', 's20')}Turn on Bluetooth</button>` : `<span class="btn">${ic('bluetooth', 's20')}Turn on Bluetooth</span>`}</div>`;
+  if (conn === 'stuck') return `<div class="ntc"><div class="ntc-top">${ic('schedule')}<div><b>Not getting through right now</b><p>The app keeps trying. First aid and the news still work.</p></div></div>${HOW}</div>`;
+  return '';
+}
+
+const ORG = 'UK Power Networks';
+const UNK = {};
+const NEWS = {
+  none:  { name: 'Nothing yet', ev: 'signal_cellular_off', display: 'No phone signal.', sub: 'Since 2:05pm.', at: '2:05pm',
+           rows: [{ t: 'Calls, texts and internet stopped. 999 may not work.', s: 'From your phone, 2:05pm' }, UNK, UNK] },
+  some:  { name: 'Some known', ev: 'power_off', display: 'Power is off.', sub: 'Since 2:20pm.', at: '2:20pm',
+           rows: [{ t: 'No power in Southwark and north Lambeth.', s: `From ${ORG}, 2:20pm` }, UNK, UNK] },
+  all:   { name: 'All known', ev: 'power_off', display: 'Power is off.', sub: 'Back by about 8pm.', at: '2:46pm',
+           rows: [{ t: 'No power in Southwark and north Lambeth.', s: `From ${ORG}, 2:20pm` },
+                  { t: 'Broken power equipment in Bankside.', s: `From ${ORG}, 2:46pm` },
+                  { t: 'About 8pm. Not certain.', s: `From ${ORG}, 2:46pm` }] },
+  fixed: { name: 'Fixed', ev: 'check_circle', tone: 'done', display: 'Power is back.', sub: 'Since 7:40pm.', at: '7:40pm',
+           rows: [{ t: 'Power is back on everywhere.', s: `From ${ORG}, 7:40pm` },
+                  { t: 'Broken power equipment in Bankside.', s: `From ${ORG}, 2:46pm` },
+                  { t: 'Fixed at 7:40pm.', s: `From ${ORG}, 7:40pm` }] },
+};
+const QS = ['What happened?', 'Why?', 'When will it be fixed?'];
+const notKnown = stat('wait', 'schedule', 'Not known yet');
+const answerHTML = d => d.t ? `<p class="a">${d.t}</p><p class="src">${d.s}</p>` : notKnown;
+
+const COUNCIL = 'Southwark Council';
+const TOPICS = [
+  { k: 'water',    icon: 'local_drink',           label: 'Water',        q: 'Where can I get drinking water?' },
+  { k: 'charge',   icon: 'battery_charging_full', label: 'Charge phone', q: 'Where can I charge my phone?' },
+  { k: 'food',     icon: 'restaurant',            label: 'Food',         q: 'Where can I get food?' },
+  { k: 'family',   icon: 'family_restroom',       label: 'Family',       q: 'How can I reach my family?' },
+  { k: 'shelter',  icon: 'night_shelter',         label: 'Shelter',      q: 'Where can I stay warm and sleep?' },
+  { k: 'firstaid', icon: 'medical_services',      label: 'First aid',    q: 'Someone is hurt. What do I do?' },
+];
+const PLACES = {
+  water:   [{ n: 'Southwark Cathedral', d: '300 m, 4 min walk', t: 'Free bottled water. Open until 8pm.', s: `From ${COUNCIL}, 2:30pm` },
+            { n: 'Borough Market', d: '600 m, 8 min walk', t: 'Drinking water tap. Working.', s: `From ${COUNCIL}, 2:30pm` }],
+  charge:  [{ n: 'Southwark Library', d: '450 m, 6 min walk', t: 'Has power. Bring your own cable. Open until 6pm.', s: `From ${COUNCIL}, 2:40pm` }],
+  food:    [],
+  shelter: [{ n: 'Harper Road rest centre', d: '900 m, 12 min walk', t: 'Warm room, beds and hot drinks. Open all night.', s: `From ${COUNCIL}, 2:50pm` }],
+};
+/* What exists depends on how much news has arrived */
+function placesFor(k, news) {
+  if (news === 'none') return null;
+  if (k === 'charge' && news === 'some') return null;
+  const p = PLACES[k];
+  return p && p.length ? p : null;
+}
+function availability(k, news) {
+  if (k === 'firstaid') return { cls: 'has', html: `${ic('check')}On your phone` };
+  if (k === 'family') return { cls: '', html: `${ic('arrow_upward')}Send a message` };
+  const p = placesFor(k, news);
+  return p ? { cls: 'has', html: `${ic('check')}${p.length} ${p.length === 1 ? 'place' : 'places'}` } : { cls: 'wait', html: `${ic('schedule')}Nothing yet` };
+}
+
+/* ---------- Building blocks ---------- */
+function put(el, html, animate) {
+  if (el._h === html) return false;
+  el._h = html; el.innerHTML = html;
+  if (animate) { el.classList.remove('arrive'); void el.offsetWidth; el.classList.add('arrive'); }
+  return true;
+}
+function briefHTML() {
+  return `<div class="brief">
+    <div class="place"><span class="ev"></span><span class="pl-t"></span></div>
+    <h2 class="display"></h2><p class="sub"></p>
+    <div class="qa">${QS.map(q => `<div class="row"><p class="q"><span>${q}</span></p><div class="val"></div></div>`).join('')}</div>
+  </div>`;
+}
+function setBrief(el, key, animate) {
+  const n = NEWS[key];
+  put($('.ev', el), ic(n.ev, n.tone || ''), animate);
+  put($('.pl-t', el), `Southwark, updated ${n.at}`, animate);
+  put($('.display', el), n.display, animate);
+  put($('.sub', el), n.sub, animate);
+  el.querySelectorAll('.new').forEach(x => x.remove());
+  el.querySelectorAll('.row').forEach((r, i) => {
+    const was = $('.val', r)._h;
+    if (put($('.val', r), answerHTML(n.rows[i]), animate) && animate && n.rows[i].t && was === notKnown) $('.q', r).insertAdjacentHTML('beforeend', '<span class="new">New</span>');
+  });
+}
+function topicsHTML(news, live) {
+  return TOPICS.map(t => {
+    const a = availability(t.k, news);
+    const inner = `${ic(t.icon)}<b>${t.label}</b><span class="av ${a.cls}">${a.html}</span>`;
+    return live ? `<button type="button" class="topic" data-k="${t.k}">${inner}</button>` : `<div class="topic">${inner}</div>`;
+  }).join('');
+}
+
+/* Sheet bodies, one per topic */
+function sheetBody(k, news, live) {
+  const t = TOPICS.find(x => x.k === k);
+  const top = `<div class="sh-top">${ic(t.icon, 's32')}${live ? `<button type="button" class="btn line sm" data-a="close">${ic('close', 's20')}Close</button>` : ''}</div><h3 class="sh-h">${t.q}</h3>`;
+  if (k === 'firstaid') return top + `<div class="plist">${['Bleeding', 'Not breathing', 'Burns', 'Broken bone', 'Very cold'].map(g => `<div class="guide">${ic('medical_services', 's20')}${g}${ic('expand_more', 's20')}</div>`).join('')}</div><p class="note" style="margin-top:12px">These guides are on your phone. They always work.</p>`;
+  if (k === 'family') {
+    const btn = (a, cls, txt) => live ? `<button type="button" class="btn ${cls}" data-a="${a}">${txt}</button>` : `<span class="btn ${cls}">${txt}</span>`;
+    return top + `<div class="contact"><span class="av2">${ic('person')}</span><div><b>Mum</b><span>Gets it as a text message, 07700 900123</span></div></div>
+      <div class="acts">${btn('safe', '', "I'm OK")}${btn('help', 'line', 'I need help')}</div>
+      <div class="fam"></div>`;
+  }
+  const p = placesFor(k, news);
+  if (!p) return top + `<div class="empty">${notKnown}<p>Nobody has shared this yet.</p>${live ? `<button type="button" class="btn line sm" data-a="ask" data-q="${t.q}">${ic('arrow_upward', 's20')}Ask anyway</button>` : ''}</div>`;
+  return top + `<div class="plist">${p.map(x => `<div class="pl">${ic('location_on')}<div><b>${x.n}</b><span class="d">${x.d}</span><p>${x.t}</p><p class="src">${x.s}</p></div></div>`).join('')}</div>`;
+}
+
+/* What happened to a message: three bars and a few words */
+const LBL = {
+  q:   ['Sending', 'Delivered', 'Answered'],
+  fam: ['Sending', 'On its way to Mum', 'Delivered to Mum'],
+};
+const NOT_SENT = 'Not sent yet';
+function deliveryHTML() { return `<div class="dv"><div class="bar3"><i></i><i></i><i></i></div><p class="dst"></p></div>`; }
+function setDv(dv, n, text, tone) {
+  dv.querySelectorAll('.bar3 i').forEach((b, j) => b.classList.toggle('on', j < n));
+  const st = $('.dst', dv);
+  st.className = 'dst' + (tone ? ' ' + tone : '');
+  st.innerHTML = (tone === 'ok' ? ic('check_circle') : tone === 'wait' ? ic('schedule') : '') + text;
+}
+function setWaiting(dv) { setDv(dv, 0, NOT_SENT, 'wait'); }
+async function runDelivery(dv, labels) {
+  if (dv._busy) return; dv._busy = true;
+  setDv(dv, 1, labels[0]); await wait(800);
+  setDv(dv, 2, labels[1], labels === LBL.q ? 'ok' : ''); await wait(900);
+  if (dv._then) dv._then();
+  setDv(dv, 3, labels[2], 'ok');
+  dv._busy = false;
+}
+function messageHTML(text) { const d = document.createElement('div'); d.textContent = text; return `<div class="me"><p class="b">${d.innerHTML}</p>${deliveryHTML()}</div>`; }
+
+/* SOS */
+function sosHTML(mode, live) {
+  const B = (a, cls, txt) => live ? `<button type="button" class="btn ${cls}" data-a="${a}">${txt}</button>` : `<span class="btn ${cls}">${txt}</span>`;
+  const cancel = B('cancel', 'line sm', 'Cancel SOS');
+  if (mode === 'confirm') return `<p class="h">Send SOS?</p><p class="t">It asks for help and sends where you are.</p>
+    <div class="acts">${B('send', 'red', 'Send SOS')}${B('cancel', 'line', 'Cancel')}</div>`;
+  if (mode === 'sending') return `<div class="line">${ic('sos')}<p>Sending SOS</p>${cancel}</div>`;
+  if (mode === 'sent') return `<div class="line">${ic('check_circle', 'g')}<p>SOS delivered to emergency services.</p>${cancel}</div>`;
+  if (mode === 'waiting') return `<div class="line">${ic('schedule', 'y')}<p>SOS not sent yet. The app keeps trying.</p>${cancel}</div>`;
+  return `<div class="line">${ic('warning')}<p>In danger? Ask for help.</p>${B('ask', 'red', 'SOS')}</div>`;
+}
+function setSos(el, mode, live, animate) { el.classList.toggle('big', mode === 'confirm'); put(el, sosHTML(mode, live), animate); }
+
+/* ---------- The phone ---------- */
+const P = { conn: null, news: null, sos: null, sheet: null, pending: [] };
+const phone = $('#phone'), notice = $('#notice'), pbrief = $('#pbrief'), scroller = $('#scroll'),
+      psos = $('#psos'), sheet = $('#sheet'), thread = $('#thread');
+pbrief.innerHTML = briefHTML();
+/* Topics sit right under the headline, before the questions, so people see what exists first */
+$('.qa', pbrief).insertAdjacentHTML('beforebegin', '<div class="find-h"><h3>What you can find</h3></div><div class="topics" id="ptopics"></div>');
+const ptopics = $('#ptopics');
+
+function setState(conn, news, animate = true) {
+  const first = !P.conn;
+  P.conn = conn; P.news = news;
+  put(notice, noticeHTML(conn, true), animate && !first);
+  setBrief(pbrief, news, animate && !first);
+  put(ptopics, topicsHTML(news, true), animate && !first);
+  if (P.sheet && P.sheet !== 'family') renderSheet();
+  if (conn === 'ok') {
+    P.pending.splice(0).forEach(p => runDelivery(p.dv, p.labels));
+    if (P.sos === 'waiting') sendSos();
+  }
+  syncControls();
+}
+
+/* Sheet */
+function renderSheet() { sheet.innerHTML = sheetBody(P.sheet, P.news, true); sheet.setAttribute('aria-label', TOPICS.find(t => t.k === P.sheet).label); }
+function openSheet(k) { P.sheet = k; renderSheet(); phone.classList.add('sheet-open'); setTimeout(() => { const c = $('[data-a="close"]', sheet); if (c) c.focus({ preventScroll: true }); }, 50); }
+function closeSheet() { P.sheet = null; phone.classList.remove('sheet-open'); }
+ptopics.addEventListener('click', e => { const b = e.target.closest('.topic'); if (!b) return; stopStory(); openSheet(b.dataset.k); });
+$('#scrim').addEventListener('click', () => { stopStory(); closeSheet(); });
+sheet.addEventListener('click', e => {
+  const b = e.target.closest('[data-a]'); if (!b) return;
+  if (e.isTrusted) stopStory();
+  const a = b.dataset.a;
+  if (a === 'close') closeSheet();
+  if (a === 'ask') { closeSheet(); sendQuestion(b.dataset.q); }
+  if (a === 'safe' || a === 'help') sendFamily(a === 'safe' ? "I'm OK." : 'I need help.', $('.fam', sheet));
+});
+notice.addEventListener('click', e => { if (e.target.closest('[data-a="bt"]')) { stopStory(); setState('ok', P.news); } });
+
+function queue(dv, labels) { if (P.conn === 'ok') runDelivery(dv, labels); else { setWaiting(dv); P.pending.push({ dv, labels }); } }
+function sendFamily(text, box) {
+  box.innerHTML = messageHTML(text); box.firstChild.classList.add('arrive');
+  queue($('.dv', box), LBL.fam);
+}
+
+/* Questions: answered from what the server knows, labelled as a computer answer */
+const REPLIES = [
+  [/charg|battery|power/i, 'Southwark Library, 450 m away. It has power. Bring your own cable. Open until 6pm.', COUNCIL + ', 2:40pm'],
+  [/water|drink/i, 'Southwark Cathedral, 300 m away, has free bottled water until 8pm.', COUNCIL + ', 2:30pm'],
+  [/food|eat/i, 'Nobody has shared where to get food yet.', COUNCIL + ', 2:50pm'],
+  [/tube|train|bus/i, 'No tubes are running in central London. Buses are running.', 'Transport for London, 2:50pm'],
+];
+const toBottom = () => requestAnimationFrame(() => scroller.scrollTo({ top: scroller.scrollHeight, behavior: RM ? 'auto' : 'smooth' }));
+function sendQuestion(text) {
+  text = (text || '').trim() || 'Where can I charge my phone?';
+  const box = document.createElement('div');
+  box.innerHTML = messageHTML(text); box.firstChild.classList.add('arrive');
+  thread.appendChild(box);
+  const dv = $('.dv', box);
+  const r = REPLIES.find(([re]) => re.test(text));
+  dv._then = () => {
+    box.insertAdjacentHTML('beforeend', `<div class="reply arrive"><p>${r ? r[1] : 'There is no information about this yet.'}</p><p class="src">Computer answer, from ${r ? r[2] : COUNCIL + ' information'}</p></div>`);
+    toBottom();
+  };
+  toBottom();
+  queue(dv, LBL.q);
+}
+$('#ask').addEventListener('submit', e => { e.preventDefault(); stopStory(); sendQuestion($('#q').value); $('#q').value = ''; });
+
+/* SOS */
+async function sendSos() {
+  if (P.conn !== 'ok') { setSosMode('waiting'); return; }
+  setSosMode('sending'); await wait(1200);
+  if (P.sos === 'sending') setSosMode('sent');
+}
+function setSosMode(mode) { P.sos = mode; setSos(psos, mode, true, true); }
+psos.addEventListener('click', e => {
+  const b = e.target.closest('[data-a]'); if (!b) return;
+  stopStory();
+  const a = b.dataset.a;
+  if (a === 'ask') setSosMode('confirm');
+  if (a === 'send') sendSos();
+  if (a === 'cancel') setSosMode(null);
+});
+
+/* ---------- Manual controls ---------- */
+const segConn = $('#seg-conn'), segNews = $('#seg-news');
+segConn.innerHTML = Object.entries(CONN).map(([k, c]) => `<button class="tog" type="button" data-k="${k}" aria-pressed="false">${c.name}</button>`).join('');
+segNews.innerHTML = Object.entries(NEWS).map(([k, n]) => `<button class="tog" type="button" data-k="${k}" aria-pressed="false">${n.name}</button>`).join('');
+segConn.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; stopStory(); setState(b.dataset.k, P.news); });
+segNews.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; stopStory(); setState(P.conn, b.dataset.k); });
+function syncControls() {
+  segConn.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.k === P.conn)));
+  segNews.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.k === P.news)));
+}
+
+/* ---------- The story ---------- */
+const later = (i, ms, fn) => setTimeout(() => { if (SI === i) fn(); }, RM ? 0 : ms);
+const STORY = [
+  { conn: 'off',   news: 'none',  d: 4000, reset: 1, t: 'No phone signal anywhere. Bluetooth is off, so the app asks you to turn it on.' },
+  { conn: 'ok',    news: 'none',  d: 5000, ask: 'Where can I charge my phone?', t: 'You ask where to charge your phone. The bars fill as it goes, and the answer comes back.' },
+  { conn: 'ok',    news: 'some',  d: 4000, top: 1, t: 'The first news arrives. What isn\'t known yet says so.' },
+  { conn: 'ok',    news: 'some',  d: 5200, family: 1, t: 'You tap Family and send "I\'m OK". Mum gets it as a text message.' },
+  { conn: 'ok',    news: 'some',  d: 4600, sos: 1, t: 'Someone is hurt. You press SOS. It asks once, then sends.' },
+  { conn: 'ok',    news: 'all',   d: 4200, top: 1, clearSos: 1, t: 'More news: why it happened, and when it will be fixed. More places to find.' },
+  { conn: 'stuck', news: 'all',   d: 4600, ask: 'Is the tube running?', t: 'You ask again, but it can\'t get through. The app says so plainly and keeps trying.' },
+  { conn: 'ok',    news: 'all',   d: 4600, t: 'It gets through by itself. The answer arrives. Nothing to tap.' },
+  { conn: 'ok',    news: 'fixed', d: 4400, top: 1, t: 'Power is back.' },
+];
+const stepsEl = $('#steps'), playBtn = $('#play');
+stepsEl.innerHTML = STORY.map((s, i) => `<li><button type="button" data-i="${i}"><span>${s.t}</span><span class="prog"></span></button></li>`).join('');
+let SI = -1, timer = 0, playing = false;
+function markSteps() {
+  stepsEl.querySelectorAll('button').forEach((b, i) => {
+    b.classList.toggle('on', i === SI);
+    b.classList.remove('run');
+    if (i === SI) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
+    if (i === SI && playing) { b.style.setProperty('--d', STORY[i].d + 'ms'); void b.offsetWidth; b.classList.add('run'); }
+  });
+  playBtn.innerHTML = playing ? `${ic('pause', 's20')}<span>Pause</span>` : `${ic('play_arrow', 's20')}<span>${SI === STORY.length - 1 ? 'Play again' : 'Play'}</span>`;
+}
+function go(i) {
+  SI = i; const s = STORY[i];
+  closeSheet();
+  if (s.reset) { thread.innerHTML = ''; P.pending = []; P.sos = null; setSos(psos, null, true, false); scroller.scrollTo({ top: 0 }); }
+  if (s.clearSos) setSosMode(null);
+  setState(s.conn, s.news);
+  if (s.top) scroller.scrollTo({ top: 0, behavior: RM ? 'auto' : 'smooth' });
+  if (s.ask) later(i, 700, () => sendQuestion(s.ask));
+  if (s.sos) { setSosMode('confirm'); later(i, 1600, sendSos); }
+  if (s.family) later(i, 600, () => { openSheet('family'); later(i, 900, () => $('[data-a="safe"]', sheet).click()); });
+  clearTimeout(timer);
+  if (playing) timer = setTimeout(() => { if (SI < STORY.length - 1) go(SI + 1); else stopStory(); }, s.d);
+  markSteps();
+}
+function playStory() { playing = true; go(SI < 0 || SI >= STORY.length - 1 ? 0 : SI); }
+function stopStory() { if (!playing) return; playing = false; clearTimeout(timer); markSteps(); }
+playBtn.addEventListener('click', () => playing ? stopStory() : playStory());
+stepsEl.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; stopStory(); go(+b.dataset.i); });
+
+setState('ok', 'some', false);
+setSos(psos, null, true, false);
+markSteps();
+new IntersectionObserver((es, o) => { if (es[0].isIntersecting) { o.disconnect(); setTimeout(() => { if (SI < 0) playStory(); }, 700); } }, { threshold: .5 }).observe(phone);
+
+/* ---------- Gallery: did it get through? ---------- */
+const MSGS = [
+  [1, 'Sending', '', 0, 'Sending', 'The first bar fills as soon as you tap send.'],
+  [2, 'Delivered', 'ok', 0, 'Delivered', 'Your question got through. The answer is on its way back.'],
+  [3, 'Answered', 'ok', 1, 'Answered', 'The answer appears under it, with where it came from.'],
+  [0, NOT_SENT, 'wait', 0, 'Not sent yet', 'It can\'t get through right now. It sends by itself later. Nothing to tap.'],
+];
+$('#msg-gallery').innerHTML = MSGS.map((m, i) => `<div class="col"><div class="panel msg" data-i="${i}">${messageHTML('Where can I charge my phone?')}${m[3] ? `<div class="reply"><p>Southwark Library, 450 m away. Open until 6pm.</p><p class="src">Computer answer, from ${COUNCIL}, 2:40pm</p></div>` : ''}</div><p class="cap"><b>${m[4]}</b>${m[5]}</p></div>`).join('');
+document.querySelectorAll('#msg-gallery .panel').forEach(p => { const m = MSGS[+p.dataset.i]; setDv($('.dv', p), m[0], m[1], m[2]); });
+$('#notice-gallery').innerHTML = `
+  <div class="col"><div class="panel blank"><div class="ask"><span style="flex:1;color:var(--ink-2)">Ask anything</span><span class="send">${ic('arrow_upward', 's20')}</span></div></div>
+    <p class="cap"><b>Working: nothing to show</b>No badge, no "online". You just ask. Each message shows what happened to it.</p></div>
+  <div class="col">${noticeHTML('off', false)}<p class="cap"><b>Bluetooth is off</b>The one thing a person must do, with the button that does it. It sits above the question box.</p></div>
+  <div class="col">${noticeHTML('stuck', false)}<p class="cap"><b>Not getting through</b>Sits above the question box, where people look when they send. Says it plainly, says what still works, and keeps trying by itself. The explanation is one tap away.</p></div>`;
+
+/* ---------- Gallery: news ---------- */
+$('#answers').innerHTML = `
+  <div class="col"><div class="panel"><div class="row"><p class="q">What happened?</p>${answerHTML(NEWS.some.rows[0])}</div></div>
+    <p class="cap"><b>Known</b>The fact, then who said it and when.</p></div>
+  <div class="col"><div class="panel"><div class="row"><p class="q">Why?</p>${notKnown}</div></div>
+    <p class="cap"><b>Not known yet</b>Three words and a yellow clock. No promise to follow up.</p></div>
+  <div class="col"><div class="panel"><div class="place">${ic('power_off')}<span>Southwark, updated 2:46pm</span></div></div>
+    <p class="cap"><b>When it was updated</b>Every briefing says when it last changed, so old news looks old without a warning.</p></div>`;
+$('#brief-gallery').innerHTML = Object.keys(NEWS).map(k => `<div class="col"><div class="panel" data-k="${k}">${briefHTML()}</div><p class="cap"><b>${NEWS[k].name}</b></p></div>`).join('');
+document.querySelectorAll('#brief-gallery .panel').forEach(p => setBrief(p, p.dataset.k, false));
+
+/* ---------- Gallery: topics ---------- */
+$('#topics-gallery').innerHTML = topicsHTML('all', false);
+$('#sheet-water').innerHTML = sheetBody('water', 'all', false);
+$('#sheet-family').innerHTML = sheetBody('family', 'all', false);
+(() => { const f = $('#sheet-family .fam'); f.innerHTML = messageHTML("I'm OK."); setDv($('.dv', f), 3, 'Delivered to Mum', 'ok'); })();
+$('#legend').innerHTML = [
+  [`<span class="av has">${ic('check')}2 places</span>`, 'There is something to find. Tap to see where.'],
+  [`<span class="av wait">${ic('schedule')}Nothing yet</span>`, 'Nobody has shared this yet. You can still ask.'],
+  [`<span class="av has">${ic('check')}On your phone</span>`, 'Always works, such as first aid.'],
+  [`<span class="av">${ic('arrow_upward')}Send a message</span>`, 'Tap to send. The message says when it is delivered.'],
+].map(([a, p]) => `<div>${a}<p>${p}</p></div>`).join('');
+
+/* ---------- Gallery: SOS ---------- */
+const SOSG = [
+  [null, 'Ready', 'Always at the bottom. Red is used only here.'],
+  ['confirm', 'Asks once', 'It shares where you are, so it checks first.'],
+  ['sending', 'Sending', 'Cancel is always there.'],
+  ['sent', 'Delivered', 'Says exactly who has it.'],
+  ['waiting', 'Not sent yet', 'It keeps trying by itself, like any message.'],
+];
+$('#sos-gallery').innerHTML = SOSG.map((g, i) => `<div class="col"><div class="sosbar" data-i="${i}"></div><p class="cap"><b>${g[1]}</b>${g[2]}</p></div>`).join('');
+document.querySelectorAll('#sos-gallery .sosbar').forEach(el => setSos(el, SOSG[+el.dataset.i][0], false, false));
+
+/* ---------- Gallery: motion ---------- */
+const TILES = [
+  { t: 'Sending', p: 'The bars fill as the message goes. The words say the same thing: sending, then delivered.',
+    stage: () => messageHTML("I'm OK."),
+    init: s => { const dv = $('.dv', s); dv._busy = false; setDv(dv, 0, 'Ready'); },
+    run: async s => { await wait(400); await runDelivery($('.dv', s), LBL.fam); } },
+  { t: 'Not getting through', p: 'The bars stay empty and a clock appears. When it gets through later, they fill by themselves.',
+    stage: () => messageHTML('Is the tube running?'),
+    init: s => { const dv = $('.dv', s); dv._busy = false; setDv(dv, 0, 'Ready'); },
+    run: async s => { const dv = $('.dv', s); await wait(400); setDv(dv, 1, 'Sending'); await wait(900); setWaiting(dv); await wait(1800); await runDelivery(dv, LBL.q); } },
+  { t: 'News arrives', p: '"Not known yet" is replaced by the fact. A small "New" tag marks what changed.',
+    stage: () => `<div class="row"><p class="q"><span>Why?</span></p><div class="val"></div></div>`,
+    init: s => { const v = $('.val', s); v._h = null; put(v, notKnown, false); s.querySelectorAll('.new').forEach(x => x.remove()); },
+    run: async s => { await wait(700); put($('.val', s), answerHTML(NEWS.all.rows[1]), true); $('.q', s).insertAdjacentHTML('beforeend', '<span class="new">New</span>'); } },
+];
+$('#tiles').innerHTML = TILES.map((t, i) => `<div class="tile" data-i="${i}"><div class="stage">${t.stage()}</div><h3>${t.t}</h3><p>${t.p}</p><button class="tog" type="button">${ic('replay', 's20')}Play again</button></div>`).join('');
+document.querySelectorAll('.tile').forEach(el => {
+  const t = TILES[+el.dataset.i], s = $('.stage', el);
+  t.init(s);
+  const run = async () => { if (el._busy) return; el._busy = true; t.init(s); await t.run(s); el._busy = false; };
+  $('button', el).addEventListener('click', run);
+  new IntersectionObserver((es, o) => { if (es[0].isIntersecting) { o.disconnect(); run(); } }, { threshold: .6 }).observe(el);
+});
+
+/* ---------- Icons ---------- */
+const ICONS = [
+  ['local_drink', 'Water', 'waterbottle.fill'], ['battery_charging_full', 'Charge phone', 'battery.100.bolt'],
+  ['restaurant', 'Food', 'fork.knife'], ['family_restroom', 'Family', 'figure.2.and.child.holdinghands'],
+  ['night_shelter', 'Shelter', 'bed.double.fill'], ['medical_services', 'First aid', 'cross.case.fill'],
+  ['sos', 'SOS', 'sos', 'sos'], ['warning', 'Danger', 'exclamationmark.triangle.fill', 'sos'],
+  ['schedule', 'Not known yet, not sent yet', 'clock.fill', 'wait'], ['check_circle', 'Delivered, answered, fixed', 'checkmark.circle.fill', 'done'],
+  ['check', 'There is something to find', 'checkmark', 'done'], ['arrow_upward', 'Send', 'arrow.up'],
+  ['location_on', 'A place', 'mappin.circle.fill'], ['person', 'A contact', 'person.fill'],
+  ['bluetooth_disabled', 'Bluetooth off', 'No SF Symbol: custom'], ['signal_cellular_off', 'No phone signal (news)', 'antenna.radiowaves.left.and.right.slash'],
+  ['power_off', 'Power cut (news)', 'bolt.slash.fill'], ['help', 'How does this work?', 'questionmark.circle.fill'],
+];
+$('#icons').innerHTML = ICONS.map(([n, m, sf, tone]) => `<div class="ico"><span class="c ${tone || ''}">${ic(n)}</span><div><b>${m}</b><span>${n}</span><span>${sf}</span></div></div>`).join('');
+</script>
+</body>
+</html>
