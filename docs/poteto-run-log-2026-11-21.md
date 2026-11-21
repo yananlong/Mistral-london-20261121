@@ -28,7 +28,7 @@ question goes to a cloud model API.
 | `reviewer-bitchat-pr1` | adversarial review of fork PR #1 | needs changes (4 major) |
 | `fixer-pr10` | fix round on `cole-dorrestein/phone-app-scaffold` | pushed `17f0992` |
 | `fixer-pr11` | fix round on `cole-dorrestein/hub-responder` | pushed `3254d98` |
-| `fixer-bitchat-pr1` | fix round on fork branch `cole-dorrestein/hub-peer` | in flight at log time |
+| `fixer-bitchat-pr1` | fix round on fork branch `cole-dorrestein/hub-peer` | pushed `8aa3b07` |
 
 ## PRs and state at log time
 
@@ -36,7 +36,8 @@ question goes to a cloud model API.
 |---|---|---|---|
 | #10 | yananlong/Mistral-london-20261121 | feat(phone-app): scaffold RN Talk/Locate/Ask app on a simulated mesh | MERGED 15:25:38Z (squash `3181289`); review fixes pushed after merge on head branch @ `17f0992` |
 | #11 | yananlong/Mistral-london-20261121 | feat(hub): offline hub responder answering Ask over the mesh | MERGED 15:26:37Z; review fixes pushed after merge on head branch @ `3254d98` |
-| #1 | cole-dorrestein/bitchat | feat(hub): answer mesh DMs via the offline hub responder | OPEN, head `cole-dorrestein/hub-peer` @ `177848a` (fix round in flight) |
+| #1 | cole-dorrestein/bitchat | feat(hub): answer mesh DMs via the offline hub responder | OPEN, head `cole-dorrestein/hub-peer` @ `8aa3b07` (builder `177848a` + fix round `8aa3b07`) |
+| #14, #15 | yananlong/Mistral-london-20261121 | Ask eval harness; phone-app transport conformance tests | OPEN (other teammates, not from this run) |
 
 Each PR was opened ready (not draft) with the worker.md body format
 (`## Why` restating the goal, `## What changed`, `## Scope`, `## Tradeoffs`,
@@ -70,11 +71,24 @@ consolidated review comment on its PR and reported back.
   semaphore sized from OLLAMA_NUM_PARALLEL with 429, broad exception handling,
   callback host allowlist, working offline-check that exits non-zero on
   failure), minors fixed. 40/40 unittests pass, live smoke probes recorded.
-- `fixer-bitchat-pr1`: in flight at log time.
+- `fixer-bitchat-pr1` @ `8aa3b07`: all 4 majors fixed (per-question `request_id`
+  correlated in callbacks with legacy fallback; `maxLength` always enforced with
+  the disclaimer tail surviving; empty/loc-only questions get a short error
+  second message instead of silence; new `HubBotMessageFormatTests` /
+  `HubBotServiceTests` + coordinator hook tests wired into all test targets),
+  all listed minors fixed (callback listener bound to the advertised local host
+  only with Content-Length validation, timeout clamped 1–3600 s, 4096-char
+  question cap, Nostr gated off in hub mode, disclaimer suffix match, plus a
+  latent `NWEndpoint.Port` failable-init compile break). Verification:
+  `swiftc -parse` clean on all 8 touched files, full `swiftc -typecheck` of the
+  service files against the real BitFoundation/BitLogger/Network interfaces,
+  and a scratch runtime harness with a recording URLProtocol — 35/35 checks
+  pass. No Xcode in the sandbox, so the XCTest run itself is CI-pending.
 
 ## Open items (not finished at log time)
 
-1. Fork PR #1 still open; its fix round is running. The main repo's `bitchat/`
+1. Fork PR #1 is open at `8aa3b07` with the fix round pushed; it still needs a
+   green CI (Xcode build + tests) and merge. The main repo's `bitchat/`
    submodule pointer still points at `04995f6` and needs a follow-up bump once
    the fork PR merges.
 2. PRs #10 and #11 were squash-merged before their fix rounds landed, so the
