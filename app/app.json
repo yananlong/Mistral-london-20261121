@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "Mesh Help",
+    "slug": "mesh-help",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "org.meshhelp.demo",
+      "infoPlist": {
+        "NSBluetoothAlwaysUsageDescription": "Connect with nearby people and the offline hub over Bluetooth.",
+        "NSBluetoothPeripheralUsageDescription": "Bluetooth lets nearby mesh peers find and message you.",
+        "UIBackgroundModes": ["bluetooth-central", "bluetooth-peripheral"],
+        "NSLocationWhenInUseUsageDescription": "Show your position offline. Share it only when you choose."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "scheme": "mesh-help",
+    "plugins": [
+      "@maplibre/maplibre-react-native",
+      "./modules/bitchat-mesh/app.plugin.js",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Show your position offline. Share it only when you choose."
+        }
+      ],
+      [
+        "expo-file-system",
+        {
+          "enableFileSharing": true,
+          "supportsOpeningDocumentsInPlace": true
+        }
+      ]
+    ]
+  }
+}
