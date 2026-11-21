@@ -9,8 +9,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+option(MINISTRAL_EMULATOR "Build for the Android emulator (x86_64, generic CPU) instead of the Pixel 9a" OFF)
 if(NOT ANDROID_ABI STREQUAL "arm64-v8a")
-    message(FATAL_ERROR "ministral_jni supports arm64-v8a only (got '${ANDROID_ABI}'). Set abiFilters to arm64-v8a.")
+    if(ANDROID_ABI STREQUAL "x86_64" AND MINISTRAL_EMULATOR)
+        # Emulator test build: generic x86_64 with native dispatch; no ARM march flags.
+    else()
+        message(FATAL_ERROR "ministral_jni supports arm64-v8a only (got '${ANDROID_ABI}'). Set abiFilters to arm64-v8a, or build the emulator variant with -DMINISTRAL_EMULATOR=ON.")
+    endif()
 endif()
 
 # ---- llama.cpp source -------------------------------------------------------
@@ -33,7 +38,14 @@ set(GGML_CPU_REPACK ON CACHE BOOL "" FORCE)             # Q4_0 -> interleaved la
 
 # i8mm + dotprod are in every Tensor G4 core (Armv9.2). SVE is deliberately not enabled.
 # If a device lacks i8mm the process dies with SIGILL: this build is for the Pixel 9a only.
-set(GGML_CPU_ARM_ARCH "armv8.6-a+i8mm+dotprod+fp16" CACHE STRING "" FORCE)
+if(ANDROID_ABI STREQUAL "x86_64")
+    # Emulator path: no fixed -march (the Pixel's armv8.6-a+i8mm flags would SIGILL on
+    # emulator CPUs); use native dispatch instead.
+    set(GGML_CPU_ARM_ARCH "" CACHE STRING "" FORCE)
+    set(GGML_NATIVE ON CACHE BOOL "" FORCE)
+else()
+    set(GGML_CPU_ARM_ARCH "armv8.6-a+i8mm+dotprod+fp16" CACHE STRING "" FORCE)
+endif()
 
 # KleidiAI: A/B item (see DESIGN_PIXEL9A.md test plan). Runtime-dispatches dotprod/i8mm on this phone.
 option(MINISTRAL_KLEIDIAI "enable GGML_CPU_KLEIDIAI" ON)
