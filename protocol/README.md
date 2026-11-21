@@ -2,7 +2,7 @@
 
 This is the contract between the phone app and the hub, and between two phones. Every message is a plain-text BitChat message in UTF-8, so a person with stock BitChat can still talk to the hub. [BLUEPRINT_1.md](../BLUEPRINT_1.md#message-format) has the reasoning. This file pins the exact strings, limits and states.
 
-`make_vectors.py` is the reference implementation. It writes `vectors.json`, and both the app's tests (TypeScript) and the hub's tests (Swift) read that file. To change the contract, edit `make_vectors.py` and this file together, run `python3 protocol/make_vectors.py`, and fix both test suites.
+`make_vectors.py` is the reference implementation. It writes `vectors.json`, and both the app's tests (TypeScript) and the hub's tests (Python, `hub/test_mesh_messages.py`) read that file. To change the contract, edit `make_vectors.py` and this file together, run `python3 protocol/make_vectors.py`, and fix both test suites.
 
 ## Constants
 
@@ -22,7 +22,7 @@ This is the contract between the phone app and the hub, and between two phones. 
 | `ANSWER_TIMEOUT_MS` (phone, counted from the ack) | 150000 |
 | `HUB_MODEL_TIMEOUT_MS` (hub) | 120000 |
 
-BitChat rejects a private message whose content is more than 255 UTF-8 bytes (`bitchat/bitchat/Protocols/Packets.swift:251-265`), so every message in this contract, in either direction, is at most `MAX_MESSAGE_BYTES`. All lengths count UTF-8 bytes (`TextEncoder` in JavaScript, `string.utf8.count` in Swift). Truncation never splits a character. Before parsing, both sides turn `\r\n` and `\r` into `\n`. "Trim" means removing leading and trailing whitespace and newlines.
+BitChat rejects a private message whose content is more than 255 UTF-8 bytes (`bitchat/bitchat/Protocols/Packets.swift:251-265`), so every message in this contract, in either direction, is at most `MAX_MESSAGE_BYTES`. All lengths count UTF-8 bytes (`TextEncoder` in JavaScript, `len(s.encode("utf-8"))` in Python). Truncation never splits a character. Before parsing, both sides turn `\r\n` and `\r` into `\n`. "Trim" means removing leading and trailing whitespace and newlines.
 
 ## The `loc:` line
 

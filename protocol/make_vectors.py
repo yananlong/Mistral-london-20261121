@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Reference implementation of the message contract in protocol/README.md.
 
-Running it rewrites protocol/vectors.json. The app (TypeScript) and the hub
-(Swift) test suites both read that file, so the two sides cannot drift apart.
+Running it rewrites protocol/vectors.json. The apps (TypeScript) and the hub
+(Python) test suites read that file, so the two sides cannot drift apart.
 """
 import json
 import re
