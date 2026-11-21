@@ -43,9 +43,11 @@ class Gen:
         if t == "array":
             item = self.visit(s["items"], f"{name}-item")
             lo, hi = s.get("minItems", 0), s.get("maxItems")
-            if hi is None or lo < 1:
-                raise SystemExit(f"{name}: arrays need minItems >= 1 and maxItems")
-            first = f"{item} ws " + (f'("," ws {item} ws){{{lo - 1},{hi - 1}}}')
+            if hi is None or lo < 0 or hi < max(lo, 1):
+                raise SystemExit(f"{name}: arrays need minItems >= 0 and maxItems >= max(minItems, 1)")
+            first = f"{item} ws " + (f'("," ws {item} ws){{{max(lo, 1) - 1},{hi - 1}}}')
+            if lo == 0:  # an empty list is allowed too
+                first = f"({first})?"
             return self.add(name, f'"[" ws {first} "]"')
         if t == "object":
             props = s["properties"]
