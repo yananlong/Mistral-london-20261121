@@ -93,7 +93,7 @@ To the phone, the Mac bridge is the hub's peer on the mesh, so the state names s
 
 - **Offline map.** Download map tiles for London, the demo region, before the disaster, for example from [OpenStreetMap](https://www.openstreetmap.org). The phone shows its position from satellite positioning, which works without internet. Without assistance data from the network, the first position fix can take longer.
 - **Location sharing.** The user taps **Share location** to send their coordinates over the mesh to one person or to the public channel. The message carries the same `loc:` line as a question. The receiving phone shows a pin on its own offline map.
-- **Vision model.** A computer vision model runs on the iPhone and helps the user orient themselves on the offline map. It is smaller than the hub's model, ideally a multimodal Mistral model. Ministral 3 3B is one candidate, and [Mistral's announcement](https://mistral.ai/news/mistral-3) says it has image understanding. Martin owns the choice, and the exact model is not chosen yet. No photo crosses the mesh, and the hub's model gets text only. The candidate approaches are below. We pick one for the MVP.
+- **Vision model.** A computer vision model runs on the iPhone and helps the user orient themselves on the offline map. It is smaller than the hub's model. The proposed model is Ministral 3 3B Instruct 2512 with its vision encoder ([Mistral's announcement](https://mistral.ai/news/mistral-3) says it has image understanding), run with llama.cpp on the phone. [Decisions](#decisions) gives the files and settings. Martin owns the choice and reviews this proposal. No photo crosses the mesh, and the hub's model gets text only. The candidate approaches are below. We pick one for the MVP.
 	- Read street and building signs with on-device text recognition, and match the text to labels on the map.
 	- Recognize landmarks by comparing the camera image with reference photos that come with the map download.
 	- Work out which way the user faces from the direction of a recognized landmark.
@@ -169,14 +169,19 @@ The team made these decisions on 2026-11-21. Each one names its owner where the 
 - **Hub.** The hub is the team's NVIDIA DGX Spark, a remote GPU server. Ollama on the hub serves Ministral 3 14B Instruct. Martin owns the hub.
 - **Mac bridge.** BitChat runs only on iOS and macOS, and the DGX Spark runs Linux. The Mac bridge is a Mac at the venue that joins the mesh with the modified BitChat for macOS build. It forwards each question to Ollama on the hub over the internet, for example through Tailscale.
 - **Open-weight models only.** The model on the hub is open-weight, so it can run on local hardware with no internet. No question goes to a cloud model API. In the demo, the phones have no internet, and the Mac bridge reaches the hub over the network. Do not call the demo hub offline. In a real deployment, the hub sits next to the Mac bridge and needs no internet. The proof on stage is both iPhones in airplane mode and the Ollama log on the hub for each run.
-- **Vision on the phone.** The vision model for Locate runs on the iPhone. It is smaller than the hub's model, ideally a multimodal Mistral model such as Ministral 3 3B. The exact model is not chosen yet, and Martin owns the choice. The hub's model gets text only, and no photo crosses the mesh.
+- **Vision on the phone (proposed, for Martin's review).** The vision model for Locate runs on the phone. It is Ministral 3 3B Instruct 2512 with vision, not the Reasoning or 8B models. Reasoning output is too slow on a phone, and 8B does not fit the phone's memory limit for one app. The hub's model gets text only, and no photo crosses the mesh.
+	- **Runtime.** llama.cpp release b12606, which includes its multimodal library (mtmd). It runs on Metal on iPhone and on the CPU on Android. Each request is a single turn, and the phone clears the model's memory before each one.
+	- **Files.** The 12 GB iPhones (18 Pro, 18 Pro Max, 17 Pro, 17 Pro Max and Air) use the official mistralai `Q4_K_M` file, 2.15 GB. The vision file is ggml-org's `Q8_0` mmproj, 0.45 GB. The base iPhone 17 (8 GB) picks a smaller setting at start-up, down to unsloth `Q3_K_M` or text only. The Pixel 9a uses unsloth `Q4_0`. [scripts/check_model_pair.sh](scripts/check_model_pair.sh) and [phone/ios/DESIGN_IPHONE17.md](phone/ios/DESIGN_IPHONE17.md) list the hashes.
+	- **Voice input.** The phone's built-in on-device speech recognition turns speech into text for the model.
+	- **Owner of the phone code.** Yanan owns the phone engine in `phone/`. It has not been compiled or run on a device yet. [phone/TEST_PLAN.md](phone/TEST_PLAN.md) gives the pass bar for each device.
 - **Map region.** The demo map covers London.
 - **Concurrency.** One Ollama server with `OLLAMA_NUM_PARALLEL` set answers several questions in parallel and queues the rest.
 - **Deferred.** The time targets, the timeout, the maximum answer length, the BitChat timebox, the vision accuracy measure, the test question set, the answer rubric and hub identity verification stay open. Yanan owns the evals, and the evals own the thresholds. [Deferred questions](#deferred-questions) lists each one.
 
 ## Open questions
 
-- [ ] Which small multimodal Mistral model runs fast enough on the iPhone for Locate? Martin owns the choice.
+- [ ] Does Ministral 3 3B Instruct with vision meet the pass bar in [phone/TEST_PLAN.md](phone/TEST_PLAN.md) on the iPhone 18 Pro and the Pixel 9a? Martin owns the model choice.
+- [ ] Is an Android phone (Pixel 9a) part of the demo, or only a test device for the on-device model? The app is iPhone only so far.
 - [ ] Which vision approach do we build, and in which case does it beat satellite positioning and the compass?
 - [ ] Which tile source do we use for the London map?
 - [ ] Which survival guides do we load on the hub, and under which licences? [DATASETS.md](DATASETS.md) has a proposal.
