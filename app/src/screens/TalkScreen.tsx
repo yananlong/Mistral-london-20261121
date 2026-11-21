@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Body, Button, Card, Heading, Notice, styles } from '../components/ui';
-import { decodeLocationShare, HUB_NICKNAME } from '../protocol';
+import { decodeLocationShare, HUB_NICKNAME, MAX_MESSAGE_BYTES, MAX_QUESTION_BYTES, prefixBytes, utf8Bytes } from '../protocol';
 import { MapFocus } from '../map/types';
 import { ThreadKey } from '../store/MeshStore';
 import { useAsk, useMesh, useRuntime } from '../store/Runtime';
@@ -18,9 +18,11 @@ export function TalkScreen({ openPin, openAsk }: { openPin: (focus: MapFocus) =>
   const nearby = mesh.peers.filter(peer => peer.reachable);
   const otherThreads = Object.values(mesh.knownPeers).filter(peer => !nearby.some(near => near.id === peer.id) && mesh.conversations[peer.id]?.length);
   const isHub = thread !== 'public' && (thread === mesh.hubId || mesh.knownPeers[thread]?.nickname === HUB_NICKNAME);
+  const limit = isHub ? MAX_QUESTION_BYTES : MAX_MESSAGE_BYTES;
+  const remaining = limit - utf8Bytes(text);
   const hubBusy = ask.state === 'sent' || ask.state === 'received';
   const send = async () => {
-    if (!text.trim() || sendState === 'sending') return;
+    if (!text.trim() || utf8Bytes(text) > limit || sendState === 'sending') return;
     if (isHub) {
       if (hubBusy) return;
       runtime.ask.reset();
@@ -66,8 +68,9 @@ export function TalkScreen({ openPin, openAsk }: { openPin: (focus: MapFocus) =>
     })}
     {isHub && <Notice>{hubBusy ? 'A question is already on its way. Follow its status in Ask.' : 'Questions to the hub share the Ask screen’s status and timer.'}</Notice>}
     <Card>
-      <TextInput accessibilityLabel="Message" multiline value={text} onChangeText={setText} style={styles.input}
-        placeholder="Write a short message" placeholderTextColor={t.color.muted} maxLength={isHub ? 500 : 1000} />
+      <TextInput accessibilityLabel="Message" multiline value={text} onChangeText={value => setText(prefixBytes(value, limit))} style={styles.input}
+        placeholder="Write a short message" placeholderTextColor={t.color.muted} maxLength={limit} />
+      {remaining <= 50 && <Body style={styles.small}>{remaining} bytes remaining</Body>}
       {error !== '' && <Body accessibilityRole="alert">{error}</Body>}
       <Button title={isHub ? 'Ask hub' : sendState === 'sending' ? 'Sending…' : 'Send message'}
         disabled={!text.trim() || sendState === 'sending' || (isHub && hubBusy) || mesh.link !== 'running'} onPress={() => { void send(); }} />

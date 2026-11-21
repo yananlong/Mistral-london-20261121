@@ -4,15 +4,17 @@ export const ANSWER_LABEL = 'AI answer from an open-weight model on the hub. Not
 export const HUB_ERROR_TEXT = 'The hub could not answer right now. Please try again.';
 export const HUB_EMPTY_TEXT = 'Send a question in plain words, for example: How do I make water safe to drink?';
 export const LOCATION_SHARE_DEFAULT_NOTE = 'Shared location';
-export const MAX_QUESTION_UNITS = 500;
-export const MAX_ANSWER_BODY_UNITS = 900;
+export const MAX_MESSAGE_BYTES = 255;
+export const MAX_QUESTION_BYTES = 200;
+export const MAX_ANSWER_BODY_BYTES = 900;
+export const MAX_ANSWER_PARTS = 9;
 export const ACK_TIMEOUT_MS = 30_000;
 export const ANSWER_TIMEOUT_MS = 150_000;
 export const HUB_MODEL_TIMEOUT_MS = 120_000;
 
 export const CONSTANTS = {
   HUB_NICKNAME, ACK_TEXT, ANSWER_LABEL, HUB_ERROR_TEXT, HUB_EMPTY_TEXT,
-  LOCATION_SHARE_DEFAULT_NOTE, MAX_QUESTION_UNITS, MAX_ANSWER_BODY_UNITS,
+  LOCATION_SHARE_DEFAULT_NOTE, MAX_MESSAGE_BYTES, MAX_QUESTION_BYTES, MAX_ANSWER_BODY_BYTES, MAX_ANSWER_PARTS,
   ACK_TIMEOUT_MS, ANSWER_TIMEOUT_MS, HUB_MODEL_TIMEOUT_MS,
 };
 
@@ -21,12 +23,26 @@ export interface LocationShare extends Coordinates { note: string }
 
 export const normalize = (text: string): string => text.replace(/\r\n?/g, '\n');
 
-/** Cut by UTF-16 units without splitting a Unicode code point. */
-export function prefixUnits(text: string, limit: number): string {
+function characterBytes(character: string): number {
+  const codePoint = character.codePointAt(0) ?? 0;
+  return codePoint <= 0x7f ? 1 : codePoint <= 0x7ff ? 2 : codePoint <= 0xffff ? 3 : 4;
+}
+
+export function utf8Bytes(text: string): number {
+  let bytes = 0;
+  for (const character of text) bytes += characterBytes(character);
+  return bytes;
+}
+
+/** Cut by UTF-8 bytes without splitting a Unicode code point. */
+export function prefixBytes(text: string, limit: number): string {
   let result = '';
+  let used = 0;
   for (const character of text) {
-    if (result.length + character.length > limit) break;
+    const bytes = characterBytes(character);
+    if (used + bytes > limit) break;
     result += character;
+    used += bytes;
   }
   return result;
 }
@@ -56,17 +72,35 @@ export function encodeQuestion(text: string, loc: Coordinates | null): string {
   return loc ? `${body}\n${encodeLoc(loc.lat, loc.lon)}` : body;
 }
 
-export type HubReply = { kind: 'ack' } | { kind: 'hub_error' } | { kind: 'answer'; body: string } | { kind: 'other' };
+export interface AnswerPart { index: number; total: number; text: string }
+export type HubReply = { kind: 'ack' } | { kind: 'hub_error' } | ({ kind: 'answer_part' } & AnswerPart) | { kind: 'other' };
 
 export function classifyHubReply(wire: string): HubReply {
   const text = normalize(wire).trim();
   if (text === ACK_TEXT) return { kind: 'ack' };
   if (text === HUB_ERROR_TEXT) return { kind: 'hub_error' };
-  const lines = text.split('\n');
-  if (lines[lines.length - 1].trim() === ANSWER_LABEL) {
-    return { kind: 'answer', body: lines.slice(0, -1).join('\n').trim() };
+  const match = /^\((\d)\/(\d)\) ([\s\S]*)$/.exec(text);
+  if (match) {
+    const index = Number(match[1]);
+    const total = Number(match[2]);
+    if (index >= 1 && index <= total) return { kind: 'answer_part', index, total, text: match[3].trim() };
   }
   return { kind: 'other' };
+}
+
+export function assembleAnswer(parts: readonly AnswerPart[]): string | null {
+  if (parts.length === 0) return null;
+  const total = parts[parts.length - 1].total;
+  const received = new Map<number, string>();
+  for (const part of parts) if (part.total === total) received.set(part.index, part.text);
+  if (received.size !== total || received.get(total) !== ANSWER_LABEL) return null;
+  const body: string[] = [];
+  for (let index = 1; index < total; index++) {
+    const text = received.get(index);
+    if (text === undefined) return null;
+    body.push(text);
+  }
+  return body.join('\n').trim();
 }
 
 export function encodeLocationShare(note: string | null, lat: number, lon: number): string {

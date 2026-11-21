@@ -1,4 +1,5 @@
-import { ACK_TEXT, ANSWER_LABEL, HUB_EMPTY_TEXT, HUB_ERROR_TEXT, HUB_NICKNAME, MAX_QUESTION_UNITS, prefixUnits, splitTrailingLoc, encodeLocationShare } from '../protocol';
+import { ACK_TEXT, HUB_EMPTY_TEXT, HUB_ERROR_TEXT, HUB_NICKNAME, MAX_MESSAGE_BYTES, utf8Bytes, encodeLocationShare } from '../protocol';
+import { composeAnswer, parseQuestion } from './simulatedHub';
 import { HubMode, InboundMessage, Peer, SimulationControls, Transport, TransportEvent, peerId, PeerId } from './types';
 
 export const PHONE_B_ID = peerId('sim-phone-b');
@@ -23,7 +24,7 @@ function answerFor(question: string): string {
     : /warm|power/.test(text) && !/food|fridge/.test(text) ? 'warm'
     : /fridge|food/.test(text) ? 'food' : /carbon|monoxide/.test(text) ? 'carbon'
     : /burn/.test(text) ? 'burn' : 'generic';
-  return `${ANSWERS[topic]}\n${ANSWER_LABEL}`;
+  return ANSWERS[topic];
 }
 
 export class SimulatedTransport implements Transport, SimulationControls {
@@ -82,21 +83,23 @@ export class SimulatedTransport implements Transport, SimulationControls {
   }
 
   private checkRunning(): void { if (this.state !== 'running') throw new Error('The link is stopped. Start it before sending.'); }
+  private checkMessage(text: string): void { if (utf8Bytes(text) > MAX_MESSAGE_BYTES) throw new Error('The message exceeds the mesh byte limit.'); }
 
   async sendPublic(text: string): Promise<void> {
     this.checkRunning();
+    this.checkMessage(text);
     this.sent.push({ to: 'public', text });
   }
 
   async sendPrivate(to: PeerId, text: string): Promise<void> {
     this.checkRunning();
+    this.checkMessage(text);
     this.sent.push({ to, text });
     if (to !== HUB_ID || this.mode === 'offline') return;
     this.hubInbox.push(text);
-    const { body } = splitTrailingLoc(text);
-    const question = prefixUnits(body, MAX_QUESTION_UNITS);
+    const question = parseQuestion(text);
     const queuedFor = Math.max(0, this.hubAvailableAt - Date.now());
-    if (!question) {
+    if (question.kind === 'empty') {
       this.later(queuedFor + 800, () => { if (this.mode !== 'offline') this.inbound(HUB, HUB_EMPTY_TEXT, 'private'); });
       return;
     }
@@ -104,7 +107,9 @@ export class SimulatedTransport implements Transport, SimulationControls {
     this.hubAvailableAt = Date.now() + queuedFor + 3300;
     this.later(queuedFor + 800, () => { if (this.mode !== 'offline') this.inbound(HUB, ACK_TEXT, 'private'); });
     this.later(queuedFor + 3300, () => {
-      if (this.mode !== 'offline') this.inbound(HUB, mode === 'error' ? HUB_ERROR_TEXT : answerFor(question), 'private');
+      if (this.mode === 'offline') return;
+      const messages = mode === 'error' ? [HUB_ERROR_TEXT] : composeAnswer(answerFor(question.body)) ?? [HUB_ERROR_TEXT];
+      messages.forEach(message => this.inbound(HUB, message, 'private'));
     });
   }
 

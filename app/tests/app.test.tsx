@@ -1,16 +1,26 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react-native';
 import { MeshApp } from '../src/AppShell';
 import { demoLocation, fixedLocation, LocationSource } from '../src/location/LocationStore';
-import { ACK_TEXT, ACK_TIMEOUT_MS, ANSWER_LABEL, ANSWER_TIMEOUT_MS, decodeLocationShare, HUB_NICKNAME } from '../src/protocol';
+import { ACK_TEXT, ACK_TIMEOUT_MS, ANSWER_LABEL, ANSWER_TIMEOUT_MS, decodeLocationShare, HUB_NICKNAME, MAX_MESSAGE_BYTES } from '../src/protocol';
 import { DISCLAIMER } from '../src/screens/AskScreen';
 import { AppRuntime } from '../src/store/Runtime';
 import { HUB_ID, SimulatedTransport } from '../src/transport/SimulatedTransport';
+import { TransportEvent } from '../src/transport/types';
 
-async function launch(options: ConstructorParameters<typeof SimulatedTransport>[0] = {}, source: LocationSource = demoLocation) {
-  const transport = new SimulatedTransport(options);
+async function launch(options: ConstructorParameters<typeof SimulatedTransport>[0] = {}, source: LocationSource = demoLocation, transport = new SimulatedTransport(options)) {
   const runtime = new AppRuntime({ transport, simulation: transport }, source);
   await render(<MeshApp runtime={runtime} />);
   return { runtime, transport };
+}
+
+class OutOfOrderTransport extends SimulatedTransport {
+  override subscribe(listener: (event: TransportEvent) => void): () => void {
+    return super.subscribe(event => {
+      if (event.type === 'message' && event.message.from === HUB_ID && event.message.text.startsWith('(1/')) {
+        setTimeout(() => listener(event), 100);
+      } else listener(event);
+    });
+  }
 }
 const button = (name: string) => screen.getByRole('button', { name });
 const tap = async (name: string) => { await fireEvent.press(button(name)); };
@@ -36,6 +46,18 @@ describe('Ask on the real simulated link', () => {
     expect(screen.getByText(/1\. Use sealed bottled water/)).toBeTruthy();
     expect(screen.getByText('3s elapsed')).toBeTruthy();
     expect(button('Ask another question')).toBeTruthy();
+  });
+
+  test('out-of-order simulated mesh parts show progress and assemble the full answer', async () => {
+    await launch({}, demoLocation, new OutOfOrderTransport());
+    await tab('Ask');
+    await tap('Make water safe to drink');
+    await advance(3300);
+    expect(screen.getByText('Received by hub')).toBeTruthy();
+    expect(screen.getByText('Answer arriving, 2 of 3')).toBeTruthy();
+    await advance(100);
+    expect(screen.getByText('Answered')).toBeTruthy();
+    expect(screen.getByText('1. Use sealed bottled water if you have it.\n2. Boiling does not remove chemicals. Avoid water that may be chemically contaminated.\n3. For clear water with a biological risk, bring it to a rolling boil for at least 1 minute, then let it cool in a clean, covered container.')).toBeTruthy();
   });
 
   test('remembers a hub that goes offline, times out, retries and answers', async () => {
@@ -123,13 +145,15 @@ describe('Ask on the real simulated link', () => {
   });
 
   test('after an ack, a missing answer fails at the answer timeout', async () => {
-    const { transport } = await launch();
+    const { runtime, transport } = await launch();
     await tab('Ask');
     await tap('Make water safe to drink');
     await advance(800);
     await act(() => transport.setHubMode('offline'));
     await advance(ANSWER_TIMEOUT_MS - 1);
     expect(screen.getByText('Received by hub')).toBeTruthy();
+    await act(() => runtime.ask.receive({ id: 'partial', from: HUB_ID, fromNickname: HUB_NICKNAME, text: '(1/3) First part', channel: 'private', receivedAt: Date.now() }));
+    expect(screen.getByText('Answer arriving, 1 of 3')).toBeTruthy();
     await advance(1);
     expect(screen.getByText('Hub could not answer')).toBeTruthy();
   });
@@ -141,19 +165,48 @@ describe('Ask on the real simulated link', () => {
     await tap('Treat a burn');
     await advance(ACK_TIMEOUT_MS);
     const reply = (text: string) => runtime.ask.receive({ id: 'late', from: HUB_ID, fromNickname: HUB_NICKNAME, text, channel: 'private', receivedAt: Date.now() });
-    await act(() => reply(`1. A late answer.\n${ANSWER_LABEL}`));
+    await act(() => { reply(`(2/2) ${ANSWER_LABEL}`); reply('(1/2) 1. A late answer.'); });
     expect(screen.getByText('Answered')).toBeTruthy();
-    await act(() => { reply(ACK_TEXT); reply(`1. Duplicate answer.\n${ANSWER_LABEL}`); });
+    await act(() => { reply(ACK_TEXT); reply('(1/2) 1. Duplicate answer.'); reply(`(2/2) ${ANSWER_LABEL}`); });
     expect(screen.getByText('1. A late answer.')).toBeTruthy();
     expect(screen.queryByText('1. Duplicate answer.')).toBeNull();
   });
 
-  test('free text is capped at 500 UTF-16 units without splitting an emoji', async () => {
+  test('retry discards the previous attempt’s partial answer', async () => {
+    const { runtime, transport } = await launch();
+    await act(() => transport.setHubMode('offline'));
+    await tab('Ask');
+    await tap('Treat a burn');
+    await advance(ACK_TIMEOUT_MS);
+    const reply = (text: string) => runtime.ask.receive({ id: text, from: HUB_ID, fromNickname: HUB_NICKNAME, text, channel: 'private', receivedAt: Date.now() });
+    await act(() => reply('(1/2) Old answer'));
+    expect(screen.getByText('Answer arriving, 1 of 2')).toBeTruthy();
+    await tap('Retry');
+    expect(screen.queryByText('Answer arriving, 1 of 2')).toBeNull();
+    await act(() => reply(`(2/2) ${ANSWER_LABEL}`));
+    expect(screen.queryByText('Answered')).toBeNull();
+    await act(() => reply('(1/2) New answer'));
+    expect(screen.getByText('Answered')).toBeTruthy();
+    expect(screen.getByText('New answer')).toBeTruthy();
+  });
+
+  test('emoji questions stop at 200 bytes and fit with an attached location', async () => {
     const { transport } = await launch();
     await tab('Ask');
-    await fireEvent.changeText(screen.getByLabelText('Your question'), `${'x'.repeat(499)}😀`);
+    await fireEvent(screen.getByRole('switch', { name: 'Attach my location' }), 'valueChange', true);
+    await fireEvent.changeText(screen.getByLabelText('Your question'), `${'😀'.repeat(50)}extra`);
+    expect(screen.getByLabelText('Your question')).toHaveProp('value', '😀'.repeat(50));
+    expect(screen.getByText('0 bytes remaining')).toBeTruthy();
     await tap('Send question');
-    expect(transport.hubInbox[0]).toBe('x'.repeat(499));
+    expect(transport.hubInbox[0]).toBe(`${'😀'.repeat(50)}\nloc: 51.50070,-0.12460`);
+    expect(new TextEncoder().encode(transport.hubInbox[0]).length).toBeLessThanOrEqual(MAX_MESSAGE_BYTES);
+  });
+
+  test('an over-limit question cannot bypass the composer', async () => {
+    const { runtime, transport } = await launch();
+    await act(() => runtime.ask.submit('😀'.repeat(51), null));
+    expect(transport.sent).toHaveLength(0);
+    expect(runtime.ask.getSnapshot().state).toBe('idle');
   });
 });
 
@@ -168,6 +221,16 @@ describe('Talk', () => {
     await tap('Send message');
     expect(screen.getByText('We are safe at the gate.')).toBeTruthy();
     expect(transport.sent[0]).toEqual({ to: 'public', text: 'We are safe at the gate.' });
+  });
+  test('the composer stops at 255 bytes and an over-limit message cannot be sent', async () => {
+    const { runtime, transport } = await launch();
+    await fireEvent.changeText(screen.getByLabelText('Message'), `${'😀'.repeat(63)}abcde`);
+    expect(screen.getByLabelText('Message')).toHaveProp('value', `${'😀'.repeat(63)}abc`);
+    expect(screen.getByText('0 bytes remaining')).toBeTruthy();
+    await tap('Send message');
+    expect(new TextEncoder().encode(transport.sent[0].text).length).toBe(MAX_MESSAGE_BYTES);
+    await expect(runtime.mesh.send('public', '😀'.repeat(64))).rejects.toThrow();
+    expect(transport.sent).toHaveLength(1);
   });
   test('an inbound private message is in Phone B’s private thread', async () => {
     const { transport } = await launch();
