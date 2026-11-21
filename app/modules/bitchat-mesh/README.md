@@ -100,3 +100,17 @@ Ranked first-build risks:
 5. The source subset retains coupled courier/media/board code and may need additional iOS-only dependencies or patch adjustments when the fork advances. The preparation script fails if the patch no longer applies.
 
 Set a **two-hour Xcode/device timebox** starting with the first successful pod install. If, at its end, two of our phones in airplane mode cannot discover each other and exchange a public and a private message in both directions using this backend, switch the `MeshBackend` implementation to Multipeer Connectivity and accept the blueprint's loss of multi-hop and stock-BitChat interoperability. A simulator-only result does not satisfy the gate.
+
+## Android (scaffold, uncompiled, NOT enabled)
+
+`android/` mirrors the iOS surface (`start`, `stop`, `getPeers`, `sendPublic`, `sendPrivate`; events `onPeers`, `onMessage`, `onState`) with `BitchatMeshModule.kt`, a `MeshBackend` interface and `src/adapter/.../BitchatAndroidMeshBackend.kt`, which wraps bitchat-android's `BluetoothMeshService` (Noise private DMs included).
+
+Status and caveats:
+
+- **Not compiled.** The machine that wrote it has no JDK, Gradle or Android SDK.
+- **Not enabled.** `expo-module.config.json` still lists only `apple`, so Android keeps using the simulated link. If you add `"android"` with no vendored mesh, `loadNativeMesh()` succeeds, `start()` rejects with `UNSUPPORTED`, and the app loses its simulated fallback.
+- **Licence.** bitchat-android is **GPL-3.0**, not Unlicense like iOS bitchat. Its sources are copied in at build time by `node prepare-sources-android.js /path/to/bitchat-android` into `android/src/bitchat/java` (gitignored). Shipping a build that includes them puts the app under GPL-3.0.
+- **Coupling.** The transitive closure of `BluetoothMeshService` at bitchat-android 0594b60 reaches about 200 files across `ui/` (DataManager), `nostr/`, `geohash/`, `services/`, `wifi-aware/` and Tor/Arti JNI. Expect to stub several of these before it compiles.
+- **Protocol.** The hub runs the patched iOS/macOS fork (`bitchat-fork.patch`, 255-byte message limit). Stock bitchat-android's interoperability with that fork is untested.
+
+To try it: add `"android"` to `platforms` with `"android": { "modules": ["expo.modules.bitchatmesh.BitchatMeshModule"] }`, vendor the sources, run `npx expo prebuild --platform android` and `npx expo run:android --device` with a USB phone, then request `BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT` and `BLUETOOTH_ADVERTISE` at runtime before `start()`. The Android emulator has no Bluetooth.

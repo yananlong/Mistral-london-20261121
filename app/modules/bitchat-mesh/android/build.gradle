@@ -1,0 +1,42 @@
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+
+group = 'expo.modules.bitchatmesh'
+version = '0.1.0'
+
+def expoModulesCorePlugin = new File(project(":expo-modules-core").projectDir.absolutePath, "ExpoModulesCorePlugin.gradle")
+apply from: expoModulesCorePlugin
+applyKotlinExpoModulesCorePlugin()
+useCoreDependencies()
+useDefaultAndroidSdkVersions()
+useExpoPublishing()
+
+// The BitChat mesh itself (bitchat-android, GPL-3.0) is NOT committed. `node prepare-sources-android.js`
+// copies it into src/bitchat/java. Only when that directory exists do we compile it plus the adapter;
+// otherwise the module builds with UnavailableMeshBackend and start() rejects with UNSUPPORTED.
+def hasVendoredMesh = file("src/bitchat/java").exists()
+
+android {
+  namespace "expo.modules.bitchatmesh"
+  defaultConfig { minSdkVersion 26 }
+  sourceSets {
+    main {
+      if (hasVendoredMesh) {
+        java.srcDirs += ['src/bitchat/java', 'src/adapter/java']
+      }
+    }
+  }
+}
+
+dependencies {
+  implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1"
+  if (hasVendoredMesh) {
+    // Mirrors bitchat-android's libs.versions.toml "cryptography" bundle + BLE + gson (verify versions there).
+    implementation "org.bouncycastle:bcprov-jdk18on:1.78.1"
+    implementation "com.google.crypto.tink:tink-android:1.13.0"
+    implementation "no.nordicsemi.android:ble:2.7.5"
+    implementation "com.google.code.gson:gson:2.11.0"
+    implementation "androidx.security:security-crypto:1.1.0-alpha06"
+    implementation "androidx.lifecycle:lifecycle-process:2.8.4"
+  }
+}
