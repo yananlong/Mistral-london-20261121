@@ -8,8 +8,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <script src="type.js"></script>
-<!-- Icons: Google Material Symbols, Rounded, filled (Apache 2.0) -->
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,500,1,0&icon_names=arrow_upward,battery_charging_full,bluetooth_disabled,check,check_circle,close,family_restroom,local_drink,location_on,medical_services,night_shelter,restaurant,schedule,sos,warning&display=block">
 <style>
 /* ============ The system, as tokens ============ */
 :root {
@@ -167,10 +165,11 @@ section.part { padding: 88px 0; border-bottom: 1px solid var(--line); }
 .state { border-radius: var(--r-m); border: 1px solid var(--line); padding: 20px; display: grid; gap: 14px; align-content: start; }
 .state p { font-size: 15px; line-height: 20px; color: var(--ink-2); }
 .state .uses-t { font-size: 13px; line-height: 18px; color: var(--ink-2); }
-.i { font-family: "Material Symbols Rounded"; font-weight: normal; font-style: normal; font-size: 24px; line-height: 1; letter-spacing: normal; white-space: nowrap; direction: ltr; font-feature-settings: "liga" 1; display: inline-block; width: 1em; height: 1em; overflow: hidden; flex: none; }
+/* Icons are inline SVG (icons.js): drawn inside their box, never cut off. Size = font-size. */
+.i { display: inline-block; width: 1em; height: 1em; font-size: 24px; fill: currentColor; flex: none; vertical-align: -0.2em; }
 /* A state is a coloured icon and a plain word. No badge, no fill */
 .status { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; line-height: 20px; font-weight: 600; color: var(--ink); width: fit-content; }
-.status .i { font-size: 20px; }
+.status .i { font-size: 22px; }
 .status.sos .i { color: var(--red); }
 .status.wait .i { color: var(--yellow); }
 .status.ok .i { color: var(--green); }
@@ -190,7 +189,7 @@ section.part { padding: 88px 0; border-bottom: 1px solid var(--line); }
 .icons { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
 .icon { display: grid; justify-items: start; gap: 10px; font-size: 13px; color: var(--ink-2); }
 .icon > span:first-child { color: var(--ink); width: 56px; height: 56px; border-radius: var(--r-m); background: var(--surface-2); display: grid; place-items: center; }
-.icon .i { font-size: 28px; }
+.icon .i { font-size: 32px; }
 .icon svg { width: 24px; height: 24px; fill: var(--ink); }
 @media (max-width: 860px) { .icons { grid-template-columns: repeat(3, 1fr); } }
 
@@ -262,6 +261,7 @@ table.refs { width: 100%; border-collapse: collapse; font-size: 15px; line-heigh
 </style>
 </head>
 <body>
+<script src="icons.js"></script>
 
 <header class="top">
   <div class="wrap">
@@ -395,7 +395,7 @@ table.refs { width: 100%; border-collapse: collapse; font-size: 15px; line-heigh
         <div class="pair" style="background:#D7000F;color:#fff"><span class="s">White on the SOS button</span><span class="r"><span>5.39:1</span><span class="pass">Pass</span></span></div>
         <div class="pair" style="background:#FFD100;color:#fff"><span class="s">White on yellow</span><span class="r" style="color:#000"><span>1.46:1</span><span class="fail">Never</span></span></div>
         <div class="pair" style="background:#FFD100;color:#9A9A9F"><span class="s">Ink 2 on yellow</span><span class="r" style="color:#000"><span>1.92:1</span><span class="fail">Never</span></span></div>
-        <div class="pair" style="background:#000;color:#FFD100;box-shadow:inset 0 0 0 1px var(--line)"><span class="s"><span class="i" aria-hidden="true">schedule</span> Yellow icon on black</span><span class="r" style="color:#fff"><span>14.37:1</span><span class="pass">Pass</span></span></div>
+        <div class="pair" style="background:#000;color:#FFD100;box-shadow:inset 0 0 0 1px var(--line)"><span class="s"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-schedule"/></svg> Yellow icon on black</span><span class="r" style="color:#fff"><span>14.37:1</span><span class="pass">Pass</span></span></div>
       </div>
 
       <p class="group-t" style="margin-top:40px">Light alternative, for bright sun</p>
@@ -478,32 +478,32 @@ table.refs { width: 100%; border-collapse: collapse; font-size: 15px; line-heigh
     <div class="wrap">
       <div class="part-head"><h2>6. States and icons</h2><p>A state is a coloured icon and a plain word, with no badge around it. Remove the colour and the icon and word still read, which matters for the 1 in 12 men with colour blindness and for screens in bright sun.</p></div>
       <div class="states">
-        <div class="state"><span class="status sos"><span class="i" aria-hidden="true">warning</span>Danger</span><p>A life may be at risk. Send SOS, leave, stop.</p><button class="solid red" type="button" tabindex="-1">SOS</button></div>
-        <div class="state"><span class="status wait"><span class="i" aria-hidden="true">schedule</span>Waiting</span><p>Not known yet, or not sent yet.</p><span class="uses-t">Not known yet, Nothing yet, Not sent yet, Not getting through right now</span></div>
-        <div class="state"><span class="status ok"><span class="i" aria-hidden="true">check_circle</span>Done</span><p>Delivered, answered, back on.</p><span class="uses-t">Delivered, Answered, Delivered to Mum, 2 places, Power is back</span></div>
-        <div class="state"><span class="status"><span class="i" aria-hidden="true">close</span>Not now</span><p>Everything else: facts, sources, things that don't work yet. White or grey, no colour.</p><span class="uses-t">Facts, sources, News (not now)</span></div>
+        <div class="state"><span class="status sos"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-warning"/></svg>Danger</span><p>A life may be at risk. Send SOS, leave, stop.</p><button class="solid red" type="button" tabindex="-1">SOS</button></div>
+        <div class="state"><span class="status wait"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-schedule"/></svg>Waiting</span><p>Not known yet, or not sent yet.</p><span class="uses-t">Not known yet, Nothing yet, Not sent yet, Not getting through right now</span></div>
+        <div class="state"><span class="status ok"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-check_circle"/></svg>Done</span><p>Delivered, answered, back on.</p><span class="uses-t">Delivered, Answered, Delivered to Mum, 2 places, Power is back</span></div>
+        <div class="state"><span class="status"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-close"/></svg>Not now</span><p>Everything else: facts, sources, things that don't work yet. White or grey, no colour.</p><span class="uses-t">Facts, sources, News (not now)</span></div>
       </div>
       <div class="cb">
         <span class="note">The same with colour removed:</span>
-        <span class="status sos"><span class="i" aria-hidden="true">warning</span>Danger</span>
-        <span class="status wait"><span class="i" aria-hidden="true">schedule</span>Waiting</span>
-        <span class="status ok"><span class="i" aria-hidden="true">check_circle</span>Done</span>
+        <span class="status sos"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-warning"/></svg>Danger</span>
+        <span class="status wait"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-schedule"/></svg>Waiting</span>
+        <span class="status ok"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-check_circle"/></svg>Done</span>
       </div>
 
       <p class="group-t" style="margin-top:56px">Icons: Material Symbols, Rounded and filled. Pictures from public signs, so they work with little English. The full set, with iPhone names, is in <a href="components.html">components.html</a>.</p>
       <div class="icons">
-        <div class="icon"><span><span class="i" aria-hidden="true">local_drink</span></span>Water</div>
-        <div class="icon"><span><span class="i" aria-hidden="true">battery_charging_full</span></span>Charge phone</div>
-        <div class="icon"><span><span class="i" aria-hidden="true">restaurant</span></span>Food</div>
-        <div class="icon"><span><span class="i" aria-hidden="true">family_restroom</span></span>Family</div>
-        <div class="icon"><span><span class="i" aria-hidden="true">night_shelter</span></span>Shelter</div>
-        <div class="icon"><span><span class="i" aria-hidden="true">medical_services</span></span>First aid</div>
-        <div class="icon"><span><span class="i" aria-hidden="true">arrow_upward</span></span>Send</div>
-        <div class="icon"><span><span class="i" aria-hidden="true">bluetooth_disabled</span></span>Bluetooth off</div>
-        <div class="icon"><span><span class="i" aria-hidden="true">location_on</span></span>A place</div>
-        <div class="icon"><span><span class="i" aria-hidden="true">sos</span></span>SOS</div>
-        <div class="icon"><span><span class="i" aria-hidden="true">schedule</span></span>Waiting</div>
-        <div class="icon"><span><span class="i" aria-hidden="true">check_circle</span></span>Done</div>
+        <div class="icon"><span><svg class="i" aria-hidden="true" focusable="false"><use href="#i-local_drink"/></svg></span>Water</div>
+        <div class="icon"><span><svg class="i" aria-hidden="true" focusable="false"><use href="#i-battery_charging_full"/></svg></span>Charge phone</div>
+        <div class="icon"><span><svg class="i" aria-hidden="true" focusable="false"><use href="#i-restaurant"/></svg></span>Food</div>
+        <div class="icon"><span><svg class="i" aria-hidden="true" focusable="false"><use href="#i-family_restroom"/></svg></span>Family</div>
+        <div class="icon"><span><svg class="i" aria-hidden="true" focusable="false"><use href="#i-night_shelter"/></svg></span>Shelter</div>
+        <div class="icon"><span><svg class="i" aria-hidden="true" focusable="false"><use href="#i-medical_services"/></svg></span>First aid</div>
+        <div class="icon"><span><svg class="i" aria-hidden="true" focusable="false"><use href="#i-arrow_upward"/></svg></span>Send</div>
+        <div class="icon"><span><svg class="i" aria-hidden="true" focusable="false"><use href="#i-bluetooth_disabled"/></svg></span>Bluetooth off</div>
+        <div class="icon"><span><svg class="i" aria-hidden="true" focusable="false"><use href="#i-location_on"/></svg></span>A place</div>
+        <div class="icon"><span><svg class="i" aria-hidden="true" focusable="false"><use href="#i-sos"/></svg></span>SOS</div>
+        <div class="icon"><span><svg class="i" aria-hidden="true" focusable="false"><use href="#i-schedule"/></svg></span>Waiting</div>
+        <div class="icon"><span><svg class="i" aria-hidden="true" focusable="false"><use href="#i-check_circle"/></svg></span>Done</div>
       </div>
 
       <p class="group-t" style="margin-top:56px">Controls</p>
@@ -512,7 +512,7 @@ table.refs { width: 100%; border-collapse: collapse; font-size: 15px; line-heigh
         <button class="solid line" type="button" tabindex="-1">Next step</button>
         <span class="chip">Some known</span>
         <span class="chip on">All known</span>
-        <span class="field"><span>Ask something else</span><i><span class="i" aria-hidden="true" style="font-size:20px">arrow_upward</span></i></span>
+        <span class="field"><span>Ask something else</span><i><svg class="i" aria-hidden="true" focusable="false" style="font-size:20px"><use href="#i-arrow_upward"/></svg></i></span>
         <span class="target" title="44 pt tap area around a 28 pt icon"><i></i></span>
       </div>
 
@@ -567,7 +567,7 @@ table.refs { width: 100%; border-collapse: collapse; font-size: 15px; line-heigh
         <div class="g">Il1 O0 rn m 8B</div>
         <p class="h">Power is off.</p>
         <p>No power in Southwark and north Lambeth.</p>
-        <div class="m"><span class="status wait"><span class="i" aria-hidden="true">schedule</span>Not known yet</span><span>From UK Power Networks, 2:20pm</span></div>
+        <div class="m"><span class="status wait"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-schedule"/></svg>Not known yet</span><span>From UK Power Networks, 2:20pm</span></div>
       </div>
       <div class="tinfo">
         <div class="top"><b>${f.name}</b>${k === 'atkinson' ? '<span class="tag">Chosen</span>' : k === 'inter' ? '<span class="tag">First draft</span>' : ''}</div>

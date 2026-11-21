@@ -8,8 +8,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;600&display=swap">
-<!-- Icons: Google Material Symbols, Rounded, filled (Apache 2.0). Only the icons used here are loaded. -->
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,500,1,0&icon_names=arrow_upward,battery_charging_full,bluetooth,bluetooth_disabled,check,check_circle,close,expand_more,family_restroom,help,local_drink,location_on,medical_services,night_shelter,pause,person,play_arrow,power_off,replay,restaurant,schedule,signal_cellular_off,sos,warning&display=block">
 <style>
 /* ============ Tokens: the same as system.html ============ */
 :root {
@@ -41,8 +39,8 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 :focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 a { color: inherit; text-underline-offset: 3px; }
 
-/* Icon font. Fixed width, so a missing font never spills its ligature name. */
-.i { font-family: "Material Symbols Rounded"; font-weight: normal; font-style: normal; font-size: 24px; line-height: 1; letter-spacing: normal; text-transform: none; white-space: nowrap; direction: ltr; font-feature-settings: "liga" 1; display: inline-block; width: 1em; height: 1em; overflow: hidden; flex: none; user-select: none; }
+/* Icons are inline SVG (icons.js): drawn inside their box, never cut off. Size = font-size. */
+.i { display: inline-block; width: 1em; height: 1em; font-size: 24px; fill: currentColor; flex: none; vertical-align: -0.2em; }
 .s16 { font-size: 16px; } .s20 { font-size: 20px; } .s32 { font-size: 32px; }
 
 /* ============ Page ============ */
@@ -112,7 +110,7 @@ section.part { padding: 96px 0; border-bottom: 1px solid var(--line); }
 
 /* Status: a coloured icon and a plain word. No badge, no fill. */
 .status { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; line-height: 20px; font-weight: 600; color: var(--ink); }
-.status .i { font-size: 20px; }
+.status .i { font-size: 22px; }
 .status.wait .i { color: var(--yellow); }
 .status.done .i { color: var(--green); }
 
@@ -135,26 +133,28 @@ section.part { padding: 96px 0; border-bottom: 1px solid var(--line); }
 
 /* Briefing: what's going on */
 .place { display: flex; align-items: center; gap: 8px; color: var(--ink-2); font-size: 15px; line-height: 20px; font-weight: 600; }
-.place .i { font-size: 20px; color: var(--ink); }
+.place .i { font-size: 22px; color: var(--ink); }
 .place .i.done { color: var(--green); }
 .display { margin-top: 10px; font-size: 44px; line-height: 46px; font-weight: 600; letter-spacing: -0.01em; }
 .sub { margin-top: 2px; font-size: 28px; line-height: 32px; font-weight: 600; color: var(--ink-2); }
 .qa { margin-top: 28px; border-top: 1px solid var(--line); }
 .row { padding: 12px 0 14px; border-bottom: 1px solid var(--line); }
+.row:last-child { border-bottom: 0; }
 .row .q { font-size: 15px; line-height: 20px; font-weight: 600; color: var(--ink-2); margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
 .row .src { margin-top: 2px; font-size: 13px; line-height: 18px; color: var(--ink-2); }
 .new { font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink); border: 1px solid var(--line-strong); border-radius: var(--r-xs); padding: 0 5px; }
 
-/* What you can find: icon first, so it works with little English */
-.find-h { margin-top: 32px; }
+/* What you can find: the utilities. A rule divides them from the briefing above, so the
+   most crucial information (what's happening) stands on its own at the top */
+.find-h { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--line); }
 .find-h h3 { font-size: 22px; line-height: 28px; font-weight: 600; }
 .topics { margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .topic { border: 1px solid var(--line); border-radius: var(--r-m); padding: 12px; display: grid; gap: 6px; align-content: start; min-height: 104px; transition: border-color var(--t-press) var(--ease), transform var(--t-press) var(--ease); }
 .topic:hover { border-color: var(--line-strong); }
-.topic > .i { font-size: 32px; }
+.topic > .i { font-size: 36px; }
 .topic b { font-weight: 600; line-height: 22px; }
-.av { font-size: 13px; line-height: 18px; color: var(--ink-2); display: flex; align-items: center; gap: 4px; }
-.av .i { font-size: 16px; }
+.av { font-size: 13px; line-height: 20px; color: var(--ink-2); display: flex; align-items: center; gap: 4px; }
+.av .i { font-size: 18px; }
 .av.has { color: var(--ink); }
 .av.has .i { color: var(--green); }
 .av.wait .i { color: var(--yellow); }
@@ -168,7 +168,15 @@ section.part { padding: 96px 0; border-bottom: 1px solid var(--line); }
 .sh-h { margin-top: 12px; font-size: 28px; line-height: 32px; font-weight: 600; }
 .plist { margin-top: 12px; }
 .pl { padding: 14px 0; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 24px 1fr; gap: 10px; }
-.pl > .i { margin-top: 2px; }
+.pl .pn { width: 24px; height: 24px; border-radius: 50%; background: var(--ink); color: var(--on-ink); display: grid; place-items: center; font-size: 13px; line-height: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+/* Map: drawn from the map stored on the phone, so it works with no signal. Pins are numbered to match the list */
+.mapbox { margin-top: 12px; border: 1px solid var(--line); border-radius: var(--r-m); overflow: hidden; }
+.mapbox svg { display: block; width: 100%; height: auto; }
+/* Map card inside a chat answer */
+.mcard { margin-top: 12px; border: 1px solid var(--line); border-radius: var(--r-m); padding: 12px; display: grid; gap: 10px; }
+.mcard .mapbox { margin-top: 0; }
+.mcard .mrow { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mcard .d { color: var(--ink-2); font-size: 15px; line-height: 20px; font-weight: 600; }
 .pl b { font-weight: 600; display: block; }
 .pl .d { font-weight: 600; color: var(--ink-2); font-size: 15px; line-height: 20px; }
 .pl p { margin-top: 4px; }
@@ -190,8 +198,8 @@ section.part { padding: 96px 0; border-bottom: 1px solid var(--line); }
 .bar3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
 .bar3 i { height: 4px; border-radius: 2px; background: var(--line); transition: background-color var(--t-change) var(--ease); }
 .bar3 i.on { background: var(--green); }
-.dst { font-size: 13px; line-height: 18px; color: var(--ink-2); text-align: right; display: flex; justify-content: flex-end; align-items: center; gap: 4px; }
-.dst .i { font-size: 16px; }
+.dst { font-size: 13px; line-height: 20px; color: var(--ink-2); text-align: right; display: flex; justify-content: flex-end; align-items: center; gap: 4px; }
+.dst .i { font-size: 18px; }
 .dst.ok { color: var(--ink); } .dst.ok .i { color: var(--green); }
 .dst.wait { color: var(--ink); } .dst.wait .i { color: var(--yellow); }
 .reply { margin-top: 12px; max-width: 88%; background: var(--surface-2); padding: 10px 14px; border-radius: var(--r-m) var(--r-m) var(--r-m) var(--r-xs); }
@@ -200,7 +208,7 @@ section.part { padding: 96px 0; border-bottom: 1px solid var(--line); }
 /* SOS: pinned, never scrolls away */
 .sosbar { border: 1px solid #5A1A1C; background: var(--red-tint); border-radius: var(--r-m); padding: 8px 8px 8px 12px; }
 .sosbar .line { display: flex; align-items: center; gap: 10px; min-height: 44px; }
-.sosbar .line > .i { color: var(--red); font-size: 22px; }
+.sosbar .line > .i { color: var(--red); font-size: 24px; }
 .sosbar .line > .i.y { color: var(--yellow); }
 .sosbar .line > .i.g { color: var(--green); }
 .sosbar p { flex: 1; font-size: 15px; line-height: 20px; font-weight: 600; }
@@ -253,7 +261,7 @@ section.part { padding: 96px 0; border-bottom: 1px solid var(--line); }
 
 .icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 8px; }
 .ico { display: grid; grid-template-columns: 48px 1fr; gap: 12px; align-items: center; padding: 12px; border-radius: var(--r-m); border: 1px solid var(--line); }
-.ico .c { width: 48px; height: 48px; border-radius: var(--r-m); display: grid; place-items: center; background: var(--surface-2); }
+.ico .c { font-size: 28px; width: 48px; height: 48px; border-radius: var(--r-m); display: grid; place-items: center; background: var(--surface-2); }
 .ico .c.sos { color: var(--red); } .ico .c.wait { color: var(--yellow); } .ico .c.done { color: var(--green); }
 .ico b { display: block; font-size: 15px; line-height: 20px; font-weight: 600; }
 .ico div > span { display: block; overflow-wrap: anywhere; font-size: 13px; line-height: 18px; color: var(--ink-2); }
@@ -280,22 +288,23 @@ footer { padding: 48px 0 64px; color: var(--ink-2); font-size: 15px; }
 </style>
 </head>
 <body>
+<script src="icons.js"></script>
 
 <header class="top">
   <div class="wrap">
-    <div class="meta"><b>Status components</b><span>Draft 6, just ask</span><span>21 November 2026</span><a href="system.html">Visual system</a></div>
+    <div class="meta"><b>Status components</b><span>Draft 7, map first</span><span>21 November 2026</span><a href="system.html">Visual system</a></div>
 
     <div class="hero">
       <div>
         <h1>What's going on? What can I find? Did my message get through?</h1>
-        <p class="lede">No phone signal, no internet, and 999 may not work. You open the app and ask. If an answer can come back, it does. If your message can't get through, the app says so and keeps trying.</p>
-        <p class="lede">Play the story, or set it yourself. Tap a topic, ask a question, or press SOS.</p>
+        <p class="lede">A blackout across the whole UK: no power, no phone signal, no internet, and 999 may not work. You open the app and ask. If an answer can come back, it does. If your message can't get through, the app says so and keeps trying.</p>
+        <p class="lede">Play the story, or set it yourself. Tap a topic to open its map, ask a question, or press SOS.</p>
 
         <div class="ctl">
           <div class="story">
             <div class="story-head">
               <p>The story, step by step</p>
-              <button class="btn sm" id="play" type="button"><span class="i s20" aria-hidden="true">play_arrow</span><span>Play</span></button>
+              <button class="btn sm" id="play" type="button"><svg class="i s20" aria-hidden="true" focusable="false"><use href="#i-play_arrow"/></svg><span>Play</span></button>
             </div>
             <ol class="steps" id="steps"></ol>
           </div>
@@ -322,7 +331,7 @@ footer { padding: 48px 0 64px; color: var(--ink-2); font-size: 15px; }
             <div class="sosbar" id="psos" aria-live="assertive"></div>
             <form class="ask" id="ask">
               <input id="q" type="text" placeholder="Ask anything" aria-label="Ask anything" autocomplete="off">
-              <button class="send" type="submit" aria-label="Send"><span class="i s20" aria-hidden="true">arrow_upward</span></button>
+              <button class="send" type="submit" aria-label="Send"><svg class="i s20" aria-hidden="true" focusable="false"><use href="#i-arrow_upward"/></svg></button>
             </form>
           </div>
           <div class="scrim" id="scrim"></div>
@@ -367,11 +376,11 @@ footer { padding: 48px 0 64px; color: var(--ink-2); font-size: 15px; }
   <section class="part">
     <div class="part-head">
       <h2>What can I find?</h2>
-      <p>People often don't know what to ask. So the screen shows what information exists, as six topics with a picture each. The picture works even for someone who reads little English. Each tile also says whether there is anything to find yet.</p>
+      <p>People often don't know what to ask. So the screen shows what information exists, as six topics with a picture each. The picture works even for someone who reads little English. Each tile also says whether there is anything to find yet. Tapping a topic opens a map — drawn from the map stored on the phone — with every place pinned; the list under it says the name and how far the walk is.</p>
     </div>
     <div class="grid3">
       <div class="col"><div class="panel tight"><div class="topics" id="topics-gallery" style="margin:0"></div></div><p class="cap"><b>Six topics</b>The things people need first: water, a charged phone, food, family, a warm place, first aid.</p></div>
-      <div class="col"><div class="panel tight" id="sheet-water"></div><p class="cap"><b>Tap a topic</b>The question becomes the title. Each place shows how far, what's there, and who said so.</p></div>
+      <div class="col"><div class="panel tight" id="sheet-water"></div><p class="cap"><b>Tap a topic</b>The map opens first, every place pinned and numbered. Under it, the list says the name, how far the walk is, and who said so.</p></div>
       <div class="col"><div class="panel tight" id="sheet-family"></div><p class="cap"><b>Family</b>Two ready messages, so nobody has to type. Mum gets it as a normal text message.</p></div>
     </div>
     <p class="lbl" style="margin-top:56px">What the line under each topic means</p>
@@ -380,6 +389,7 @@ footer { padding: 48px 0 64px; color: var(--ink-2); font-size: 15px; }
       <p class="q">Decide: the six topics</p>
       <span class="k">Proposed</span><span class="v">Water, Charge phone, Food, Family, Shelter, First aid. They match the basic needs that rest centres and relief guides plan for first, and each has a picture people already know from signs.</span>
       <span class="k">Language</span><span class="v">The app uses the phone's language. Pictures come first and words second, so a topic is still clear to someone who reads little English. The answers can be in any language the server's model speaks.</span>
+      <span class="k">Map first</span><span class="v">A topic opens on the map, not on a list of text. The map was downloaded before the emergency, so it works with no signal. The list under the map keeps only what is impactful: the name, how far the walk is, and who said it. Asking about a place in the chat opens the same map.</span>
     </div>
   </section>
 
@@ -420,7 +430,7 @@ footer { padding: 48px 0 64px; color: var(--ink-2); font-size: 15px; }
     <div class="words">
       <ol class="rules">
         <li><p><b>Talk about the message, not the connection.</b> <span>"Delivered", "Not sent yet". Never "online" or "connected".</span></p></li>
-        <li><p><b>State the fact.</b> <span>"Power is off. Since 2:20pm." Not "We're sorry, it seems…".</span></p></li>
+        <li><p><b>State the fact.</b> <span>"Power disruption. Across the UK, since 2:20pm." Not "We're sorry, it seems…".</span></p></li>
         <li><p><b>No promises.</b> <span>Not "We'll tell you as soon as we hear". Just "Not known yet".</span></p></li>
         <li><p><b>Say only what people can use.</b> <span>No counts of phones or people, no technical words.</span></p></li>
         <li><p><b>Short words, short lines.</b> <span>One idea per line.</span></p></li>
@@ -450,7 +460,7 @@ footer { padding: 48px 0 64px; color: var(--ink-2); font-size: 15px; }
 <script>
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const $ = (s, el = document) => el.querySelector(s);
-const ic = (n, c = '') => `<span class="i ${c}" aria-hidden="true">${n}</span>`;
+const ic = (n, c = '') => icon(n, c);
 const wait = ms => new Promise(r => setTimeout(r, RM ? 0 : ms));
 const stat = (tone, icon, word) => `<span class="status ${tone}">${ic(icon)}${word}</span>`;
 
@@ -472,20 +482,21 @@ function noticeHTML(conn, live) {
   return '';
 }
 
-const ORG = 'UK Power Networks';
+const ORG = 'National Grid';
 const UNK = {};
+/* The demo scenario: a total blackout across the whole UK — no power, no mobile service, no internet */
 const NEWS = {
-  none:  { name: 'Nothing yet', ev: 'signal_cellular_off', display: 'No phone signal.', sub: 'Since 2:05pm.', at: '2:05pm',
-           rows: [{ t: 'Calls, texts and internet stopped. 999 may not work.', s: 'From your phone, 2:05pm' }, UNK, UNK] },
-  some:  { name: 'Some known', ev: 'power_off', display: 'Power is off.', sub: 'Since 2:20pm.', at: '2:20pm',
-           rows: [{ t: 'No power in Southwark and north Lambeth.', s: `From ${ORG}, 2:20pm` }, UNK, UNK] },
-  all:   { name: 'All known', ev: 'power_off', display: 'Power is off.', sub: 'Back by about 8pm.', at: '2:46pm',
-           rows: [{ t: 'No power in Southwark and north Lambeth.', s: `From ${ORG}, 2:20pm` },
-                  { t: 'Broken power equipment in Bankside.', s: `From ${ORG}, 2:46pm` },
-                  { t: 'About 8pm. Not certain.', s: `From ${ORG}, 2:46pm` }] },
-  fixed: { name: 'Fixed', ev: 'check_circle', tone: 'done', display: 'Power is back.', sub: 'Since 7:40pm.', at: '7:40pm',
-           rows: [{ t: 'Power is back on everywhere.', s: `From ${ORG}, 7:40pm` },
-                  { t: 'Broken power equipment in Bankside.', s: `From ${ORG}, 2:46pm` },
+  none:  { name: 'Nothing yet', ev: 'signal_cellular_off', display: 'No phone signal.', sub: 'Across the UK, since 2:05pm.', at: '2:05pm',
+           rows: [{ t: 'Calls, texts and internet stopped everywhere in the UK. 999 may not work.', s: 'From your phone, 2:05pm' }, UNK, UNK] },
+  some:  { name: 'Some known', ev: 'power_off', display: 'Power disruption.', sub: 'Across the UK, since 2:20pm.', at: '2:20pm',
+           rows: [{ t: 'No power, mobile signal or internet anywhere in the UK.', s: `From ${ORG}, 2:20pm` }, UNK, UNK] },
+  all:   { name: 'More known', ev: 'power_off', display: 'Power disruption.', sub: 'Across the UK, since 2:20pm.', at: '2:46pm',
+           rows: [{ t: 'No power, mobile signal or internet anywhere in the UK.', s: `From ${ORG}, 2:20pm` },
+                  { t: 'A fault in the national grid. Engineers are on site.', s: `From ${ORG}, 2:46pm` },
+                  UNK] },
+  fixed: { name: 'Fixed', ev: 'check_circle', tone: 'done', display: 'Power is back.', sub: 'Across the UK, since 7:40pm.', at: '7:40pm',
+           rows: [{ t: 'Power, mobile signal and internet are back across the UK.', s: `From ${ORG}, 7:40pm` },
+                  { t: 'A fault in the national grid.', s: `From ${ORG}, 2:46pm` },
                   { t: 'Fixed at 7:40pm.', s: `From ${ORG}, 7:40pm` }] },
 };
 const QS = ['What happened?', 'Why?', 'When will it be fixed?'];
@@ -501,12 +512,14 @@ const TOPICS = [
   { k: 'shelter',  icon: 'night_shelter',         label: 'Shelter',      q: 'Where can I stay warm and sleep?' },
   { k: 'firstaid', icon: 'medical_services',      label: 'First aid',    q: 'Someone is hurt. What do I do?' },
 ];
+/* x, y: position on the stored map, in the 335 x 210 viewBox */
 const PLACES = {
-  water:   [{ n: 'Southwark Cathedral', d: '300 m, 4 min walk', t: 'Free bottled water. Open until 8pm.', s: `From ${COUNCIL}, 2:30pm` },
-            { n: 'Borough Market', d: '600 m, 8 min walk', t: 'Drinking water tap. Working.', s: `From ${COUNCIL}, 2:30pm` }],
-  charge:  [{ n: 'Southwark Library', d: '450 m, 6 min walk', t: 'Has power. Bring your own cable. Open until 6pm.', s: `From ${COUNCIL}, 2:40pm` }],
+  water:   [{ n: 'Southwark Cathedral', d: '300 m, 4 min walk', t: 'Free bottled water. Open until 8pm.', s: `From ${COUNCIL}, 2:30pm`, x: 88, y: 80 },
+            { n: 'Borough Market', d: '600 m, 8 min walk', t: 'Drinking water tap. Working.', s: `From ${COUNCIL}, 2:30pm`, x: 238, y: 154 }],
+  charge:  [{ n: 'Southwark Library', d: '450 m, 6 min walk', t: 'Generator power. Bring your own cable. Open until 6pm.', s: `From ${COUNCIL}, 2:40pm`, x: 200, y: 66 },
+            { n: "Guy's Hospital", d: '700 m, 9 min walk', t: 'Generator power at the main entrance. Bring your own cable.', s: `From ${COUNCIL}, 2:40pm`, x: 290, y: 158 }],
   food:    [],
-  shelter: [{ n: 'Harper Road rest centre', d: '900 m, 12 min walk', t: 'Warm room, beds and hot drinks. Open all night.', s: `From ${COUNCIL}, 2:50pm` }],
+  shelter: [{ n: 'Harper Road rest centre', d: '900 m, 12 min walk', t: 'Warm room, beds and hot drinks. Generator. Open all night.', s: `From ${COUNCIL}, 2:50pm`, x: 64, y: 170 }],
 };
 /* What exists depends on how much news has arrived */
 function placesFor(k, news) {
@@ -520,6 +533,26 @@ function availability(k, news) {
   if (k === 'family') return { cls: '', html: `${ic('arrow_upward')}Send a message` };
   const p = placesFor(k, news);
   return p ? { cls: 'has', html: `${ic('check')}${p.length} ${p.length === 1 ? 'place' : 'places'}` } : { cls: 'wait', html: `${ic('schedule')}Nothing yet` };
+}
+
+/* The map: drawn as SVG from the map stored on the phone, so it works with no signal.
+   Pins are numbered to match the list under the map. "You" is the dot. */
+const YOU = { x: 140, y: 122 };
+function mapHTML(list, label) {
+  const pins = list.map((p, i) =>
+    `<g transform="translate(${p.x} ${p.y})"><circle r="11" style="fill:var(--ink)"/><text y="4.5" text-anchor="middle" font-size="12" font-weight="600" style="fill:var(--on-ink);font-variant-numeric:tabular-nums">${i + 1}</text></g>`).join('');
+  return `<svg viewBox="0 0 335 210" role="img" aria-label="${label}">
+    <rect width="335" height="210" style="fill:var(--surface)"/>
+    <path d="M-5 26 C 70 14, 150 34, 220 22 S 320 12, 340 20 L 340 -5 L -5 -5 Z" style="fill:var(--surface-2)"/>
+    <text x="256" y="13" font-size="10" style="fill:var(--ink-2)">Thames</text>
+    <circle cx="248" cy="92" r="26" style="fill:var(--surface-2)"/>
+    <g style="stroke:var(--line)" stroke-width="7" fill="none" stroke-linecap="round">
+      <path d="M-5 70 L 340 52"/><path d="M-5 150 L 340 132"/><path d="M62 -5 L 84 215"/><path d="M182 -5 L 200 215"/><path d="M272 -5 L 256 215"/>
+    </g>
+    <circle cx="${YOU.x}" cy="${YOU.y}" r="10" fill="none" style="stroke:var(--ink)" stroke-opacity=".35" stroke-width="2"/>
+    <circle cx="${YOU.x}" cy="${YOU.y}" r="4.5" style="fill:var(--ink)"/>
+    ${pins}
+  </svg>`;
 }
 
 /* ---------- Building blocks ---------- */
@@ -539,7 +572,7 @@ function briefHTML() {
 function setBrief(el, key, animate) {
   const n = NEWS[key];
   put($('.ev', el), ic(n.ev, n.tone || ''), animate);
-  put($('.pl-t', el), `Southwark, updated ${n.at}`, animate);
+  put($('.pl-t', el), `Across the UK, updated ${n.at}`, animate);
   put($('.display', el), n.display, animate);
   put($('.sub', el), n.sub, animate);
   el.querySelectorAll('.new').forEach(x => x.remove());
@@ -568,8 +601,9 @@ function sheetBody(k, news, live) {
       <div class="fam"></div>`;
   }
   const p = placesFor(k, news);
-  if (!p) return top + `<div class="empty">${notKnown}<p>Nobody has shared this yet.</p>${live ? `<button type="button" class="btn line sm" data-a="ask" data-q="${t.q}">${ic('arrow_upward', 's20')}Ask anyway</button>` : ''}</div>`;
-  return top + `<div class="plist">${p.map(x => `<div class="pl">${ic('location_on')}<div><b>${x.n}</b><span class="d">${x.d}</span><p>${x.t}</p><p class="src">${x.s}</p></div></div>`).join('')}</div>`;
+  if (!p) return top + `<div class="mapbox">${mapHTML([], 'Map of your area: only you on it so far')}</div><div class="empty">${notKnown}<p>Nobody has shared this yet.</p>${live ? `<button type="button" class="btn line sm" data-a="ask" data-q="${t.q}">${ic('arrow_upward', 's20')}Ask anyway</button>` : ''}</div>`;
+  return top + `<div class="mapbox">${mapHTML(p, `Map: ${p.length} ${p.length === 1 ? 'place' : 'places'} near you, numbered like the list`)}</div>
+    <div class="plist">${p.map((x, i) => `<div class="pl"><span class="pn">${i + 1}</span><div><b>${x.n}</b><span class="d">${x.d}</span><p>${x.t}</p><p class="src">${x.s}</p></div></div>`).join('')}</div>`;
 }
 
 /* What happened to a message: three bars and a few words */
@@ -761,7 +795,7 @@ const MSGS = [
   [3, 'Answered', 'ok', 1, 'Answered', 'The answer appears under it, with where it came from.'],
   [0, NOT_SENT, 'wait', 0, 'Not sent yet', 'It can\'t get through right now. It sends by itself later. Nothing to tap.'],
 ];
-$('#msg-gallery').innerHTML = MSGS.map((m, i) => `<div class="col"><div class="panel msg" data-i="${i}">${messageHTML('Where can I charge my phone?')}${m[3] ? `<div class="reply"><p>Southwark Library, 450 m away. Open until 6pm.</p><p class="src">Computer answer, from ${COUNCIL}, 2:40pm</p></div>` : ''}</div><p class="cap"><b>${m[4]}</b>${m[5]}</p></div>`).join('');
+$('#msg-gallery').innerHTML = MSGS.map((m, i) => `<div class="col"><div class="panel msg" data-i="${i}">${messageHTML('Where can I charge my phone?')}${m[3] ? `<div class="reply"><p>Southwark Library, 450 m away. Generator power. Open until 6pm.</p><p class="src">Computer answer, from ${COUNCIL}, 2:40pm</p></div>` : ''}</div><p class="cap"><b>${m[4]}</b>${m[5]}</p></div>`).join('');
 document.querySelectorAll('#msg-gallery .panel').forEach(p => { const m = MSGS[+p.dataset.i]; setDv($('.dv', p), m[0], m[1], m[2]); });
 $('#notice-gallery').innerHTML = `
   <div class="col"><div class="panel blank"><div class="ask"><span style="flex:1;color:var(--ink-2)">Ask anything</span><span class="send">${ic('arrow_upward', 's20')}</span></div></div>
@@ -775,7 +809,7 @@ $('#answers').innerHTML = `
     <p class="cap"><b>Known</b>The fact, then who said it and when.</p></div>
   <div class="col"><div class="panel"><div class="row"><p class="q">Why?</p>${notKnown}</div></div>
     <p class="cap"><b>Not known yet</b>Three words and a yellow clock. No promise to follow up.</p></div>
-  <div class="col"><div class="panel"><div class="place">${ic('power_off')}<span>Southwark, updated 2:46pm</span></div></div>
+  <div class="col"><div class="panel"><div class="place">${ic('power_off')}<span>Across the UK, updated 2:46pm</span></div></div>
     <p class="cap"><b>When it was updated</b>Every briefing says when it last changed, so old news looks old without a warning.</p></div>`;
 $('#brief-gallery').innerHTML = Object.keys(NEWS).map(k => `<div class="col"><div class="panel" data-k="${k}">${briefHTML()}</div><p class="cap"><b>${NEWS[k].name}</b></p></div>`).join('');
 document.querySelectorAll('#brief-gallery .panel').forEach(p => setBrief(p, p.dataset.k, false));
@@ -786,7 +820,7 @@ $('#sheet-water').innerHTML = sheetBody('water', 'all', false);
 $('#sheet-family').innerHTML = sheetBody('family', 'all', false);
 (() => { const f = $('#sheet-family .fam'); f.innerHTML = messageHTML("I'm OK."); setDv($('.dv', f), 3, 'Delivered to Mum', 'ok'); })();
 $('#legend').innerHTML = [
-  [`<span class="av has">${ic('check')}2 places</span>`, 'There is something to find. Tap to see where.'],
+  [`<span class="av has">${ic('check')}2 places</span>`, 'There is something to find. Tap: the map opens with each place pinned.'],
   [`<span class="av wait">${ic('schedule')}Nothing yet</span>`, 'Nobody has shared this yet. You can still ask.'],
   [`<span class="av has">${ic('check')}On your phone</span>`, 'Always works, such as first aid.'],
   [`<span class="av">${ic('arrow_upward')}Send a message</span>`, 'Tap to send. The message says when it is delivered.'],
