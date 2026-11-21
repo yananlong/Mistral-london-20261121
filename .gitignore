@@ -48,3 +48,30 @@ next-env.d.ts
 .swc
 voxtral/.venv/
 voxtral/out/
+
+# local config / secrets
+.env.*
+!.env.example
+config.local.*
+*.local.json
+*.local.yaml
+*.local.yml
+secrets.*
+.claude/settings.local.json
+
+# RSA / SSH / TLS keys
+id_rsa
+id_rsa.pub
+id_rsa*
+id_ed25519*
+id_ecdsa*
+*.rsa
+*.pem
+*.key
+*.p12
+*.pfx
+*.ppk
+*.crt
+*.csr
+*.jks
+*.keystore
