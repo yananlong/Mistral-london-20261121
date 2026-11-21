@@ -9,6 +9,18 @@ import {
 import { LOC_LINE_RE_TS } from '../src/locate/locLine';
 import { AskMachine } from '../src/ask/askStateMachine';
 import { MeshMessage, SELF_PEER_ID } from '../src/transport/Transport';
+import { assembleAnswer, classifyHubReply, MAX_MESSAGE_BYTES, utf8Bytes } from '../src/ask/meshMessages';
+
+/** The simulated hub's answer, reassembled from its "(i/n) " parts like the real hub's. */
+function answerFrom(messages: MeshMessage[]): string | null {
+  const parts = messages.map((m) => {
+    expect(utf8Bytes(m.text)).toBeLessThanOrEqual(MAX_MESSAGE_BYTES);
+    const reply = classifyHubReply(m.text);
+    if (reply.kind !== 'answer_part') throw new Error(`not an answer part: ${m.text}`);
+    return reply;
+  });
+  return assembleAnswer(parts);
+}
 
 /**
  * Contract between phone/app and hub/responder.py. The hub side is read from
@@ -80,9 +92,11 @@ describe('golden ask_cases.json against the simulated hub (same protocol as the 
       expect(machine.current).toBe('receivedByHub');
 
       jest.advanceTimersByTime(500);
-      expect(received).toHaveLength(2);
-      expect(received[1].text.endsWith(HUB_ANSWER_LABEL)).toBe(true);
-      expect(received[1].text.endsWith(pyConst('DISCLAIMER'))).toBe(true);
+      const answerParts = received.slice(1);
+      const last = answerParts[answerParts.length - 1].text;
+      expect(last.endsWith(HUB_ANSWER_LABEL)).toBe(true);
+      expect(last.endsWith(pyConst('DISCLAIMER'))).toBe(true);
+      expect(answerFrom(answerParts)).not.toBeNull();
       machine.dispatch({ type: 'answer' });
       expect(machine.current).toBe('answered');
       machine.dispose();

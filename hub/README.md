@@ -42,10 +42,13 @@ Responses:
 
 - Async (default): `202 {"status": "accepted", "ack": "Received. Working on an answer."}`
   immediately. A worker thread runs the model, then POSTs
-  `{"sender": ..., "answer": ...}` to `callback_url`. On model timeout or
-  error it POSTs an error answer telling the asker to retry.
-- Sync (`wait=true`): `200 {"sender": ..., "answer": ...}`, or `502` with the
-  retry error answer when the model call fails.
+  `{"sender": ..., "answer": ..., "messages": [...]}` to `callback_url`. On
+  model timeout or error it POSTs an error answer telling the asker to retry.
+- Sync (`wait=true`): `200 {"sender": ..., "answer": ..., "messages": [...]}`,
+  or `502` with the retry error answer when the model call fails.
+- `messages` is what the BitChat peer puts on the mesh: send each entry as its
+  own private message, in order. `answer` is the full text for logs and evals,
+  and must not be sent as one message (see below).
 - `400 {"error": ...}` for malformed input (bad JSON, missing `sender` or
   `question`, bad `loc`, non-boolean `wait`). `404` for other paths,
   `413` for bodies over 1 MiB.
@@ -72,19 +75,27 @@ First reply from the hub (the ack in the `202` body, forwarded over the mesh):
 Received. Working on an answer.
 ```
 
-Second reply, with the answer:
+Then the answer, as several private messages. BitChat rejects private message
+content over 255 UTF-8 bytes (`bitchat/bitchat/Protocols/Packets.swift:251-265`),
+so the hub splits each answer into `(i/n) ` parts of at most 255 bytes, with
+the AI label as the last part:
 
 ```text
-1. Let the water settle, then pour the clear part through a cloth.
+(1/2) 1. Let the water settle, then pour the clear part through a cloth.
 2. Bring it to a rolling boil for at least 1 minute.
-...
-AI answer from an open-weight model on the hub. Not verified emergency advice.
+(2/2) AI answer from an open-weight model on the hub. Not verified emergency advice.
 ```
 
-Every answer ends with the disclaimer sentence; it is appended when the model
-did not include it. Answers are capped at `HUB_MAX_ANSWER_CHARS` by truncating
-at a sentence boundary, and the disclaimer is added after truncation so it is
-never cut off. On the phone these map to the Ask states: **Sent**,
+`responder.py` builds `messages` with `compose_answer` from
+`protocol/make_vectors.py`, the reference implementation of the contract in
+`protocol/README.md`, so it matches the part reassembly in the app at `app/`. A model
+failure sends the single message `The hub could not answer right now. Please
+try again.` (`HUB_ERROR_TEXT`).
+
+In `messages`, the answer body is capped at 900 UTF-8 bytes before splitting.
+The `answer` field ends with the disclaimer sentence, which is appended when
+the model did not include it, and is capped at `HUB_MAX_ANSWER_CHARS` by
+truncating at a sentence boundary. On the phone these map to the Ask states: **Sent**,
 **Received by hub** (ack arrived), **Answered** (answer arrived), **Hub not
 reachable** (no ack within the phone's timeout).
 
