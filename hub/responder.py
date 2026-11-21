@@ -10,7 +10,10 @@ Endpoints:
     GET  /health -> 200 {"status": "ok"}
     POST /ask    -> JSON {sender, question, loc?, callback_url?, wait?}
                     202 {"status": "accepted", "ack": ...} in async mode, or
-                    200 {"sender", "answer"} when wait=true.
+                    200 {"sender", "answer", "messages"} when wait=true.
+                    The callback body is {"sender", "answer", "messages"}.
+                    The BitChat peer sends each of "messages" as its own
+                    private message, in order; "answer" is for logs and evals.
 
 Message format (see BLUEPRINT_1.md): a question is question lines plus an
 optional "loc: <lat>,<lon>" line. The first mesh reply is the ack; the second
@@ -29,6 +32,9 @@ import threading
 import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "protocol"))
+from make_vectors import HUB_ERROR_TEXT, compose_answer  # noqa: E402  (reference contract)
 
 log = logging.getLogger("hub.responder")
 
@@ -258,16 +264,34 @@ def error_answer(reason):
     )
 
 
+def mesh_messages(raw):
+    """The BitChat private messages that carry one answer, in send order.
+
+    BitChat rejects private message content over 255 UTF-8 bytes
+    (bitchat/bitchat/Protocols/Packets.swift:251-265), so a single `answer`
+    string cannot go on the mesh. Per protocol/README.md the answer goes out as
+    "(i/n) " parts of at most 255 bytes with the AI label as the last part, or
+    as HUB_ERROR_TEXT when the model returned nothing usable.
+    """
+    return compose_answer(raw) or [HUB_ERROR_TEXT]
+
+
 def answer_question(question, loc):
-    """Run the model and shape the answer. Raises ModelError/ModelTimeout."""
-    return finalize_answer(call_model(question, loc))
+    """Run the model and shape the answer. Raises ModelError/ModelTimeout.
+
+    Returns (answer, messages): `answer` is the full text for logs and evals,
+    `messages` is what the BitChat peer sends over the mesh.
+    """
+    raw = call_model(question, loc)
+    return finalize_answer(raw), mesh_messages(raw)
 
 
-def post_callback(callback_url, sender, answer):
-    """POST {sender, answer} to the BitChat peer so it can relay over the mesh."""
+def post_callback(callback_url, sender, answer, messages):
+    """POST {sender, answer, messages} to the BitChat peer, which sends each of
+    `messages` over the mesh as its own private message, in order."""
     req = urllib.request.Request(
         callback_url,
-        data=json.dumps({"sender": sender, "answer": answer}).encode("utf-8"),
+        data=json.dumps({"sender": sender, "answer": answer, "messages": messages}).encode("utf-8"),
         headers={"Content-Type": "application/json"},
         method="POST",
     )
@@ -279,18 +303,18 @@ def run_async(request):
     """Worker-thread body: answer the question, then POST it to callback_url."""
     sender = request["sender"]
     try:
-        answer = answer_question(request["question"], request["loc"])
+        answer, messages = answer_question(request["question"], request["loc"])
     except ModelError as e:
         log.warning("model call failed for %s: %s", sender, e)
-        answer = error_answer(str(e))
+        answer, messages = error_answer(str(e)), [HUB_ERROR_TEXT]
     except Exception as e:  # never leave the asker hanging: bad env, bugs, ...
         log.exception("unexpected error answering %s", sender)
-        answer = error_answer("internal error")
+        answer, messages = error_answer("internal error"), [HUB_ERROR_TEXT]
     if not request["callback_url"]:
         log.warning("no callback_url for %s; answer not delivered", sender)
         return
     try:
-        post_callback(request["callback_url"], sender, answer)
+        post_callback(request["callback_url"], sender, answer, messages)
         log.info("answered %s (%d chars)", sender, len(answer))
     except (urllib.error.URLError, OSError) as e:
         log.error("callback to %s failed: %s", request["callback_url"], e)
@@ -345,18 +369,21 @@ class ResponderHandler(BaseHTTPRequestHandler):
             return
         if request["wait"]:
             try:
-                answer = answer_question(request["question"], request["loc"])
+                answer, messages = answer_question(request["question"], request["loc"])
             except ModelError as e:
                 self._send_json(
                     502,
                     {
                         "sender": request["sender"],
                         "answer": error_answer(str(e)),
+                        "messages": [HUB_ERROR_TEXT],
                         "error": str(e),
                     },
                 )
                 return
-            self._send_json(200, {"sender": request["sender"], "answer": answer})
+            self._send_json(
+                200, {"sender": request["sender"], "answer": answer, "messages": messages}
+            )
             return
         threading.Thread(target=run_async, args=(request,), daemon=True).start()
         self._send_json(202, {"status": "accepted", "ack": ACK})

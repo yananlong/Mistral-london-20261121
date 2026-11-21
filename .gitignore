@@ -78,3 +78,6 @@ id_ecdsa*
 yolo/.venv/
 yolo/out/
 yolo/models/
+
+# python bytecode
+__pycache__/
