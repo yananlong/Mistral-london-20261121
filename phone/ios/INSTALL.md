@@ -3,8 +3,11 @@
 Install the patched BitChat from one Mac with Xcode over USB, and copy the model files into the app's
 Documents folder separately. Don't bundle the model into the app. Do every step that needs internet before the demo goes offline.
 
-Design: the on-device model lives inside the patched BitChat iOS app. Add MinistralKit and `llama.xcframework`
-(b12606) to its iOS target, as README.md section 1 describes. If the React Native app stays separate, the same steps apply to it.
+Design: the MVP phone app is the React Native app from BLUEPRINT_1.md. Add MinistralKit and `llama.xcframework`
+(b12606) to that app's iOS target, as README.md section 1 describes. The patched BitChat iOS app is built from the fork
+for its mesh code. Until the React Native app exists, it can host MinistralKit for the model benchmark (EngineBenchmark) only.
+
+`<APP_BUNDLE_ID>` below is the React Native app's bundle ID, or `chat.bitchat.<TEAM>` when using the BitChat benchmark host.
 
 ## 1. One-time setup per iPhone (needs internet, ~15 min per phone)
 
@@ -23,13 +26,13 @@ Design: the on-device model lives inside the patched BitChat iOS app. Add Minist
 git submodule update --init bitchat
 cd bitchat && cp Configs/Local.xcconfig.example Configs/Local.xcconfig
 # set DEVELOPMENT_TEAM = <your team ID>
-# bundle ID becomes chat.bitchat.<TEAM>; App Group becomes group.chat.bitchat.<TEAM>
+# BitChat's bundle ID becomes chat.bitchat.<TEAM> (this is <APP_BUNDLE_ID> for the benchmark host); App Group becomes group.chat.bitchat.<TEAM>
 ```
 - Add MinistralKit as a local package, and add the two Info.plist keys from README.md section 2
   (`UIFileSharingEnabled`, `LSSupportsOpeningDocumentsInPlace`) to `bitchat/Info.plist`.
 - Run the scheme "bitchat (iOS)" on each phone.
 - A free Apple ID (Personal Team) works with limits: the profile lasts 7 days, and each device holds at most
-  3 free-provisioned apps.
+  3 free-provisioned apps. The React Native app, BitChat and any extension (such as the share extension) each count toward that limit.
 - App Groups are the likely snag. BitChat's app and its share extension both use `$(APP_GROUP_ID)`
   (`bitchat/bitchat.entitlements`, `bitchatShareExtension/bitchatShareExtension.entitlements`). Forum reports suggest
   personal teams may not support App Groups; this is not confirmed by Apple docs. If signing fails on App Groups, choose one:
@@ -49,7 +52,7 @@ cd bitchat && cp Configs/Local.xcconfig.example Configs/Local.xcconfig
    cd models   # MODEL_DIR used by check_model_pair.sh
    for f in Ministral-3-3B-Instruct-2512-Q4_K_M.gguf mmproj-Ministral-3-3B-Instruct-2512-Q8_0.gguf; do
      xcrun devicectl device copy to --device <UDID> \
-       --domain-type appDataContainer --domain-identifier chat.bitchat.<TEAM> \
+       --domain-type appDataContainer --domain-identifier <APP_BUNDLE_ID> \
        --user mobile --source "$f" --destination "Documents/$f"
    done
    ```
