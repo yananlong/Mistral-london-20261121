@@ -3,7 +3,7 @@ import { Switch, Text, TextInput, View } from 'react-native';
 import { SUGGESTED_QUESTIONS } from '../ask/questions';
 import { AskStatus } from '../components/AskStatus';
 import { Body, Button, Card, Heading, Notice, styles } from '../components/ui';
-import { ANSWER_LABEL, MAX_QUESTION_BYTES, prefixBytes, utf8Bytes } from '../protocol';
+import { ANSWER_LABEL, MAX_QUESTION_BYTES, prefixBytes, trim, utf8Bytes } from '../protocol';
 import { useAsk, useLocation, useMesh, useRuntime } from '../store/Runtime';
 import { tokens as t } from '../theme/tokens';
 
@@ -48,7 +48,7 @@ export function AskScreen({ openLocate }: { openLocate: () => void }) {
         <TextInput accessibilityLabel="Your question" multiline value={question} onChangeText={text => setQuestion(prefixBytes(text, MAX_QUESTION_BYTES))}
           maxLength={MAX_QUESTION_BYTES} placeholder="What do you need help with?" placeholderTextColor={t.color.muted} style={[styles.input, { minHeight: 112 }]} />
         {remaining <= 50 && <Body style={styles.small}>{remaining} bytes remaining</Body>}
-        <Button title="Send question" disabled={!canAsk || !question.trim()} onPress={() => submit(question)} />
+        <Button title="Send question" disabled={!canAsk || !trim(question)} onPress={() => submit(question)} />
       </Card>
     </> : <>
       <Card><Body style={styles.small}>YOU ASKED</Body><Body>{session.attempt.question}</Body></Card>
@@ -62,6 +62,5 @@ export function AskScreen({ openLocate }: { openLocate: () => void }) {
       {(session.state === 'answered' || session.state === 'unreachable' || session.state === 'failed') &&
         <Button title="Ask another question" secondary onPress={() => { ask.reset(); setQuestion(''); setAttachLocation(false); }} />}
     </>}
-    <Card><Body style={styles.small}>{DISCLAIMER}</Body></Card>
   </View>;
 }

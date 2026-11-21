@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react-native';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react-native';
 import { MeshApp } from '../src/AppShell';
 import { demoLocation, fixedLocation, LocationSource } from '../src/location/LocationStore';
 import { ACK_TEXT, ACK_TIMEOUT_MS, ANSWER_LABEL, ANSWER_TIMEOUT_MS, decodeLocationShare, HUB_NICKNAME, MAX_MESSAGE_BYTES } from '../src/protocol';
@@ -31,6 +31,13 @@ beforeEach(() => { jest.useFakeTimers(); });
 afterEach(async () => { await cleanup(); jest.clearAllTimers(); jest.useRealTimers(); });
 
 describe('Ask on the real simulated link', () => {
+  test('the disclaimer stays outside the scrolling content', async () => {
+    await launch();
+    await tab('Ask');
+    expect(screen.getByText(DISCLAIMER)).toBeTruthy();
+    expect(within(screen.getByTestId('main-scroll')).queryByText(DISCLAIMER)).toBeNull();
+  });
+
   test('a suggestion goes from Sent to Received by hub to Answered with the label', async () => {
     await launch();
     await tab('Ask');
