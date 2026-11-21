@@ -1,5 +1,4 @@
-import { ACK_TEXT, HUB_EMPTY_TEXT, HUB_ERROR_TEXT, HUB_NICKNAME, MAX_MESSAGE_BYTES, utf8Bytes, encodeLocationShare } from '../protocol';
-import { RELAY_ACK_TEXT, SOS_CANCEL_WIRE, SOS_WIRE } from '../relay/RelayStore';
+import { ACK_TEXT, encodeSOS, HUB_EMPTY_TEXT, HUB_ERROR_TEXT, HUB_NICKNAME, MAX_MESSAGE_BYTES, utf8Bytes, encodeLocationShare } from '../protocol';
 import { composeAnswer, parseQuestion } from './simulatedHub';
 import { HubMode, InboundMessage, Peer, SimulationControls, Transport, TransportEvent, peerId, PeerId } from './types';
 
@@ -16,17 +15,19 @@ const ANSWERS: Record<string, string> = {
   food: '1. Keep the fridge and freezer doors closed.\n2. A fridge usually keeps food cold for about 4 hours without power.\n3. Discard perishable food if it has been too warm or you are unsure. Never taste food to check it is safe.',
   carbon: '1. Get everyone into fresh air immediately. Do not re-enter the building.\n2. Signs include headache, dizziness, nausea, weakness, confusion and breathlessness.\n3. Call 999 or 112 if you can and say you suspect carbon monoxide poisoning.',
   burn: '1. Cool the burn under cool or lukewarm running water for 20 minutes.\n2. Remove jewellery and loose clothing near it, leaving anything stuck to the skin.\n3. Cover loosely with cling film laid over it. Use no ice or creams. Seek urgent help for a large, deep, chemical or electrical burn.',
-  charge: 'Southwark Library, 450 m away. It has power. Bring your own cable. Open until 6pm.',
-  tube: 'No tubes are running in central London. Buses are running.',
-  generic: '1. Move away from immediate danger if you can do so safely.\n2. Contact 999 or 112 if you can reach them.\n3. Ask people nearby for help and follow local emergency instructions when available. This is a canned demo response; no model has run.',
+  charge: '1. Southwark Library, about 300 m away, has generator power until 6pm. Bring your own cable.\n2. Turn on low power mode and lower your screen brightness.\n3. Close apps you are not using.',
+  shelter: '1. Harper Road rest centre, under 1 km away, is open all night with beds and hot drinks.\n2. Bring warm layers, any medicines and your phone charger.',
+  tube: '1. No tubes are running in central London.\n2. Buses are running, but expect long waits.',
+  generic: '1. Move away from immediate danger if you can do so safely.\n2. If someone is in danger, press SOS.\n3. Ask people nearby for help and follow local instructions when they come. This is an example answer; no model has run.',
 };
 
 function answerFor(question: string): string {
   const text = question.toLowerCase();
-  const topic = /charg/.test(text) ? 'charge' : /tube|underground|train/.test(text) ? 'tube' : /water|drink/.test(text) ? 'water' : /bleed/.test(text) ? 'bleeding'
+  const topic = /water|drink/.test(text) ? 'water' : /bleed/.test(text) ? 'bleeding'
     : /warm|power/.test(text) && !/food|fridge/.test(text) ? 'warm'
     : /fridge|food/.test(text) ? 'food' : /carbon|monoxide/.test(text) ? 'carbon'
-    : /burn/.test(text) ? 'burn' : 'generic';
+    : /burn/.test(text) ? 'burn' : /charg|battery/.test(text) ? 'charge' : /shelter|sleep/.test(text) ? 'shelter'
+    : /tube|train|bus/.test(text) ? 'tube' : 'generic';
   return ANSWERS[topic];
 }
 
@@ -38,8 +39,8 @@ export class SimulatedTransport implements Transport, SimulationControls {
   private timers = new Set<ReturnType<typeof setTimeout>>();
   private mode: HubMode = 'online';
   private state: 'running' | 'stopped' = 'stopped';
-  private phoneNearby = true;
   private bluetooth = true;
+  private phoneNearby = true;
   private serial = 0;
   private hubAvailableAt = 0;
 
@@ -54,13 +55,13 @@ export class SimulatedTransport implements Transport, SimulationControls {
   }
 
   private emit(event: TransportEvent): void { this.listeners.forEach(listener => listener(event)); }
-  private peers(): Peer[] { return !this.bluetooth ? [] : [...(this.phoneNearby ? [PHONE] : []), ...(this.mode === 'offline' ? [] : [HUB])]; }
-  private announcePeers(): void { if (this.state === 'running') this.emit({ type: 'peers', peers: this.peers() }); }
+  private peers(): Peer[] { return [...(this.phoneNearby ? [PHONE] : []), ...(this.mode === 'offline' ? [] : [HUB])]; }
+  private announcePeers(): void { if (this.state === 'running') this.emit({ type: 'peers', peers: this.bluetooth ? this.peers() : [] }); }
 
   async start(_nickname: string): Promise<void> {
     this.emit({ type: 'state', state: 'starting' });
     this.state = 'running';
-    this.emit({ type: 'state', state: 'running' });
+    this.emit({ type: 'state', state: this.bluetooth ? 'running' : 'bluetooth_off' });
     this.announcePeers();
   }
 
@@ -76,7 +77,7 @@ export class SimulatedTransport implements Transport, SimulationControls {
   private later(delay: number, callback: () => void): void {
     const timer = setTimeout(() => {
       this.timers.delete(timer);
-      if (this.state === 'running') callback();
+      if (this.state === 'running' && this.bluetooth) callback();
     }, delay);
     this.timers.add(timer);
   }
@@ -104,10 +105,6 @@ export class SimulatedTransport implements Transport, SimulationControls {
     this.sent.push({ to, text });
     if (to !== HUB_ID || this.mode === 'offline') return;
     this.hubInbox.push(text);
-    if (text === SOS_CANCEL_WIRE || text.split('\n')[0] === SOS_WIRE || text.startsWith('FAMILY ')) {
-      this.later(800, () => { if (this.mode !== 'offline') this.inbound(HUB, RELAY_ACK_TEXT, 'private'); });
-      return;
-    }
     const question = parseQuestion(text);
     const queuedFor = Math.max(0, this.hubAvailableAt - Date.now());
     if (question.kind === 'empty') {
@@ -125,18 +122,23 @@ export class SimulatedTransport implements Transport, SimulationControls {
   }
 
   getHubMode(): HubMode { return this.mode; }
-  setBluetooth(on: boolean): void {
-    if (this.state !== 'running') return;
-    this.bluetooth = on;
-    this.emit({ type: 'state', state: on ? 'running' : 'bluetooth_off' });
-    this.emit({ type: 'peers', peers: on ? this.peers() : [] });
-  }
   setHubMode(mode: HubMode): void { this.mode = mode; this.announcePeers(); }
   setPhoneNearby(nearby: boolean): void { this.phoneNearby = nearby; this.announcePeers(); }
+  isBluetoothOn(): boolean { return this.bluetooth; }
+  setBluetooth(on: boolean): void {
+    this.bluetooth = on;
+    if (this.state !== 'running') return;
+    this.emit({ type: 'state', state: on ? 'running' : 'bluetooth_off' });
+    this.announcePeers();
+  }
+  private phoneCanSend(): boolean { return this.state === 'running' && this.bluetooth && this.phoneNearby; }
   sendPhoneMessage(channel: 'public' | 'private'): void {
-    if (this.state === 'running' && this.phoneNearby) this.inbound(PHONE, 'I’m at the north gate. Are you nearby?', channel);
+    if (this.phoneCanSend()) this.inbound(PHONE, 'I’m at the cathedral gate. Are you nearby?', channel);
   }
   sendPhoneLocation(): void {
-    if (this.state === 'running' && this.phoneNearby) this.inbound(PHONE, encodeLocationShare('I’m at the north gate', 51.5055, -0.1195), 'private');
+    if (this.phoneCanSend()) this.inbound(PHONE, encodeLocationShare('I’m at the cathedral gate', 51.5058, -0.0894), 'private');
+  }
+  sendPhoneSos(): void {
+    if (this.phoneCanSend()) this.inbound(PHONE, encodeSOS({ lat: 51.5049, lon: -0.0880 }), 'public');
   }
 }

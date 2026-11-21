@@ -33,6 +33,8 @@ export interface SimulationControls {
   setHubMode(mode: HubMode): void;
   sendPhoneMessage(channel: 'public' | 'private'): void;
   sendPhoneLocation(): void;
+  sendPhoneSos(): void;
   setPhoneNearby(nearby: boolean): void;
+  isBluetoothOn(): boolean;
   setBluetooth(on: boolean): void;
 }

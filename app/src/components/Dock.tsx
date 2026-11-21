@@ -1,136 +1,136 @@
-import { useState } from 'react';
-import { Linking, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { ReactNode, useState } from 'react';
+import { Linking, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { AskSession } from '../ask/AskController';
+import { LocationState } from '../location/LocationStore';
 import { MAX_QUESTION_BYTES, prefixBytes, trim } from '../protocol';
-import { RelayItem } from '../relay/RelayStore';
-import { useStyles, useTheme } from '../theme/theme';
-import { Palette, tokens as t } from '../theme/tokens';
-import { LinkState } from '../transport/types';
-import { Button, Card, Divider, Icon, StateIcon, textStyle, Txt } from './ui';
+import { SosMode } from '../sos/SosController';
+import { MeshState } from '../store/MeshStore';
+import { useRuntime } from '../store/Runtime';
+import { tokens as t } from '../theme/tokens';
+import { Arrive, Button, Icon, Txt } from './ui';
 
 /**
- * Who an SOS reaches. design/components.html ("Decide: who gets an SOS?"):
- * until the server has a real way to reach emergency services, the bar says
- * "your family", not "emergency services".
+ * The dock pinned under the thread: a notice (only when the person has to know
+ * something), the SOS bar (never scrolls away) and the question box.
+ * The app shows no connection status at all (PRINCIPLES §2): no "online", no
+ * counts of phones. Only "Bluetooth is off" and "Not getting through" appear.
  */
-export const SOS_RECIPIENT = 'your family';
+export type NoticeKind = 'bluetooth_off' | 'unauthorized' | 'stuck' | null;
+export function noticeFor(mesh: MeshState, ask: AskSession, sos: SosMode): NoticeKind {
+  if (mesh.link === 'bluetooth_off') return 'bluetooth_off';
+  if (mesh.link === 'unauthorized') return 'unauthorized';
+  if (mesh.link === 'stopped' || mesh.link === 'unsupported') return 'stuck';
+  if (ask.state === 'queued' || ask.state === 'unreachable' || sos === 'waiting') return 'stuck';
+  return null;
+}
 
-export const HOW_IT_WORKS = 'Your message hops from phone to phone over Bluetooth until it reaches a help point that can pass it on. Answers come back the same way, so they can take a few minutes. Answers are written by a computer and are not checked by a person.';
+export function Dock({ mesh, ask, sos, location }: { mesh: MeshState; ask: AskSession; sos: SosMode; location: LocationState }) {
+  const notice = noticeFor(mesh, ask, sos);
+  return <View style={k.dock}>
+    {notice && <Arrive key={notice}><Notice kind={notice} /></Arrive>}
+    <SosBar mode={sos} hasLocation={location.kind === 'ready'} />
+    <AskBox location={location} busy={ask.state === 'queued' || ask.state === 'sent' || ask.state === 'received' || ask.state === 'unreachable'} />
+  </View>;
+}
 
-export function HowItWorks() {
+function Notice({ kind }: { kind: Exclude<NoticeKind, null> }) {
+  const runtime = useRuntime();
   const [open, setOpen] = useState(false);
-  const { c } = useTheme();
-  return <View>
-    <Pressable accessibilityRole="button" accessibilityLabel="How does this work?" accessibilityState={{ expanded: open }}
-      onPress={() => setOpen(!open)} style={local.how}>
-      <Icon name="help" color={c.ink2} size={26} />
-      <Txt variant="bodyStrong" color={c.ink2} style={{ flex: 1 }}>How does this work?</Txt>
-      <Icon name={open ? 'expand-less' : 'expand-more'} color={c.ink2} />
+  const turnOn = () => { if (runtime.simulation) runtime.simulation.setBluetooth(true); else void Linking.openSettings(); };
+  if (kind === 'bluetooth_off' || kind === 'unauthorized') return <View style={k.notice}>
+    <View style={k.noticeTop}>
+      <Icon name="bluetooth-disabled" color={t.color.yellow} />
+      <View style={{ flex: 1 }}>
+        <Txt strong>{kind === 'bluetooth_off' ? 'Bluetooth is off' : 'Bluetooth is not allowed'}</Txt>
+        <Txt variant="callout" muted style={{ marginTop: 2 }}>{kind === 'bluetooth_off' ? 'Turn it on to send questions.' : 'Allow Bluetooth for this app in Settings to send questions.'} First aid works without it.</Txt>
+      </View>
+    </View>
+    <Button icon="bluetooth" title={kind === 'bluetooth_off' ? 'Turn on Bluetooth' : 'Open Settings'} onPress={turnOn} small style={{ marginTop: t.space.sm }} />
+  </View>;
+  return <View style={k.notice}>
+    <View style={k.noticeTop}>
+      <Icon name="schedule" color={t.color.yellow} />
+      <View style={{ flex: 1 }}>
+        <Txt strong>Not getting through right now</Txt>
+        <Txt variant="callout" muted style={{ marginTop: 2 }}>The app keeps trying. First aid and the news still work.</Txt>
+      </View>
+    </View>
+    <Pressable accessibilityRole="button" accessibilityLabel="How does this work?" accessibilityState={{ expanded: open }} onPress={() => setOpen(!open)} style={k.how}>
+      <Icon name="help" size={20} color={t.color.ink2} />
+      <Txt variant="callout" muted style={{ flex: 1 }}>How does this work?</Txt>
+      <Icon name={open ? 'expand-less' : 'expand-more'} size={20} color={t.color.ink2} />
     </Pressable>
-    {open && <Txt color={c.ink2}>{HOW_IT_WORKS}</Txt>}
+    {open && <View style={{ gap: 2, paddingBottom: 6 }}>
+      <Txt variant="callout" muted>This app works with no phone signal and no internet.</Txt>
+      <Txt variant="callout" muted>Your phone passes your message to other phones by Bluetooth, until one of them can get an answer.</Txt>
+      <Txt variant="callout" muted>Nobody can read your private messages on the way.</Txt>
+    </View>}
   </View>;
 }
 
-/** Only two things ever appear by themselves: Bluetooth is off, and Not getting through. */
-export function LinkCard({ link, notGettingThrough, onBluetooth }: { link: LinkState; notGettingThrough: boolean; onBluetooth: () => void }) {
-  const { c } = useTheme();
-  if (link === 'bluetooth_off' || link === 'unauthorized') {
-    const off = link === 'bluetooth_off';
-    return <Card style={{ gap: t.space.s4 }}>
-      <View style={local.row} accessibilityRole="alert">
-        <Icon name="bluetooth-disabled" color={c.yellow} size={28} />
-        <View style={{ flex: 1, gap: t.space.s1 }}>
-          <Txt variant="title2" style={{ fontSize: 20 }}>{off ? 'Bluetooth is off' : 'Bluetooth is not allowed'}</Txt>
-          <Txt color={c.ink2}>{off ? 'Turn it on to send questions. First aid works without it.' : 'Allow it in Settings to send questions. First aid works without it.'}</Txt>
-        </View>
+function SosBar({ mode, hasLocation }: { mode: SosMode; hasLocation: boolean }) {
+  const { sos } = useRuntime();
+  const cancel = <Button kind="line" small title="Cancel SOS" onPress={() => sos.cancel()} />;
+  const line = (icon: 'warning' | 'sos' | 'check-circle' | 'schedule', color: string, text: string, action: ReactNode) =>
+    <View style={k.sosLine}><Icon name={icon} color={color} /><Txt variant="callout" style={{ flex: 1 }}>{text}</Txt>{action}</View>;
+  return <View style={[k.sos, mode === 'confirm' && k.sosBig]} accessibilityLiveRegion="assertive">
+    {mode === 'idle' && line('warning', t.color.red, 'In danger? Ask for help.', <Button kind="red" small title="SOS" label="SOS. Ask for help" onPress={() => sos.request()} style={{ minWidth: 76 }} />)}
+    {mode === 'confirm' && <Arrive>
+      <Txt variant="title2">Send SOS?</Txt>
+      <Txt style={{ marginTop: 2 }}>{hasLocation ? 'It asks everyone nearby for help and sends where you are.' : 'It asks everyone nearby for help.'}</Txt>
+      <View style={k.sosActs}>
+        <Button kind="red" title="Send SOS" onPress={() => { void sos.send(); }} style={{ flex: 1 }} />
+        <Button kind="line" title="Cancel" label="Don't send SOS" onPress={() => sos.cancel()} />
       </View>
-      <Button title={off ? 'Turn on Bluetooth' : 'Allow Bluetooth'} icon="bluetooth" onPress={onBluetooth} />
-    </Card>;
-  }
-  if (link === 'unsupported') return <Card>
-    <View style={local.row}><Icon name="bluetooth-disabled" color={c.yellow} size={28} />
-      <View style={{ flex: 1, gap: t.space.s1 }}><Txt variant="title2" style={{ fontSize: 20 }}>This phone can't send questions</Txt>
-        <Txt color={c.ink2}>First aid works without it.</Txt></View></View>
-  </Card>;
-  if (!notGettingThrough) return null;
-  return <Card style={{ gap: t.space.s3 }}>
-    <View style={local.row} accessibilityRole="alert">
-      <StateIcon kind="waiting" size={28} />
-      <View style={{ flex: 1, gap: t.space.s1 }}>
-        <Txt variant="title2" style={{ fontSize: 20 }}>Not getting through right now</Txt>
-        <Txt color={c.ink2}>The app keeps trying. First aid and the news still work.</Txt>
-      </View>
-    </View>
-    <Divider />
-    <HowItWorks />
-  </Card>;
-}
-
-/** Opens the phone's Bluetooth settings: apps can't switch Bluetooth on by themselves on iPhone. */
-export function openBluetoothSettings(): void {
-  if (Platform.OS === 'android') void Linking.sendIntent('android.settings.BLUETOOTH_SETTINGS').catch(() => Linking.openSettings());
-  else void Linking.openSettings().catch(() => {});
-}
-
-/** The SOS bar: always at the bottom. Red is used only here. It asks once before sending. */
-export function SosBar({ sos, onSend, onCancel }: { sos: RelayItem | null; onSend: () => void; onCancel: () => void }) {
-  const [confirming, setConfirming] = useState(false);
-  const { c } = useTheme();
-  const s = useStyles(makeStyles);
-  if (!sos && confirming) return <View style={[s.sos, { flexDirection: 'column', alignItems: 'stretch', gap: t.space.s3, padding: t.space.s5 }]}>
-    <Txt variant="title2" accessibilityRole="header" style={{ fontSize: 26, lineHeight: 30 }}>Send SOS?</Txt>
-    <Txt>It asks for help and sends where you are.</Txt>
-    <View style={local.row}>
-      <Button title="Send SOS" variant="danger" style={{ flex: 1 }} onPress={() => { setConfirming(false); onSend(); }} />
-      <Button title="Cancel" variant="outline" onPress={() => setConfirming(false)} />
-    </View>
-  </View>;
-  if (!sos) return <View style={s.sos}>
-    <Icon name="warning" color={c.red} size={26} />
-    <Txt variant="bodyStrong" style={{ flex: 1 }}>In danger? Ask for help.</Txt>
-    <Button title="SOS" label="SOS. Ask for help" variant="danger" style={{ minWidth: 76 }} onPress={() => setConfirming(true)} />
-  </View>;
-  const word = sos.status === 'sending' ? 'Sending SOS'
-    : sos.status === 'delivered' ? `SOS delivered to ${SOS_RECIPIENT}.` : 'SOS not sent yet. The app keeps trying.';
-  return <View style={s.sos} accessibilityLiveRegion="assertive">
-    {sos.status === 'sending' ? <Icon name="sos" color={c.red} size={26} />
-      : <StateIcon kind={sos.status === 'delivered' ? 'done' : 'waiting'} size={26} />}
-    <Txt variant="bodyStrong" style={{ flex: 1 }}>{word}</Txt>
-    <Button title="Cancel SOS" variant="outline" onPress={onCancel} style={{ borderColor: c.lineStrong }} />
+    </Arrive>}
+    {mode === 'sending' && line('sos', t.color.red, 'Sending SOS', cancel)}
+    {mode === 'sent' && line('check-circle', t.color.green, 'SOS sent to everyone nearby.', cancel)}
+    {mode === 'waiting' && line('schedule', t.color.yellow, 'SOS not sent yet. The app keeps trying.', cancel)}
   </View>;
 }
 
-/** "Ask anything". No badge, no "online". Each message shows what happened to it. */
-export function AskBox({ onSend }: { onSend: (text: string) => void }) {
+function AskBox({ location, busy }: { location: LocationState; busy: boolean }) {
+  const { ask } = useRuntime();
   const [text, setText] = useState('');
-  const s = useStyles(makeStyles);
-  const { c } = useTheme();
-  const ready = trim(text) !== '';
-  const send = () => { if (!ready) return; onSend(text); setText(''); };
-  return <View style={s.ask}>
-    <TextInput accessibilityLabel="Ask anything" placeholder="Ask anything" placeholderTextColor={c.ink2} value={text}
-      onChangeText={value => setText(prefixBytes(value, MAX_QUESTION_BYTES))} onSubmitEditing={send} returnKeyType="send" submitBehavior="blurAndSubmit"
-      style={[textStyle('body'), s.input, { fontSize: 19 }]} />
-    <Pressable accessibilityRole="button" accessibilityLabel="Send" accessibilityState={{ disabled: !ready }} disabled={!ready} onPress={send}
-      style={({ pressed }) => [s.send, !ready && { opacity: 0.5 }, pressed && { opacity: 0.7 }]}>
-      <Icon name="arrow-upward" color={c.onInk} size={26} />
-    </Pressable>
+  const [withLocation, setWithLocation] = useState(false);
+  const [hint, setHint] = useState('');
+  const send = () => {
+    if (!trim(text)) return;
+    if (busy) { setHint('One question at a time. Your last one is still on its way.'); return; }
+    const sent = ask.ask(text, withLocation && location.kind === 'ready' ? location.position : null);
+    if (sent) { setText(''); setHint(''); setWithLocation(false); }
+  };
+  const locationNote = !withLocation ? '' : location.kind === 'ready' ? 'Where you are goes with this question.'
+    : location.kind === 'denied' ? 'Location is off for this app. Your question goes without it.' : 'Finding where you are…';
+  return <View style={{ gap: 6 }}>
+    <View style={k.ask}>
+      <TextInput accessibilityLabel="Ask anything" placeholder="Ask anything" placeholderTextColor={t.color.ink2} value={text}
+        onChangeText={value => { setText(prefixBytes(value, MAX_QUESTION_BYTES)); setHint(''); }} onSubmitEditing={send} returnKeyType="send"
+        style={k.input} />
+      <Pressable accessibilityRole="switch" accessibilityLabel="Include where I am" accessibilityState={{ checked: withLocation }} onPress={() => setWithLocation(!withLocation)}
+        style={[k.iconBtn, withLocation && k.iconBtnOn]} hitSlop={4}>
+        <Icon name="location-on" size={20} color={withLocation ? t.color.onInk : t.color.ink2} />
+      </Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="Send" onPress={send} style={({ pressed }) => [k.send, pressed && { transform: [{ scale: 0.97 }] }]}>
+        <Icon name="arrow-upward" size={20} color={t.color.onInk} />
+      </Pressable>
+    </View>
+    {(hint || locationNote) !== '' && <Txt variant="caption" muted>{hint || locationNote}</Txt>}
   </View>;
 }
 
-const local = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'flex-start', gap: t.space.s3 },
-  how: { flexDirection: 'row', alignItems: 'center', gap: t.space.s3, minHeight: t.target },
-});
-
-const makeStyles = (c: Palette) => StyleSheet.create({
-  sos: {
-    flexDirection: 'row', alignItems: 'center', gap: t.space.s3, backgroundColor: c.redTint, borderWidth: 1, borderColor: c.redFill + '66',
-    borderRadius: t.radius.m, paddingVertical: t.space.s2, paddingLeft: t.space.s5, paddingRight: t.space.s2, minHeight: 64,
-  },
-  ask: {
-    flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: c.lineStrong, borderRadius: t.radius.m,
-    paddingLeft: t.space.s5, paddingRight: t.space.s2, minHeight: 64, backgroundColor: c.surface,
-  },
-  input: { flex: 1, color: c.ink, minHeight: t.target, paddingVertical: t.space.s2 },
-  send: { width: 52, height: 48, borderRadius: t.radius.m, backgroundColor: c.ink, alignItems: 'center', justifyContent: 'center' },
+const k = StyleSheet.create({
+  dock: { paddingTop: t.space.xs, paddingHorizontal: t.space.sm, paddingBottom: t.space.xs, gap: t.space.xs, backgroundColor: t.color.surface, borderTopWidth: 1, borderColor: t.color.line },
+  notice: { borderWidth: 1, borderColor: t.color.line, borderRadius: t.radius.m, padding: t.space.sm, backgroundColor: t.color.surface },
+  noticeTop: { flexDirection: 'row', gap: t.space.sm, alignItems: 'flex-start' },
+  how: { marginTop: t.space.xs, borderTopWidth: 1, borderColor: t.color.line, minHeight: t.targetSmall, flexDirection: 'row', alignItems: 'center', gap: t.space.xs },
+  sos: { borderWidth: 1, borderColor: t.color.redLine, backgroundColor: t.color.redTint, borderRadius: t.radius.m, paddingVertical: t.space.xs, paddingRight: t.space.xs, paddingLeft: t.space.sm },
+  sosBig: { padding: 14 },
+  sosLine: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: t.targetSmall },
+  sosActs: { marginTop: t.space.sm, flexDirection: 'row', gap: t.space.xs },
+  ask: { flexDirection: 'row', alignItems: 'center', gap: t.space.xs, height: 52, borderRadius: t.radius.m, borderWidth: 1, borderColor: t.color.lineStrong, paddingLeft: t.space.md, paddingRight: 6 },
+  input: { flex: 1, minWidth: 0, color: t.color.ink, fontFamily: t.font.regular, fontSize: 17, height: '100%' },
+  iconBtn: { width: 40, height: 40, borderRadius: t.radius.s, alignItems: 'center', justifyContent: 'center' },
+  iconBtnOn: { backgroundColor: t.color.ink },
+  send: { width: 40, height: 40, borderRadius: t.radius.s, backgroundColor: t.color.ink, alignItems: 'center', justifyContent: 'center' },
 });

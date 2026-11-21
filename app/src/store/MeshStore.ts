@@ -3,7 +3,9 @@ import { config } from '../config';
 import { InboundMessage, LinkState, Peer, PeerId, peerId, Transport, TransportEvent } from '../transport/types';
 
 export type ThreadKey = 'public' | PeerId;
-export type ThreadMessage = InboundMessage & { direction: 'in' | 'out' };
+/** Outgoing messages show what happened to them: sending, then sent (or not sent). */
+export type SendStatus = 'sending' | 'sent' | 'failed';
+export type ThreadMessage = InboundMessage & { direction: 'in' | 'out'; status?: SendStatus };
 export type PeerPin = LocationShare & { peerId: PeerId; nickname: string; receivedAt: number };
 export interface MeshState {
   link: LinkState;
@@ -58,14 +60,34 @@ export class MeshStore {
 
   async send(to: ThreadKey, text: string): Promise<void> {
     if (utf8Bytes(text) > MAX_MESSAGE_BYTES) throw new Error('The message exceeds the mesh byte limit.');
-    if (to === 'public') await this.transport.sendPublic(text);
-    else await this.transport.sendPrivate(to, text);
     const message: ThreadMessage = {
       id: `out-${++this.outgoingId}`, from: localPeerId,
-      fromNickname: 'You', text, channel: to === 'public' ? 'public' : 'private', receivedAt: Date.now(), direction: 'out',
+      fromNickname: 'You', text, channel: to === 'public' ? 'public' : 'private', receivedAt: Date.now(), direction: 'out', status: 'sending',
     };
     this.update({ ...this.state, conversations: { ...this.state.conversations, [to]: [...(this.state.conversations[to] ?? []), message] } });
+    try {
+      if (to === 'public') await this.transport.sendPublic(text);
+      else await this.transport.sendPrivate(to, text);
+      this.setStatus(to, message.id, 'sent');
+    } catch (error) {
+      this.setStatus(to, message.id, 'failed');
+      throw error;
+    }
+  }
+
+  private setStatus(thread: ThreadKey, id: string, status: SendStatus): void {
+    const messages = this.state.conversations[thread] ?? [];
+    this.update({ ...this.state, conversations: { ...this.state.conversations, [thread]: messages.map(item => item.id === id ? { ...item, status } : item) } });
   }
 }
 
 const localPeerId = peerId('local-phone');
+
+export type FeedMessage = ThreadMessage & { thread: ThreadKey };
+/** Every non-hub message, oldest first: the people side of the home-screen thread. */
+export function peerMessages(state: MeshState): FeedMessage[] {
+  return Object.entries(state.conversations)
+    .filter(([key]) => key !== state.hubId)
+    .flatMap(([key, messages]) => messages.map(message => ({ ...message, thread: key as ThreadKey })))
+    .sort((a, b) => a.receivedAt - b.receivedAt);
+}

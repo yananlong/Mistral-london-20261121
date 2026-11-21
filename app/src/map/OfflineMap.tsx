@@ -1,6 +1,7 @@
-import { Card, Txt } from '../components/ui';
+import { SchematicMap } from './SchematicMap';
 import { OfflineMapProps } from './types';
 
-export default function OfflineMap(_props: OfflineMapProps) {
-  return <Card tone="quiet"><Txt>The map needs the full app. The place details are listed below.</Txt></Card>;
+/** Web and Expo Go: no MapLibre, so the places are drawn in the right direction on a plain field. */
+export default function OfflineMap({ points, height }: OfflineMapProps) {
+  return <SchematicMap points={points} height={height} />;
 }

@@ -36,3 +36,4 @@ This repository contains planning documents, a Voxtral TTS script and the BitCha
 | [IDEA.md](IDEA.md) | The original brainstorm with six survival needs. |
 | [critique.md](critique.md) | The evidence that the demo should collect, and a commercial critique. |
 | [SETUP_VOXTRAL.md](SETUP_VOXTRAL.md) | Mistral API key and cloud Voxtral TTS setup. The MVP uses no cloud model API. |
+| [video/README.md](video/README.md) | Multi-agent Remotion pipeline for the 35-40 s feature video: director -> parallel generator agents -> curator -> editor/QA -> human review gate. |

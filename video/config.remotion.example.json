@@ -1,0 +1,19 @@
+{
+  "llm": {"provider": "mistral", "model": "mistral-large-latest", "latency_s": 8},
+  "run": {"auto_approve": false},
+  "generators": [
+    {"name": "gen_a", "backend": "remotion", "model": "mistral-large-latest",
+     "style": "cinematic, calm, high contrast", "style_suffix": "Cinematic and calm: slow easing, generous negative space, restrained palette.",
+     "latency_s": 240, "cost_per_s": 0},
+    {"name": "gen_b", "backend": "remotion", "model": "ministral-3:14b-instruct-2512",
+     "llm": {"provider": "ollama", "model": "ministral-3:14b-instruct-2512-fp16"},
+     "style": "snappy, product-led", "style_suffix": "Snappy product shots: quick cuts, bigger type, feature-forward.",
+     "latency_s": 90, "cost_per_s": 0}
+  ],
+  "backends": {
+    "remotion": {"preview_mode": "still", "render": true, "crf": 20}
+  },
+  "assemble": {
+    "audio": {"bed": true, "voiceover": true, "provider": "voxtral", "voice": "Jane - Neutral"}
+  }
+}

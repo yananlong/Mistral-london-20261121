@@ -29,6 +29,8 @@ export interface AppConfig {
   ackTimeoutMs: number;
   /** How long Ask waits for the whole answer once the hub has acknowledged. */
   answerTimeoutMs: number;
+  /** "The app keeps trying": how often an unacknowledged question or SOS is sent again. */
+  retryIntervalMs: number;
   /**
    * Post-MVP only: base URL of the live-information backend (alerts, flood
    * warnings, "I'm safe" relay). Null in the MVP: no question ever goes to a
@@ -44,6 +46,7 @@ export const config: AppConfig = {
   hubNickname: HUB_NICKNAME,
   ackTimeoutMs: ACK_TIMEOUT_MS,
   answerTimeoutMs: ANSWER_TIMEOUT_MS,
+  retryIntervalMs: 20_000,
   apiBaseUrl: null,
   apiTimeoutMs: 10_000,
 };

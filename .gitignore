@@ -90,3 +90,8 @@ __pycache__/
 
 # large model weights (GitHub rejects files >100MB)
 mobileclip2_b.ts
+
+# video pipeline
+video/runs/
+video/studio/node_modules/
+video/**/__pycache__/
