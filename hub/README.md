@@ -352,9 +352,15 @@ phone --BLE mesh--> Mac: BitChat (BITCHAT_HUB=1) --ssh -L--> Spark: responder.py
   `The person's approximate location: <lat>, <lon> (London, UK).` sentence, or
   a trailing `loc:` line) and cuts the question to 200 bytes.
 - It replaces the system message with the hub's `SYSTEM_PROMPT`, adds the
-  knowledge base facts exactly as `/ask` does, and forces `HUB_MODEL`,
-  `num_ctx`, `num_predict` and `keep_alive`. The caller's model and options
-  are ignored.
+  knowledge base facts exactly as `/ask` does, and forces `HUB_MODEL` and
+  `keep_alive`. The caller's model is ignored. The caller's options are kept;
+  `num_predict` is capped at the hub's value so a run fits the deadline, and
+  `num_ctx` is set to the hub's 8192 when the caller sends none. Measured on
+  the Spark: a request with no `num_ctx` made Ollama reload the model at its
+  default context (262144 tokens, 69 GB), and reload again for each `/ask`.
+- Fail-safe: if the knowledge base or the prompt override fails, the caller's
+  request goes to Ollama as it came (with the pulled model tag), so the hub
+  still answers.
 - It returns Ollama's response unchanged in shape: one JSON object for
   `"stream": false` (what `OllamaClient.swift` sends; `message.content` has
   Markdown stripped), or the NDJSON stream passed through for `"stream": true`.
@@ -388,8 +394,15 @@ BITCHAT_HUB_OLLAMA_URL=http://127.0.0.1:8090
 BITCHAT_HUB_MODEL=ministral-3:14b-instruct-2512-fp16
 ```
 
-The responder's deadline is 100 s, inside the Swift hub's 120 s model timeout
-and the phone's 150 s answer timeout. The SSH tunnel is the development route;
+`BITCHAT_HUB_OLLAMA_URL` points at the responder's port (8090 here), **not**
+at Ollama's 11434. Fallback if the responder is down: forward Ollama itself,
+`ssh -N -L 11434:127.0.0.1:11434 spark`, and set
+`BITCHAT_HUB_OLLAMA_URL=http://127.0.0.1:11434` (the Swift hub's own prompt,
+no knowledge base).
+
+The responder's deadline is 100 s (queue wait plus generation), inside the
+Swift hub's 120 s model timeout and the phone's 150 s answer timeout; past it
+the responder returns an HTTP error and the Swift hub sends its error text. The SSH tunnel is the development route;
 for the offline demo the Mac and the Spark share a local link, the responder
 stays on loopback and the same `ssh -L` tunnel runs over the local link
 (`/api/chat` refuses callers that are not on loopback).

@@ -153,13 +153,41 @@ class TestChatProxy(ChatProxyTestCase):
         self.assertEqual(sent["messages"][0]["content"], responder.SYSTEM_PROMPT)
         self.assertNotIn(SWIFT_SYSTEM, json.dumps(sent))
         self.assertEqual(sent["messages"][1]["content"], "How do I stop heavy bleeding?")
-        self.assertEqual(sent["options"], {"num_ctx": 8192, "num_predict": responder.num_predict()})
+        # the caller's options are kept; num_predict is capped; num_ctx is the
+        # hub's 8192, the same as /ask, so Ollama never reloads between the two
+        self.assertEqual(sent["options"], {"temperature": 0.3, "num_ctx": 8192,
+                                           "num_predict": responder.num_predict()})
 
-    def test_same_model_request_as_ask(self):
+    def test_same_messages_and_model_as_ask(self):
         self.post(swift_request("How do I stop heavy bleeding?"))
         proxied = self.upstream()
         self.post({"sender": "p", "question": "How do I stop heavy bleeding?", "wait": True}, "/ask")
-        self.assertEqual(proxied, self.upstream())
+        for key in ("model", "messages", "keep_alive", "stream"):
+            self.assertEqual(proxied[key], self.upstream()[key], key)
+
+    def test_a_smaller_num_predict_from_the_caller_is_kept(self):
+        body = swift_request("q")
+        body["options"] = {"num_predict": 50, "temperature": 0.1, "seed": 7}
+        self.post(body)
+        self.assertEqual(self.upstream()["options"],
+                         {"num_predict": 50, "temperature": 0.1, "seed": 7, "num_ctx": 8192})
+        body["options"] = {"num_ctx": 4096}
+        self.post(body)
+        self.assertEqual(self.upstream()["options"]["num_ctx"], 4096)
+
+    def test_fail_safe_forwards_the_original_request_when_the_override_throws(self):
+        body = swift_request("How do I stop heavy bleeding?")
+        with mock.patch.object(responder, "build_chat_payload", side_effect=RuntimeError("kb broke")):
+            status, _, raw = self.post(body)
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(raw)["message"]["content"], "1. Move to a safe place.")
+        sent = self.upstream()
+        self.assertEqual(sent["messages"], body["messages"])  # the caller's own prompt
+        self.assertEqual(sent["options"], body["options"])
+        self.assertEqual(sent["model"], FP16)  # still the pulled tag
+
+    def test_deadline_is_inside_the_swift_hubs_120_s_model_timeout(self):
+        self.assertLessEqual(responder.answer_timeout(), 110.0)
 
     def test_swift_location_sentence_and_loc_line_are_parsed(self):
         expected = "Where is water?\n\nAsker location (lat, lon): 51.5007, -0.1246"
