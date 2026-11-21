@@ -23,6 +23,7 @@ import math
 import os
 import re
 import sqlite3
+import threading
 import time
 import xml.etree.ElementTree as ET
 from html.parser import HTMLParser
@@ -645,14 +646,31 @@ def default_datasets_dir():
 
 _KB = None
 _KB_LOADED = False
+_KB_LOCK = threading.Lock()
 
 
 def get_kb():
-    """The process-wide KB, built once; None when disabled or nothing loaded."""
-    global _KB, _KB_LOADED
+    """The process-wide KB, built once; None when disabled or nothing loaded.
+
+    Thread-safe: concurrent first callers wait for the one build.
+    """
     if _KB_LOADED:
         return _KB
-    _KB_LOADED = True
+    with _KB_LOCK:
+        if not _KB_LOADED:
+            _build_kb()
+        return _KB
+
+
+def _build_kb():
+    global _KB, _KB_LOADED
+    try:
+        _KB = _load_kb()
+    finally:
+        _KB_LOADED = True
+
+
+def _load_kb():
     if os.environ.get("HUB_KB", "1").strip() == "0":
         log.info("KB disabled (HUB_KB=0)")
         return None
@@ -665,10 +683,10 @@ def get_kb():
     except Exception as e:  # never crash the hub over the KB
         log.warning("KB build failed; answering without KB: %s", e)
         return None
-    _KB = kb if kb.available else None
-    return _KB
+    return kb if kb.available else None
 
 
 def reset_kb():
     global _KB, _KB_LOADED
-    _KB, _KB_LOADED = None, False
+    with _KB_LOCK:
+        _KB, _KB_LOADED = None, False
