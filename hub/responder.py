@@ -72,8 +72,9 @@ SYSTEM_PROMPT = (
     "not describe a route. Name only places "
     "given in those facts; never name other hospitals, streets, shops or "
     "landmarks from memory, and never invent addresses, distances, times or "
-    "phone numbers. If a question needs a place and no facts were given, say "
-    "the hub has no matching place nearby and suggest the app's map.\n"
+    "phone numbers. Only when the question asks where something is and no "
+    "facts were given, say the hub has no matching place nearby and suggest "
+    "the app's map; otherwise do not mention places.\n"
     "You have no live information about the current disaster: no live alerts, "
     "news or feeds. Say so when asked.\n"
     "You cannot send messages or contact anyone. The mesh only reaches people "
@@ -1113,6 +1114,9 @@ class ResponderHandler(BaseHTTPRequestHandler):
 class ResponderServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = True
+    # the default listen backlog of 5 resets connections when 20 askers
+    # arrive at once (seen on the Spark)
+    request_queue_size = 128
 
     def __init__(self, address, handler_class, max_concurrent=4, max_queued=DEFAULT_MAX_QUEUED):
         super().__init__(address, handler_class)
