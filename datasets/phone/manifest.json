@@ -1,0 +1,399 @@
+{
+ "tier": "phone",
+ "generated_utc": "2026-11-21T14:27:43+00:00",
+ "total_bytes": 620882611,
+ "files": [
+  {
+   "path": "givefood/foodbanks.geojson",
+   "bytes": 725986,
+   "sha256": "4ad87958f29418e610d15df4b4cf1d07d93e43e867ac1dedd1e333f9c61fb0cf",
+   "licence": "No explicit licence",
+   "attribution": "Data from Give Food (givefood.org.uk) - credit and link back; contact before launch"
+  },
+  {
+   "path": "givefood/foodbanks.json",
+   "bytes": 1442415,
+   "sha256": "27bb3947d0475e4f5fb68a78d1117443b6c7bed306b4311758558239b6b2c5c8",
+   "licence": "No explicit licence",
+   "attribution": "Data from Give Food (givefood.org.uk) - credit and link back; contact before launch"
+  },
+  {
+   "path": "givefood/locations.json",
+   "bytes": 2242520,
+   "sha256": "d1fd8d1b438985bf5591ca62b1c6dde1a61d095a783104f3c4afe7ef4a662b08",
+   "licence": "No explicit licence",
+   "attribution": "Data from Give Food (givefood.org.uk) - credit and link back; contact before launch"
+  },
+  {
+   "path": "guides/beready/be-informed-about-hazards.html",
+   "bytes": 91433,
+   "sha256": "66bb5af7c2baa7dfa77b38468c83461eff39c30e294dda35af0562626ff7850a",
+   "licence": "OGL v3.0 (unconfirmed)",
+   "attribution": "UK Government Be Ready campaign"
+  },
+  {
+   "path": "guides/beready/be-informed-about-hazards__animal-plant-health.html",
+   "bytes": 74769,
+   "sha256": "3cce99c325b05593f4d21cc1e7cf4c60da93c9965e84e5024d20266b4dd76cb3",
+   "licence": "OGL v3.0 (unconfirmed)",
+   "attribution": "UK Government Be Ready campaign"
+  },
+  {
+   "path": "guides/beready/be-informed-about-hazards__antimicrobial-resistance.html",
+   "bytes": 72288,
+   "sha256": "ac166491e6aa5ab9603561ac0eb9ddf48c947ea6c7d8b674fb5684622a62a726",
+   "licence": "OGL v3.0 (unconfirmed)",
+   "attribution": "UK Government Be Ready campaign"
+  },
+  {
+   "path": "guides/beready/be-informed-about-hazards__cold-weather-snow-ice.html",
+   "bytes": 76925,
+   "sha256": "cab5778d5b348c46b4eb83b370338d8be67487ef84fb5874e1907ba45cd74737",
+   "licence": "OGL v3.0 (unconfirmed)",
+   "attribution": "UK Government Be Ready campaign"
+  },
+  {
+   "path": "guides/beready/be-informed-about-hazards__cyber.html",
+   "bytes": 69360,
+   "sha256": "51834db7b992a8d317bcb5261a3883264b41611308b19ef2e35017c6c16d27a7",
+   "licence": "OGL v3.0 (unconfirmed)",
+   "attribution": "UK Government Be Ready campaign"
+  },
+  {
+   "path": "guides/beready/be-informed-about-hazards__droughts.html",
+   "bytes": 70580,
+   "sha256": "a21853f191c1bf469c524db59d885d21d6d35376152f267e6644ae464cf3dc3e",
+   "licence": "OGL v3.0 (unconfirmed)",
+   "attribution": "UK Government Be Ready campaign"
+  },
+  {
+   "path": "guides/beready/be-informed-about-hazards__fires-in-the-home.html",
+   "bytes": 74317,
+   "sha256": "5c340df235d3777b2e234f4d13481ddcebd644ccbdc550833a23e0377c7aa856",
+   "licence": "OGL v3.0 (unconfirmed)",
+   "attribution": "UK Government Be Ready campaign"
+  },
+  {
+   "path": "guides/beready/be-informed-about-hazards__flooding.html",
+   "bytes": 74518,
+   "sha256": "c328cab5723bb030f34266a34dcd1049491243c6861cf24a4885d894a5f90c88",
+   "licence": "OGL v3.0 (unconfirmed)",
+   "attribution": "UK Government Be Ready campaign"
+  },
+  {
+   "path": "guides/beready/be-informed-about-hazards__hazardous-substance-and-radiation-exposure.html",
+   "bytes": 71221,
+   "sha256": "e1083bfe8f12628b86c4139f29484ad3a9a3ccbfa94fc50247988c49b2c6f728",
+   "licence": "OGL v3.0 (unconfirmed)",
+   "attribution": "UK Government Be Ready campaign"
+  },
+  {
+   "path": "guides/beready/be-informed-about-hazards__hot-weather-and-heatwaves.html",
+   "bytes": 74722,
+   "sha256": "67b4a6a85d5fe34b6274e6450413df4d963e18f35224a340b156fd0e70bc0a3b",
+   "licence": "OGL v3.0 (unconfirmed)",
+   "attribution": "UK Government Be Ready campaign"
+  },
+  {
+   "path": "guides/beready/be-informed-about-hazards__infectious-disease-outbreaks.html",
+   "bytes": 73962,
+   "sha256": "b8d6615197acd5619fa1ff93868875aa646c2d267f8766a4827b71de3024e1c5",
+   "licence": "OGL v3.0 (unconfirmed)",
+   "attribution": "UK Government Be Ready campaign"
+  },
+  {
+   "path": "guides/beready/be-informed-about-hazards__overseas-emergencies.html",
+   "bytes": 69326,
+   "sha256": "005505091c9699054ecf9f392f8a86460b7ab0cf90cebd1fce6c405ceddafdbe",
+   "licence": "OGL v3.0 (unconfirmed)",
+   "attribution": "UK Government Be Ready campaign"
+  },
+  {
+   "path": "guides/beready/be-informed-about-hazards__phone-broadband-outages.html",
+   "bytes": 76669,
+   "sha256": "b313e25fa1f400891fb1362206dc6c84dd6828a94e539a601ee673ed70633427",
+   "licence": "OGL v3.0 (unconfirmed)",
+   "attribution": "UK Government Be Ready campaign"
+  },
+  {
+   "path": "guides/beready/be-informed-about-hazards__poor-air-quality-and-pollution.html",
+   "bytes": 71969,
+   "sha256": "1b39902efcd0d762014d2e44a0d3e6ca07055d9e346e0ad36d43a5ff68096f5e",
+   "licence": "OGL v3.0 (unconfirmed)",
+   "attribution": "UK Government Be Ready campaign"
+  },
+  {
+   "path": "guides/beready/be-informed-about-hazards__power-cuts.html",
+   "bytes": 76450,
+   "sha256": "668abefd84b67d9b7ead48fab96c2510900d45a3133261c0579556ada7f34618",
+   "licence": "OGL v3.0 (unconfirmed)",
+   "attribution": "UK Government Be Ready campaign"
+  },
+  {
+   "path": "guides/beready/be-informed-about-hazards__storms.html",
+   "bytes": 71894,
+   "sha256": "f1cf8e6536df8612f26651b38b0eae0f6ea91b88e3f73d2547b40229affe3fec",
+   "licence": "OGL v3.0 (unconfirmed)",
+   "attribution": "UK Government Be Ready campaign"
+  },
+  {
+   "path": "guides/beready/be-informed-about-hazards__terrorism.html",
+   "bytes": 75897,
+   "sha256": "c321a12f0d6b380e927711e8d82252380dc0b38605212b74bd941fe2aa228c71",
+   "licence": "OGL v3.0 (unconfirmed)",
+   "attribution": "UK Government Be Ready campaign"
+  },
+  {
+   "path": "guides/beready/be-informed-about-hazards__water-supply-interruptions-or-outages.html",
+   "bytes": 73997,
+   "sha256": "4e1df811118aeee699de59ae03e65b913967dc9f92af942596cf1a054461e9ad",
+   "licence": "OGL v3.0 (unconfirmed)",
+   "attribution": "UK Government Be Ready campaign"
+  },
+  {
+   "path": "guides/beready/be-informed-about-hazards__wildfires.html",
+   "bytes": 69675,
+   "sha256": "fbd4dc6ababf62ab00f1080c397ed95c44786e2deb4c835d41fd19b987c4b7b2",
+   "licence": "OGL v3.0 (unconfirmed)",
+   "attribution": "UK Government Be Ready campaign"
+  },
+  {
+   "path": "guides/beready/be-ready-for-emergencies.html",
+   "bytes": 90347,
+   "sha256": "aab95e613d6ba2a85acc90a08fba572114fc8cf57d2d7be989bd188ab38a1c1f",
+   "licence": "OGL v3.0 (unconfirmed)",
+   "attribution": "UK Government Be Ready campaign"
+  },
+  {
+   "path": "guides/beready/be-ready-for-emergencies__advice-for-disabled-persons-and-carers.html",
+   "bytes": 73698,
+   "sha256": "5cc99e973c90b5ed0bc80fb1968c7865af9288a82a8778f86006dce9fe0fd26a",
+   "licence": "OGL v3.0 (unconfirmed)",
+   "attribution": "UK Government Be Ready campaign"
+  },
+  {
+   "path": "guides/beready/be-ready-for-emergencies__alerts-and-warnings.html",
+   "bytes": 67406,
+   "sha256": "93bcc0b48c79a375e01d5aecac5f8d34d3539aded81ea5af3b81f8c865468253",
+   "licence": "OGL v3.0 (unconfirmed)",
+   "attribution": "UK Government Be Ready campaign"
+  },
+  {
+   "path": "guides/beready/be-ready-for-emergencies__check-the-risks-where-you-are.html",
+   "bytes": 69068,
+   "sha256": "15dcf956c98b9d5fdbdf8a31c25b61237b2a19bebf4ecd2d20ebd2bc89330950",
+   "licence": "OGL v3.0 (unconfirmed)",
+   "attribution": "UK Government Be Ready campaign"
+  },
+  {
+   "path": "guides/beready/be-ready-for-emergencies__coping-with-trauma.html",
+   "bytes": 68133,
+   "sha256": "73adbeddcc2b72141acfd1cdb61964fdd54212b81378c1b74e81da31e30b919b",
+   "licence": "OGL v3.0 (unconfirmed)",
+   "attribution": "UK Government Be Ready campaign"
+  },
+  {
+   "path": "guides/beready/be-ready-for-emergencies__transport-disruption-and-delays.html",
+   "bytes": 69185,
+   "sha256": "3b77bb6f793936842044533c6553ac271facb423c8c79ff858077ed9d88a32c6",
+   "licence": "OGL v3.0 (unconfirmed)",
+   "attribution": "UK Government Be Ready campaign"
+  },
+  {
+   "path": "guides/beready/play-your-part-in-your-community.html",
+   "bytes": 59620,
+   "sha256": "a999cc47ce85ea2fbd359db1cb5005fa1d6f58e5eb10d98d74af1490ec2808b0",
+   "licence": "OGL v3.0 (unconfirmed)",
+   "attribution": "UK Government Be Ready campaign"
+  },
+  {
+   "path": "guides/govuk/carbon-monoxide-poisoning.json",
+   "bytes": 15368,
+   "sha256": "43994af098dacae3e600a79de4341680ac0e3126334cb72748d3e3f5b1819e53",
+   "licence": "OGL v3.0",
+   "attribution": "Contains public sector information licensed under the Open Government Licence v3.0"
+  },
+  {
+   "path": "guides/govuk/food-and-nutrition-scripts-for-broadcast-media.json",
+   "bytes": 21436,
+   "sha256": "acf79ec90f8d37209db26fd4f8306c54866082c82d720be232bc9d4a7f8586fc",
+   "licence": "OGL v3.0",
+   "attribution": "Contains public sector information licensed under the Open Government Licence v3.0"
+  },
+  {
+   "path": "guides/govuk/food-safety-in-a-power-cut-advice-for-consumers.json",
+   "bytes": 10875,
+   "sha256": "f7123082731508b0987177057e1148d5e6373fd8448d93b61c22a167f9dd8df9",
+   "licence": "OGL v3.0",
+   "attribution": "Contains public sector information licensed under the Open Government Licence v3.0"
+  },
+  {
+   "path": "guides/govuk/keeping-warm-or-cool-in-extreme-weather-scripts-for-broadcast-media.json",
+   "bytes": 18443,
+   "sha256": "84050588c2b77fc8da2e8347fe7ee38e4662de2308d490d86ba82a60a5f39fba",
+   "licence": "OGL v3.0",
+   "attribution": "Contains public sector information licensed under the Open Government Licence v3.0"
+  },
+  {
+   "path": "guides/govuk/national-risk-register-2025.json",
+   "bytes": 12273,
+   "sha256": "0a7d7c9dc4f47b42af5b20ebd379a5d564309991cb781f723055623d83d779e4",
+   "licence": "OGL v3.0",
+   "attribution": "Contains public sector information licensed under the Open Government Licence v3.0"
+  },
+  {
+   "path": "guides/govuk/public-health-advice-from-uk-cmos-during-a-national-power-outage.json",
+   "bytes": 20943,
+   "sha256": "a8651123f81da86851858ebad934956761ebad2a006d088aa595bb3fbaf96ffd",
+   "licence": "OGL v3.0",
+   "attribution": "Contains public sector information licensed under the Open Government Licence v3.0"
+  },
+  {
+   "path": "guides/govuk/water-and-sanitation-scripts-for-broadcast-media.json",
+   "bytes": 21184,
+   "sha256": "65e46d0c50e5c0b43a7beff8c89b1affe543d6ceadbad67d2dd46f4e2d652df7",
+   "licence": "OGL v3.0",
+   "attribution": "Contains public sector information licensed under the Open Government Licence v3.0"
+  },
+  {
+   "path": "guides/pdf/beready_checklist_en.pdf",
+   "bytes": 80366,
+   "sha256": "1bafbb11dd987957f310727a9c27ac4b9e95ebae1b5bd1b7a3239c27b4ac7410",
+   "licence": "OGL v3.0 (unconfirmed)",
+   "attribution": "UK Government Be Ready campaign"
+  },
+  {
+   "path": "guides/pdf/ifrc_first_aid_guidelines_2020.pdf",
+   "bytes": 4432256,
+   "sha256": "e14ab9dbc492a5b6f61ac11cfcddbb5e327cb7690ae9006ac5f9b4c308af3ec7",
+   "licence": "IFRC - free to use",
+   "attribution": "International Federation of Red Cross and Red Crescent Societies, 2020"
+  },
+  {
+   "path": "guides/pdf/who_psychological_first_aid_2011.pdf",
+   "bytes": 1487833,
+   "sha256": "9e688553fbacc1f7e1a0144e59c97585d384e09197d5044f4604725089b85089",
+   "licence": "WHO free publication - check reuse permissions",
+   "attribution": "World Health Organization, 2011"
+  },
+  {
+   "path": "map/london.pmtiles",
+   "bytes": 132948328,
+   "sha256": "dd0c698fa2c6c42743ccd131e6fad49cea79338349811ca931db850c671944b4",
+   "licence": "ODbL 1.0",
+   "attribution": "© OpenStreetMap contributors; basemap © Protomaps"
+  },
+  {
+   "path": "pois/aed.geojson",
+   "bytes": 185073,
+   "sha256": "025c44e2c5915cebae2602ebec4b9aad15875a9f7a05908ec86ec7942c2ad4d9",
+   "licence": "ODbL 1.0",
+   "attribution": "© OpenStreetMap contributors"
+  },
+  {
+   "path": "pois/emergency_services.geojson",
+   "bytes": 90655,
+   "sha256": "25d1099212cfdc0c8af629be0b5dcda885262f64846574d3f97fe0bf8253f289",
+   "licence": "ODbL 1.0",
+   "attribution": "© OpenStreetMap contributors"
+  },
+  {
+   "path": "pois/food.geojson",
+   "bytes": 1981380,
+   "sha256": "a39f4b3fa1effd1cebb3026d311549c27e07206f4a4b51043677eba8cbb6a2e3",
+   "licence": "ODbL 1.0",
+   "attribution": "© OpenStreetMap contributors"
+  },
+  {
+   "path": "pois/fuel.geojson",
+   "bytes": 156945,
+   "sha256": "4021c2003b0bb569369bbfe00c278ae4a3f96057164105595ace48cda48f5468",
+   "licence": "ODbL 1.0",
+   "attribution": "© OpenStreetMap contributors"
+  },
+  {
+   "path": "pois/london_pois.sqlite",
+   "bytes": 7356416,
+   "sha256": "34c0a44dd67947f4ab46be1ae39ef1a39f9b677228cfda7a17270abba2fa0807",
+   "licence": "ODbL 1.0",
+   "attribution": "© OpenStreetMap contributors"
+  },
+  {
+   "path": "pois/medical.geojson",
+   "bytes": 1318927,
+   "sha256": "d62948cc631da19c8d2bd86d0f890c420c1d31b095ec8e5b784a656c582a83a8",
+   "licence": "ODbL 1.0",
+   "attribution": "© OpenStreetMap contributors"
+  },
+  {
+   "path": "pois/power.geojson",
+   "bytes": 298923,
+   "sha256": "4790c71b18139e4ecef81088f19e393e6201da8da890eb5a7c86d41ec1875ba6",
+   "licence": "ODbL 1.0",
+   "attribution": "© OpenStreetMap contributors"
+  },
+  {
+   "path": "pois/shelter.geojson",
+   "bytes": 1536013,
+   "sha256": "5408b274bfe7922896c7412f31c4ded401f274f9ec5f0ad5e953c2134cd23129",
+   "licence": "ODbL 1.0",
+   "attribution": "© OpenStreetMap contributors"
+  },
+  {
+   "path": "pois/toilets.geojson",
+   "bytes": 230633,
+   "sha256": "238fef5288d4daa1cb94e092a12d56f2ebad6a23efe5ee84d951982cf11a5be7",
+   "licence": "ODbL 1.0",
+   "attribution": "© OpenStreetMap contributors"
+  },
+  {
+   "path": "pois/water.geojson",
+   "bytes": 136477,
+   "sha256": "26fc2fed1322a3d44b85ae11f309cff6b7a6e518dcaf078fe8dd497f52679ff8",
+   "licence": "ODbL 1.0",
+   "attribution": "© OpenStreetMap contributors"
+  },
+  {
+   "path": "zim/nhs.uk_en_medicines_2026-09b.zim",
+   "bytes": 15322705,
+   "sha256": "349f7bc833aa1cfedd1cdd10fbb9ae575aac63b22e17639bfaee6568b6668b62",
+   "licence": "See ZIM metadata",
+   "attribution": "Packaged by Kiwix / openZIM; check the source site's terms"
+  },
+  {
+   "path": "zim/wikipedia_en_medicine_mini_2026-10.zim",
+   "bytes": 174350854,
+   "sha256": "c66f27274775870cec7e0c230c7e7626d367633b1f26c4a74499c249ddac0822",
+   "licence": "CC BY-SA 4.0",
+   "attribution": "Wikipedia contributors, via Kiwix"
+  },
+  {
+   "path": "zim/wikivoyage_en_europe_nopic_2026-09.zim",
+   "bytes": 83536915,
+   "sha256": "223c0ee56a3c2a59838deea60709869011843fa7b339783e22b9952b734e7c80",
+   "licence": "CC BY-SA 4.0",
+   "attribution": "Wikivoyage contributors, via Kiwix"
+  },
+  {
+   "path": "zim/zimgit-food-preparation_en_2024-08.zim",
+   "bytes": 97889004,
+   "sha256": "9c6b819a68fe2a745642ad43a9b4e1fe79d8976f239abd84ae38d4c2d260ed14",
+   "licence": "See ZIM metadata",
+   "attribution": "Packaged by Kiwix / openZIM; check the source site's terms"
+  },
+  {
+   "path": "zim/zimgit-medicine_en_2024-08.zim",
+   "bytes": 70179585,
+   "sha256": "a86c31b93e9800aae2cd812ef18cbf9c087a7537784c62fbc259db7f9f9d18c0",
+   "licence": "See ZIM metadata",
+   "attribution": "Packaged by Kiwix / openZIM; check the source site's terms"
+  },
+  {
+   "path": "zim/zimgit-water_en_2024-08.zim",
+   "bytes": 20924451,
+   "sha256": "392c7bc970a44fddd61dd17f6eabf1f4e21936f2d5c27c83093e1dc475cb56b6",
+   "licence": "See ZIM metadata",
+   "attribution": "Packaged by Kiwix / openZIM; check the source site's terms"
+  }
+ ]
+}

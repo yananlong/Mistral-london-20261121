@@ -1,0 +1,294 @@
+{
+ "tier": "hub",
+ "generated_utc": "2026-11-21T14:22:01+00:00",
+ "total_bytes": 18655515509,
+ "files": [
+  {
+   "path": "osm/greater-london-latest.osm.pbf",
+   "bytes": 130497275,
+   "sha256": "1de0354f13fe2d637e8aad677221c7d0062dfe174029a50dfdfad07cedec2a8d",
+   "licence": "ODbL 1.0",
+   "attribution": "© OpenStreetMap contributors (Geofabrik extract)"
+  },
+  {
+   "path": "pdf/hesperian_where_there_is_no_doctor_2025/en_wtnd_2025_01.pdf",
+   "bytes": 452195,
+   "sha256": "4b38841b7abc3a7f773ac36b8e017df70728bdba64d2586801c819e5f65ad69f",
+   "licence": "Hesperian - free/at-cost redistribution only",
+   "attribution": "Hesperian Health Guides, 2025"
+  },
+  {
+   "path": "pdf/hesperian_where_there_is_no_doctor_2025/en_wtnd_2025_02.pdf",
+   "bytes": 289242,
+   "sha256": "c1ac4a7b6588900b2c7b1e3458fde293471a510ca8109c1cb6f60bfdead7df5a",
+   "licence": "Hesperian - free/at-cost redistribution only",
+   "attribution": "Hesperian Health Guides, 2025"
+  },
+  {
+   "path": "pdf/hesperian_where_there_is_no_doctor_2025/en_wtnd_2025_03.pdf",
+   "bytes": 349744,
+   "sha256": "f1f4547f32af330653dd612c2cc5a5da18301d2a66a74fb2c799a3ae431ff1ae",
+   "licence": "Hesperian - free/at-cost redistribution only",
+   "attribution": "Hesperian Health Guides, 2025"
+  },
+  {
+   "path": "pdf/hesperian_where_there_is_no_doctor_2025/en_wtnd_2025_04.pdf",
+   "bytes": 207313,
+   "sha256": "447f969d3647529a0de2a9dc8439853e5cc76aa9355a071e49239a68111a90b7",
+   "licence": "Hesperian - free/at-cost redistribution only",
+   "attribution": "Hesperian Health Guides, 2025"
+  },
+  {
+   "path": "pdf/hesperian_where_there_is_no_doctor_2025/en_wtnd_2025_05.pdf",
+   "bytes": 188283,
+   "sha256": "1abba2b67a9337e68c3458f88a11267a2615761f9f5e92d47d27690be05f9314",
+   "licence": "Hesperian - free/at-cost redistribution only",
+   "attribution": "Hesperian Health Guides, 2025"
+  },
+  {
+   "path": "pdf/hesperian_where_there_is_no_doctor_2025/en_wtnd_2025_06.pdf",
+   "bytes": 214219,
+   "sha256": "b5e521c69b3a88513f9358e754a1199e280ce6efc0a87a9af600b84ed23a4463",
+   "licence": "Hesperian - free/at-cost redistribution only",
+   "attribution": "Hesperian Health Guides, 2025"
+  },
+  {
+   "path": "pdf/hesperian_where_there_is_no_doctor_2025/en_wtnd_2025_07.pdf",
+   "bytes": 187634,
+   "sha256": "8b74ce47e09ba13079c7cfa3da6d75039dbf4149b9be548e530fa46db0a08b98",
+   "licence": "Hesperian - free/at-cost redistribution only",
+   "attribution": "Hesperian Health Guides, 2025"
+  },
+  {
+   "path": "pdf/hesperian_where_there_is_no_doctor_2025/en_wtnd_2025_08.pdf",
+   "bytes": 258530,
+   "sha256": "fc88b42efa7fb56cd5bd70f611080f3d36e7cb86083332c599ab60ecdddd1da8",
+   "licence": "Hesperian - free/at-cost redistribution only",
+   "attribution": "Hesperian Health Guides, 2025"
+  },
+  {
+   "path": "pdf/hesperian_where_there_is_no_doctor_2025/en_wtnd_2025_09.pdf",
+   "bytes": 632744,
+   "sha256": "934a15f9ef49b651d2bda0734eecfa52257adc3e74a5c3d695bffc95cce3774e",
+   "licence": "Hesperian - free/at-cost redistribution only",
+   "attribution": "Hesperian Health Guides, 2025"
+  },
+  {
+   "path": "pdf/hesperian_where_there_is_no_doctor_2025/en_wtnd_2025_10.pdf",
+   "bytes": 886709,
+   "sha256": "90b55056823ad19c4d80beb6c97aeeb211f11eb08d63369763fac1bc3df9f4a3",
+   "licence": "Hesperian - free/at-cost redistribution only",
+   "attribution": "Hesperian Health Guides, 2025"
+  },
+  {
+   "path": "pdf/hesperian_where_there_is_no_doctor_2025/en_wtnd_2025_11.pdf",
+   "bytes": 1017671,
+   "sha256": "decb15f0dd4039f08082eae202ae15b66f4c148267d6588be3c4d3d5c648a064",
+   "licence": "Hesperian - free/at-cost redistribution only",
+   "attribution": "Hesperian Health Guides, 2025"
+  },
+  {
+   "path": "pdf/hesperian_where_there_is_no_doctor_2025/en_wtnd_2025_12.pdf",
+   "bytes": 520182,
+   "sha256": "fe09cc357764787b11ccd64e830d8f4d9eba439d23a2e692017dd79ca698afbc",
+   "licence": "Hesperian - free/at-cost redistribution only",
+   "attribution": "Hesperian Health Guides, 2025"
+  },
+  {
+   "path": "pdf/hesperian_where_there_is_no_doctor_2025/en_wtnd_2025_13.pdf",
+   "bytes": 619941,
+   "sha256": "d8586dea51cd5ee70b0c435c04b24dc1e3e5eb18dbdcf4bc45ff68780a7156a3",
+   "licence": "Hesperian - free/at-cost redistribution only",
+   "attribution": "Hesperian Health Guides, 2025"
+  },
+  {
+   "path": "pdf/hesperian_where_there_is_no_doctor_2025/en_wtnd_2025_14.pdf",
+   "bytes": 371944,
+   "sha256": "fb9aa135cfafdf56365c54338c36349c7965c3d3d6452d563673063afc563509",
+   "licence": "Hesperian - free/at-cost redistribution only",
+   "attribution": "Hesperian Health Guides, 2025"
+  },
+  {
+   "path": "pdf/hesperian_where_there_is_no_doctor_2025/en_wtnd_2025_15.pdf",
+   "bytes": 995680,
+   "sha256": "0746d613a61fc2ab629af7b2f50eb6841b2f652b349837a50688c2f31408a0d6",
+   "licence": "Hesperian - free/at-cost redistribution only",
+   "attribution": "Hesperian Health Guides, 2025"
+  },
+  {
+   "path": "pdf/hesperian_where_there_is_no_doctor_2025/en_wtnd_2025_16.pdf",
+   "bytes": 420755,
+   "sha256": "3c8fdc216ad5aa7d18e831d12ece7c83063a4eb0c65e66263c635b1a69962be5",
+   "licence": "Hesperian - free/at-cost redistribution only",
+   "attribution": "Hesperian Health Guides, 2025"
+  },
+  {
+   "path": "pdf/hesperian_where_there_is_no_doctor_2025/en_wtnd_2025_17.pdf",
+   "bytes": 214696,
+   "sha256": "574fbbed0049d355761763a39625a963fefda75d2533de89d51231f5d98e4ecd",
+   "licence": "Hesperian - free/at-cost redistribution only",
+   "attribution": "Hesperian Health Guides, 2025"
+  },
+  {
+   "path": "pdf/hesperian_where_there_is_no_doctor_2025/en_wtnd_2025_18.pdf",
+   "bytes": 353149,
+   "sha256": "1617a63465cd14052ad96a8fc0669e0cf3aa2c2c595fd8d18a393cd0f17d42b0",
+   "licence": "Hesperian - free/at-cost redistribution only",
+   "attribution": "Hesperian Health Guides, 2025"
+  },
+  {
+   "path": "pdf/hesperian_where_there_is_no_doctor_2025/en_wtnd_2025_19.pdf",
+   "bytes": 707320,
+   "sha256": "aa9478de59838656203ef351db73b4264bfea34054b1bbc37051a9249d437c92",
+   "licence": "Hesperian - free/at-cost redistribution only",
+   "attribution": "Hesperian Health Guides, 2025"
+  },
+  {
+   "path": "pdf/hesperian_where_there_is_no_doctor_2025/en_wtnd_2025_20.pdf",
+   "bytes": 454410,
+   "sha256": "c74ce75dc863e602c6f0c535e3ef1be31fcb31374652e096acb340006ab45f04",
+   "licence": "Hesperian - free/at-cost redistribution only",
+   "attribution": "Hesperian Health Guides, 2025"
+  },
+  {
+   "path": "pdf/hesperian_where_there_is_no_doctor_2025/en_wtnd_2025_21.pdf",
+   "bytes": 1098690,
+   "sha256": "d9e21ee6f5e3770be387a42e4e15a542149acf3196487879451f6074668d4cf5",
+   "licence": "Hesperian - free/at-cost redistribution only",
+   "attribution": "Hesperian Health Guides, 2025"
+  },
+  {
+   "path": "pdf/hesperian_where_there_is_no_doctor_2025/en_wtnd_2025_22.pdf",
+   "bytes": 250930,
+   "sha256": "bc40747916bbaec17f8ed5dca7f17c96658c58cff3419eacdc9962717e2d0e92",
+   "licence": "Hesperian - free/at-cost redistribution only",
+   "attribution": "Hesperian Health Guides, 2025"
+  },
+  {
+   "path": "pdf/hesperian_where_there_is_no_doctor_2025/en_wtnd_2025_23.pdf",
+   "bytes": 190539,
+   "sha256": "bd8ffa779cd8cc2f6a4ebc1626d45d93e2046e52f20bb2a504a38a6c01e921c2",
+   "licence": "Hesperian - free/at-cost redistribution only",
+   "attribution": "Hesperian Health Guides, 2025"
+  },
+  {
+   "path": "pdf/hesperian_where_there_is_no_doctor_2025/en_wtnd_2025_bm.pdf",
+   "bytes": 514364,
+   "sha256": "4016fd82015436014abf3cc92111dffb9cc263f800829f2d7689ed6a038c92f1",
+   "licence": "Hesperian - free/at-cost redistribution only",
+   "attribution": "Hesperian Health Guides, 2025"
+  },
+  {
+   "path": "pdf/hesperian_where_there_is_no_doctor_2025/en_wtnd_2025_fm.pdf",
+   "bytes": 363849,
+   "sha256": "2891c43fa195d7a8f8a3e17a6848b06ac2e062cb5b84a686018d3be7ab73be75",
+   "licence": "Hesperian - free/at-cost redistribution only",
+   "attribution": "Hesperian Health Guides, 2025"
+  },
+  {
+   "path": "pdf/ifrc_first_aid_guidelines_2020.pdf",
+   "bytes": 4432256,
+   "sha256": "e14ab9dbc492a5b6f61ac11cfcddbb5e327cb7690ae9006ac5f9b4c308af3ec7",
+   "licence": "IFRC - free to use",
+   "attribution": "International Federation of Red Cross and Red Crescent Societies, 2020"
+  },
+  {
+   "path": "zim/appropedia_en_all_maxi_2026-02.zim",
+   "bytes": 581641351,
+   "sha256": "dcf200ba723c27397e1c9a2e4891ff91fa13993df1fa285315190d8525a53469",
+   "licence": "CC BY-SA 4.0",
+   "attribution": "Appropedia contributors, via Kiwix"
+  },
+  {
+   "path": "zim/cooking.stackexchange.com_en_all_2026-10.zim",
+   "bytes": 238098128,
+   "sha256": "b5dc3a79b681be1afea32dd65e837c604e7dd7072f51622414a7a1d61fc52541",
+   "licence": "See ZIM metadata",
+   "attribution": "Packaged by Kiwix / openZIM; check the source site's terms"
+  },
+  {
+   "path": "zim/diy.stackexchange.com_en_all_2026-10.zim",
+   "bytes": 2086024326,
+   "sha256": "df795a094698282164ddee422814f88bf84841a2413c89ac23401efd71f22731",
+   "licence": "See ZIM metadata",
+   "attribution": "Packaged by Kiwix / openZIM; check the source site's terms"
+  },
+  {
+   "path": "zim/electronics.stackexchange.com_en_all_2026-10.zim",
+   "bytes": 4261397539,
+   "sha256": "b28e58b24ed55c602265729b34b0c6cc4e12228e6fe2f55df5b5e9eae169b266",
+   "licence": "See ZIM metadata",
+   "attribution": "Packaged by Kiwix / openZIM; check the source site's terms"
+  },
+  {
+   "path": "zim/ham.stackexchange.com_en_all_2026-10.zim",
+   "bytes": 77108284,
+   "sha256": "cb8a0cd7ae0078279ace1cd2a05e60505aa2494c29e82dac1942bf4cd54fcf9c",
+   "licence": "See ZIM metadata",
+   "attribution": "Packaged by Kiwix / openZIM; check the source site's terms"
+  },
+  {
+   "path": "zim/ifixit_en_all_2025-12.zim",
+   "bytes": 3570695757,
+   "sha256": "9bb5f3408707fd0300c6ef47a425c3217187f144cd9154a928183816aa72eead",
+   "licence": "CC BY-NC-SA 3.0",
+   "attribution": "iFixit - NON-COMMERCIAL"
+  },
+  {
+   "path": "zim/irp.fas.org_en_military-medicine_2026-10.zim",
+   "bytes": 64986090,
+   "sha256": "9fc5e5d0302504f57a33e0d3aad9c94761cfd6caab22354ed04b9e9bad2ff57f",
+   "licence": "See ZIM metadata",
+   "attribution": "Packaged by Kiwix / openZIM; check the source site's terms"
+  },
+  {
+   "path": "zim/outdoors.stackexchange.com_en_all_2026-10.zim",
+   "bytes": 141820374,
+   "sha256": "73752057bd2253af6cf80c69caf0def158bcf378188f0fbc7ab8ed07bbbe9bc5",
+   "licence": "See ZIM metadata",
+   "attribution": "Packaged by Kiwix / openZIM; check the source site's terms"
+  },
+  {
+   "path": "zim/ready.gov_en_all_2026-10.zim",
+   "bytes": 2063895408,
+   "sha256": "c88ce03db2a6dd855c1075d87abb6dceac678718e0dd3fa7912009469b9ca225",
+   "licence": "See ZIM metadata",
+   "attribution": "Packaged by Kiwix / openZIM; check the source site's terms"
+  },
+  {
+   "path": "zim/sustainability.stackexchange.com_en_all_2026-10.zim",
+   "bytes": 27687333,
+   "sha256": "1516f252827b1409b7b55c1a44671e7e59b857bf2bb3732f3af62c996e40412f",
+   "licence": "See ZIM metadata",
+   "attribution": "Packaged by Kiwix / openZIM; check the source site's terms"
+  },
+  {
+   "path": "zim/trueprepper.com_en_all_2026-05.zim",
+   "bytes": 1423584895,
+   "sha256": "64ddae8ca29ca24db23fae403f12af510f3f3119e09933974e91c899b41be940",
+   "licence": "See ZIM metadata",
+   "attribution": "Packaged by Kiwix / openZIM; check the source site's terms"
+  },
+  {
+   "path": "zim/wikipedia_en_medicine_nopic_2026-10.zim",
+   "bytes": 1047708415,
+   "sha256": "718fadad40b3491be3fa8f95181a948e4d726f97a79a14e0ef1b90c6b2b03625",
+   "licence": "CC BY-SA 4.0",
+   "attribution": "Wikipedia contributors, via Kiwix"
+  },
+  {
+   "path": "zim/wikipedia_en_top_nopic_2026-09.zim",
+   "bytes": 2745850723,
+   "sha256": "8369b95b6b2179051b56ebed0d43fd3646020d03367eb03d7fc34d84090c501b",
+   "licence": "CC BY-SA 4.0",
+   "attribution": "Wikipedia contributors, via Kiwix"
+  },
+  {
+   "path": "zim/wwwnc.cdc.gov_en_all_2024-11.zim",
+   "bytes": 178326622,
+   "sha256": "45c1c8d79a38a814098be41044a42d4ac7cc3dfa5cdfe398e9974e08d80591dc",
+   "licence": "See ZIM metadata",
+   "attribution": "Packaged by Kiwix / openZIM; check the source site's terms"
+  }
+ ]
+}

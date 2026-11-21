@@ -1,0 +1,62 @@
+"""Write <tier>/manifest.json: every file with size, sha256, licence and attribution.
+
+Both mobile apps read phone/manifest.json to check which bundle files are
+present and intact; the hub reads hub/manifest.json.
+Usage: python3 -I scripts/build_manifest.py phone hub
+"""
+import datetime
+import hashlib
+import json
+import sys
+from pathlib import Path
+
+# (path prefix, licence, attribution / notes) -- first match wins
+LICENCES = [
+    ("map/", "ODbL 1.0", "© OpenStreetMap contributors; basemap © Protomaps"),
+    ("pois/", "ODbL 1.0", "© OpenStreetMap contributors"),
+    ("osm/", "ODbL 1.0", "© OpenStreetMap contributors (Geofabrik extract)"),
+    ("givefood/", "No explicit licence", "Data from Give Food (givefood.org.uk) - credit and link back; contact before launch"),
+    ("guides/govuk/", "OGL v3.0", "Contains public sector information licensed under the Open Government Licence v3.0"),
+    ("guides/beready/", "OGL v3.0 (unconfirmed)", "UK Government Be Ready campaign"),
+    ("guides/pdf/beready", "OGL v3.0 (unconfirmed)", "UK Government Be Ready campaign"),
+    ("guides/pdf/ifrc", "IFRC - free to use", "International Federation of Red Cross and Red Crescent Societies, 2020"),
+    ("pdf/ifrc", "IFRC - free to use", "International Federation of Red Cross and Red Crescent Societies, 2020"),
+    ("guides/pdf/who", "WHO free publication - check reuse permissions", "World Health Organization, 2011"),
+    ("pdf/hesperian", "Hesperian - free/at-cost redistribution only", "Hesperian Health Guides, 2025"),
+    ("zim/ifixit", "CC BY-NC-SA 3.0", "iFixit - NON-COMMERCIAL"),
+    ("zim/wikipedia", "CC BY-SA 4.0", "Wikipedia contributors, via Kiwix"),
+    ("zim/wikivoyage", "CC BY-SA 4.0", "Wikivoyage contributors, via Kiwix"),
+    ("zim/appropedia", "CC BY-SA 4.0", "Appropedia contributors, via Kiwix"),
+    ("zim/", "See ZIM metadata", "Packaged by Kiwix / openZIM; check the source site's terms"),
+]
+
+
+def licence_for(rel):
+    for prefix, lic, attr in LICENCES:
+        if rel.startswith(prefix):
+            return lic, attr
+    return "unknown", ""
+
+
+def sha256(p):
+    h = hashlib.sha256()
+    with open(p, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+for tier in sys.argv[1:]:
+    root = Path(tier)
+    files = []
+    for p in sorted(root.rglob("*")):
+        if not p.is_file() or p.name.endswith((".ok", ".tmp")) or p.name == "manifest.json":
+            continue
+        rel = p.relative_to(root).as_posix()
+        lic, attr = licence_for(rel)
+        files.append({"path": rel, "bytes": p.stat().st_size, "sha256": sha256(p),
+                      "licence": lic, "attribution": attr})
+    manifest = {"tier": tier, "generated_utc": datetime.datetime.now(datetime.UTC).isoformat(timespec="seconds"),
+                "total_bytes": sum(f["bytes"] for f in files), "files": files}
+    (root / "manifest.json").write_text(json.dumps(manifest, indent=1, ensure_ascii=False))
+    print(f"{tier}: {len(files)} files, {manifest['total_bytes'] / 1e9:.2f} GB")

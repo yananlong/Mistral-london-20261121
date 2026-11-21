@@ -1,0 +1,9 @@
+# Large or re-downloadable binaries: recreate with scripts/fetch_all.sh
+*.zim
+*.zim.ok
+*.pmtiles
+*.osm.pbf
+*.pdf
+*.tmp
+.tools/
+logs/
