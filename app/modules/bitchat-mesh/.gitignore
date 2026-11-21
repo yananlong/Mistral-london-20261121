@@ -1,3 +1,5 @@
 node_modules/
 ios/GeneratedSources/
 ios/GeneratedSources.tmp-*/
+android/src/bitchat/
+android/build/
