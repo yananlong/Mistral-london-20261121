@@ -13,6 +13,8 @@
 set -euo pipefail
 
 MODEL_TAG="ministral-3:14b-instruct-2512-q4_K_M"
+# Byte-exact from BLUEPRINT_1.md: the hub ends every answer with this label.
+DISCLAIMER="AI answer from an open-weight model on the hub. Not verified emergency advice."
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 cmd="${1:-setup}"
@@ -69,36 +71,85 @@ else
   # offline-check: run this AFTER disconnecting the Spark's network.
   echo "== offline check (the network must be disconnected now) =="
   if ip route show default 2>/dev/null | grep -q .; then
-    echo "WARNING: a default route still exists; disconnect the network first" >&2
-  else
-    echo "no default route: the Spark is offline"
+    echo "FAIL: a default route still exists; disconnect the network first" >&2
+    exit 1
   fi
+  echo "no default route: the Spark is offline"
   echo
+
+  # Export the env BEFORE any ollama CLI call, so `ollama list` hits the same
+  # server the hub will use (the systemd drop-in binds Ollama to the
+  # local-link address, not 127.0.0.1). responder.py prepends http:// when
+  # OLLAMA_HOST has no scheme.
+  export OLLAMA_HOST="${OLLAMA_HOST:-${SPARK_LOCAL_LINK_IP:-127.0.0.1}:11434}"
+  export HUB_BIND=127.0.0.1
+  export HUB_PORT="${HUB_PORT:-8080}"
+  echo "effective env for this check: OLLAMA_HOST=$OLLAMA_HOST HUB_BIND=$HUB_BIND HUB_PORT=$HUB_PORT"
+  case "$OLLAMA_HOST" in
+    0.0.0.0|0.0.0.0:*|*://0.0.0.0|*://0.0.0.0:*)
+      echo "FAIL: OLLAMA_HOST must never be 0.0.0.0 (internet-facing)" >&2
+      exit 1
+      ;;
+  esac
+  echo
+
   echo "-- ollama list (the model must still be there, served from local storage) --"
-  ollama list
-  ollama list | grep -q "ministral-3" || { echo "model missing from ollama list" >&2; exit 1; }
+  if ! MODEL_LISTING="$(ollama list)"; then
+    echo "FAIL: 'ollama list' failed; is the ollama service running on $OLLAMA_HOST?" >&2
+    exit 1
+  fi
+  echo "$MODEL_LISTING"
+  if ! grep -qF "$MODEL_TAG" <<<"$MODEL_LISTING"; then
+    echo "FAIL: $MODEL_TAG is not in ollama list" >&2
+    exit 1
+  fi
   echo
 
   echo "-- local test question through hub/responder.py --"
-  export HUB_BIND=127.0.0.1
-  export HUB_PORT="${HUB_PORT:-8080}"
-  # responder.py prepends http:// when OLLAMA_HOST has no scheme.
-  export OLLAMA_HOST="${OLLAMA_HOST:-${SPARK_LOCAL_LINK_IP:-127.0.0.1}:11434}"
+  ASK_RESPONSE="$(mktemp)"
+  RESPONDER_PID=""
+  cleanup() {
+    [[ -n "$RESPONDER_PID" ]] && kill "$RESPONDER_PID" 2>/dev/null || true
+    rm -f "$ASK_RESPONSE"
+  }
+  trap cleanup EXIT
   python3 "$SCRIPT_DIR/responder.py" &
   RESPONDER_PID=$!
-  trap 'kill "$RESPONDER_PID" 2>/dev/null || true' EXIT
   for _ in $(seq 1 50); do
-    curl -sf "http://127.0.0.1:${HUB_PORT}/health" >/dev/null && break
+    if curl -sf "http://127.0.0.1:${HUB_PORT}/health" >/dev/null; then break; fi
     sleep 0.1
   done
+  if ! curl -sf "http://127.0.0.1:${HUB_PORT}/health" >/dev/null; then
+    echo "FAIL: responder.py did not come up on 127.0.0.1:${HUB_PORT}" >&2
+    exit 1
+  fi
   echo "GET /health:"
-  curl -s "http://127.0.0.1:${HUB_PORT}/health"; echo
+  curl -sf "http://127.0.0.1:${HUB_PORT}/health"; echo
   echo "POST /ask (wait=true, full answer in one response):"
-  curl -s -X POST "http://127.0.0.1:${HUB_PORT}/ask" \
-    -H 'Content-Type: application/json' \
-    -d '{"sender":"offline-check","question":"How do I make river water safe to drink?","wait":true}'
-  echo
-  kill "$RESPONDER_PID" 2>/dev/null || true
+  if ! HTTP_CODE="$(curl -s -o "$ASK_RESPONSE" -w '%{http_code}' -X POST \
+      "http://127.0.0.1:${HUB_PORT}/ask" \
+      -H 'Content-Type: application/json' \
+      -d '{"sender":"offline-check","question":"How do I make river water safe to drink?","wait":true}')"; then
+    echo "FAIL: could not reach the responder at http://127.0.0.1:${HUB_PORT}/ask" >&2
+    exit 1
+  fi
+  echo "HTTP $HTTP_CODE:"
+  cat "$ASK_RESPONSE"; echo
+  # The check passes only when the hub really answered: HTTP 200, a real
+  # answer (not the retry error answer) that carries the disclaimer.
+  if [[ "$HTTP_CODE" != "200" ]]; then
+    echo "FAIL: POST /ask returned HTTP $HTTP_CODE, expected 200" >&2
+    exit 1
+  fi
+  if grep -qF "could not answer" "$ASK_RESPONSE"; then
+    echo "FAIL: the hub returned the retry error answer, not a real answer" >&2
+    exit 1
+  fi
+  if ! grep -qF "$DISCLAIMER" "$ASK_RESPONSE"; then
+    echo "FAIL: the answer does not contain the disclaimer" >&2
+    exit 1
+  fi
+  cleanup
   trap - EXIT
   echo
   echo "offline check passed: the hub answered with no network"
