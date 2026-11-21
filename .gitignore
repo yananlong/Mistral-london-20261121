@@ -81,3 +81,12 @@ yolo/models/
 
 # python bytecode
 __pycache__/
+*.pyc
+
+# sqlite transient files
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+
+# large model weights (GitHub rejects files >100MB)
+mobileclip2_b.ts
