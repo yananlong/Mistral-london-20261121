@@ -1075,6 +1075,7 @@ class ResponderHandler(BaseHTTPRequestHandler):
             # sending resets the connection and the client never sees the 413.
             left = min(length, 4 * MAX_BODY_BYTES)
             try:
+                self.connection.settimeout(0.5)  # a client that sends nothing is not waited for
                 while left > 0:
                     chunk = self.rfile.read(min(65536, left))
                     if not chunk:
