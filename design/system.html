@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Visual System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<script src="type.js"></script>
+<!-- Icons: Google Material Symbols, Rounded, filled (Apache 2.0) -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,500,1,0&icon_names=arrow_upward,battery_charging_full,bluetooth_disabled,check,check_circle,close,family_restroom,local_drink,location_on,medical_services,night_shelter,restaurant,schedule,sos,warning&display=block">
+<style>
+/* ============ The system, as tokens ============ */
+:root {
+  /* Type */
+  --font: "Atkinson Hyperlegible Next", -apple-system, BlinkMacSystemFont, Roboto, Arial, sans-serif;  /* Decided. type.js can swap it only to compare */
+  --legible: normal;
+
+  /* Colour: neutrals. Dark is the default: black pixels are off on OLED screens */
+  --ink: #FFFFFF;          /* text, primary actions: 21:1 on surface */
+  --ink-2: #9A9A9F;        /* secondary text: 7.5 on surface, 6.07 on surface-2 */
+  --on-ink: #000000;       /* text on white buttons */
+  --surface: #000000;
+  --surface-2: #1C1C1E;    /* answers, quiet panels, anything raised */
+  --line: #2C2C2E;         /* card outlines and dividers */
+  --line-strong: #8E8E93;  /* outlines that are the only cue: 6.44 on surface */
+
+  /* Colour: states */
+  --red: #FF6159;          /* emergency text and icons: 7.11 on surface */
+  --red-fill: #D7000F;     /* the SOS button: white on it 5.39 */
+  --on-fill: #FFFFFF;
+  --red-tint: #3A0A0C;     /* red text on it: 5.78 */
+  --yellow: #FFD100;       /* waiting: icons on black 14.37, or a fill with black on it. Never text */
+  --on-yellow: #000000;    /* black on yellow: 14.37 */
+  --green: #30D158;        /* done: 10.39 on surface */
+  --green-tint: #0B2A18;   /* green text on it: 7.65 */
+
+  /* Space: 4 px base */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 24px; --s8: 32px; --s12: 48px;
+
+  /* Corners: friendly, not sharp. No pills */
+  --r-tail: 4px; --r-s: 8px; --r-m: 12px; --r-l: 16px;
+
+  /* Motion */
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --t-press: 150ms; --t-expand: 250ms; --t-sheet: 320ms;
+
+  /* The page itself (not part of the app system) */
+  --grid: rgba(215, 0, 15, .32);
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--surface); color: var(--ink); font-family: var(--font); font-feature-settings: var(--legible); font-size: 17px; line-height: 24px; -webkit-font-smoothing: antialiased; font-optical-sizing: auto; }
+:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+a { color: inherit; text-underline-offset: 3px; }
+h1, h2, h3, p { margin: 0; }
+
+/* Type tokens as classes */
+.t-display { font-size: 44px; line-height: 46px; font-weight: 600; letter-spacing: -0.01em; }
+.t-title1  { font-size: 28px; line-height: 32px; font-weight: 600; letter-spacing: -0.005em; }
+.t-title2  { font-size: 22px; line-height: 28px; font-weight: 600; letter-spacing: 0; }
+.t-body    { font-size: 17px; line-height: 24px; font-weight: 400; letter-spacing: 0; }
+.t-strong  { font-size: 17px; line-height: 24px; font-weight: 600; letter-spacing: 0; }
+.t-callout { font-size: 15px; line-height: 20px; font-weight: 600; letter-spacing: 0; }
+.t-caption { font-size: 13px; line-height: 18px; font-weight: 400; letter-spacing: 0; }
+.t-label   { font-size: 13px; line-height: 16px; font-weight: 600; letter-spacing: 0; }
+.grey { color: var(--ink-2); }
+
+/* ============ Page layout ============ */
+.wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+header.top {
+  background-image: linear-gradient(90deg, var(--grid) 1px, transparent 1px), linear-gradient(0deg, var(--grid) 1px, transparent 1px);
+  background-size: calc(100% / 12) 100%, 100% 64px;
+  border-bottom: 1px solid var(--line);
+}
+header.top .wrap { padding-top: 24px; padding-bottom: 56px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 24px; font-size: 15px; color: var(--ink-2); }
+.meta b { color: var(--ink); font-weight: 600; }
+.hero { margin-top: 120px; font-size: clamp(56px, 10vw, 140px); line-height: .95; font-weight: 600; letter-spacing: -0.015em; }
+.lede { margin-top: 32px; max-width: 36rem; font-size: 20px; line-height: 28px; }
+
+.review { margin-top: 48px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.review a { display: grid; gap: 4px; padding: 16px; border-radius: var(--r-m); background: var(--surface); border: 1px solid var(--line); text-decoration: none; min-height: 44px; transition: border-color var(--t-press); }
+.review a:hover { border-color: var(--ink); }
+.review b { font-weight: 600; font-size: 15px; }
+.review span { font-size: 15px; line-height: 20px; color: var(--ink-2); }
+@media (max-width: 860px) { .review { grid-template-columns: 1fr; } }
+
+section.part { padding: 88px 0; border-bottom: 1px solid var(--line); }
+.part-head { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 48px; align-items: end; }
+.part-head h2 { font-size: clamp(36px, 5vw, 56px); line-height: 1.04; font-weight: 600; letter-spacing: -0.01em; }
+.part-head p { color: var(--ink-2); max-width: 32rem; }
+@media (max-width: 860px) { .part-head { grid-template-columns: 1fr; } }
+
+.decide { margin-top: 40px; display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; padding: 20px; border-radius: var(--r-m); border: 1px solid var(--line); background: var(--surface-2); }
+.decide .q { grid-column: 1 / -1; font-weight: 600; }
+.decide .k { color: var(--ink-2); font-size: 15px; }
+.decide .v { font-size: 15px; line-height: 22px; }
+@media (max-width: 600px) { .decide { grid-template-columns: 1fr; } .decide .k { margin-top: 6px; } }
+
+/* Type scale */
+.scale { border-top: 1px solid var(--ink); }
+.scale .row { display: grid; grid-template-columns: 160px 1fr 260px; gap: 24px; padding: 20px 0; border-bottom: 1px solid var(--line); align-items: baseline; }
+.scale .tok { font-weight: 600; font-size: 15px; }
+.scale .spec { font-size: 13px; line-height: 18px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.scale .spec b { color: var(--ink); font-weight: 600; }
+@media (max-width: 860px) { .scale .row { grid-template-columns: 1fr; gap: 6px; } }
+
+.stack { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.stack > div { border-radius: var(--r-l); border: 1px solid var(--line); padding: 28px 20px; display: grid; gap: 6px; align-content: start; max-width: 100%; }
+.stack .cap { font-size: 13px; color: var(--ink-2); margin-bottom: 12px; }
+@media (max-width: 860px) { .stack { grid-template-columns: 1fr; } }
+
+/* Colour */
+.colours { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+.colours.five { grid-template-columns: repeat(5, 1fr); }
+.sw { display: grid; gap: 10px; align-content: start; }
+.sw i { display: block; height: 96px; border-radius: var(--r-m); }
+.sw i.edge { box-shadow: inset 0 0 0 1px var(--line); }
+.sw b { font-weight: 600; font-size: 15px; }
+.sw span { font-size: 13px; line-height: 18px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.sw .hex { color: var(--ink); }
+.group-t { margin: 40px 0 16px; font-size: 15px; font-weight: 600; }
+.group-t:first-child { margin-top: 0; }
+@media (max-width: 860px) { .colours, .colours.five { grid-template-columns: 1fr 1fr; } }
+
+.light { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; padding: 24px; border-radius: var(--r-m); background: #FFFFFF; color: #000000; }
+.light div { display: grid; gap: 6px; align-content: start; }
+.light i { display: block; width: 40px; height: 40px; border-radius: var(--r-s); }
+.light b { font-weight: 600; font-size: 15px; }
+.light span { font-size: 13px; color: #6B6B6B; font-variant-numeric: tabular-nums; }
+@media (max-width: 860px) { .light { grid-template-columns: 1fr 1fr; } }
+.pairs { margin-top: 40px; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.pair { border-radius: var(--r-m); padding: 16px; display: grid; gap: 4px; min-height: 104px; align-content: space-between; }
+.pair .s { font-size: 17px; font-weight: 600; }
+.pair .r { font-size: 13px; font-variant-numeric: tabular-nums; display: flex; justify-content: space-between; gap: 8px; }
+.pass { font-weight: 600; }
+.fail { text-decoration: line-through; }
+
+/* Space */
+.spaces { display: grid; gap: 10px; }
+.spaces .row { display: grid; grid-template-columns: 64px 1fr; align-items: center; gap: 16px; font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.spaces .row i { display: block; height: 20px; background: var(--red); border-radius: 2px; }
+.spaces .row b { color: var(--ink); font-weight: 600; }
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; }
+@media (max-width: 860px) { .split { grid-template-columns: 1fr; } }
+.uses { list-style: none; padding: 0; margin: 0; display: grid; }
+.uses li { display: grid; grid-template-columns: 1fr auto; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+.uses li span:last-child { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+
+/* Corners */
+.corners { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; align-items: start; }
+.corners div { display: grid; gap: 10px; font-size: 13px; line-height: 18px; color: var(--ink-2); }
+.corners div b { color: var(--ink); font-weight: 600; font-size: 15px; }
+.corners i { display: block; height: 112px; border: 1px solid var(--line-strong); }
+@media (max-width: 860px) { .corners { grid-template-columns: 1fr 1fr; } }
+.nest { margin-top: 32px; display: grid; grid-template-columns: auto 1fr; gap: 24px; align-items: center; }
+.nest .outer { width: 220px; padding: 4px; border-radius: 12px; background: var(--surface-2); }
+.nest .inner { height: 96px; border-radius: 8px; background: var(--ink); }
+.nest p { color: var(--ink-2); max-width: 30rem; }
+
+/* States */
+.states { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.state { border-radius: var(--r-m); border: 1px solid var(--line); padding: 20px; display: grid; gap: 14px; align-content: start; }
+.state p { font-size: 15px; line-height: 20px; color: var(--ink-2); }
+.state .uses-t { font-size: 13px; line-height: 18px; color: var(--ink-2); }
+.i { font-family: "Material Symbols Rounded"; font-weight: normal; font-style: normal; font-size: 24px; line-height: 1; letter-spacing: normal; white-space: nowrap; direction: ltr; font-feature-settings: "liga" 1; display: inline-block; width: 1em; height: 1em; overflow: hidden; flex: none; }
+/* A state is a coloured icon and a plain word. No badge, no fill */
+.status { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; line-height: 20px; font-weight: 600; color: var(--ink); width: fit-content; }
+.status .i { font-size: 20px; }
+.status.sos .i { color: var(--red); }
+.status.wait .i { color: var(--yellow); }
+.status.ok .i { color: var(--green); }
+.tag { font-size: 13px; line-height: 18px; font-weight: 600; border: 1px solid var(--line-strong); border-radius: var(--r-tail); padding: 0 5px; }
+.solid { display: inline-flex; align-items: center; gap: 8px; height: 48px; padding: 0 20px; border-radius: var(--r-m); font-weight: 600; font-size: 15px; border: 0; width: fit-content; }
+.solid svg { width: 16px; height: 16px; fill: currentColor; }
+.solid.red { background: var(--red-fill); color: var(--on-fill); }
+.solid.ink { background: var(--ink); color: var(--on-ink); }
+.solid.line { background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+@media (max-width: 960px) { .states { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 520px) { .states { grid-template-columns: 1fr; } }
+.cb { margin-top: 24px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 20px; border-radius: var(--r-m); border: 1px dashed var(--line-strong); }
+.cb .status .i { color: var(--ink-2) !important; }
+.cb .note { font-size: 15px; color: var(--ink-2); flex-basis: 100%; }
+
+/* Icons */
+.icons { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+.icon { display: grid; justify-items: start; gap: 10px; font-size: 13px; color: var(--ink-2); }
+.icon > span:first-child { color: var(--ink); width: 56px; height: 56px; border-radius: var(--r-m); background: var(--surface-2); display: grid; place-items: center; }
+.icon .i { font-size: 28px; }
+.icon svg { width: 24px; height: 24px; fill: var(--ink); }
+@media (max-width: 860px) { .icons { grid-template-columns: repeat(3, 1fr); } }
+
+/* Controls */
+.controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.chip { display: inline-flex; align-items: center; height: 44px; padding: 0 16px; border-radius: var(--r-m); box-shadow: inset 0 0 0 1px var(--line); font-size: 15px; font-weight: 600; background: var(--surface); }
+.chip.on { background: var(--ink); color: var(--on-ink); box-shadow: none; }
+.field { display: flex; align-items: center; gap: 8px; width: 320px; max-width: 100%; height: 52px; padding: 0 6px 0 16px; border-radius: var(--r-m); box-shadow: inset 0 0 0 1px var(--line); color: var(--ink-2); }
+.field span { flex: 1; }
+.field i { width: 40px; height: 40px; border-radius: var(--r-s); background: var(--ink); display: grid; place-items: center; }
+.field i { color: var(--on-ink); }
+.target { position: relative; display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: var(--r-m); outline: 1px dashed var(--red); outline-offset: 0; }
+.target i { width: 28px; height: 28px; border-radius: var(--r-s); background: var(--surface-2); }
+
+/* Motion */
+.motion { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.mo { border-radius: var(--r-m); border: 1px solid var(--line); padding: 20px; display: grid; gap: 12px; }
+.mo b { font-weight: 600; }
+.mo span { font-size: 15px; line-height: 20px; color: var(--ink-2); }
+.mo .track { height: 4px; border-radius: 2px; background: var(--surface-2); position: relative; overflow: hidden; }
+.mo .track i { position: absolute; inset: 0 auto 0 0; width: 30%; border-radius: 2px; background: var(--ink); transition: transform var(--d) var(--ease); }
+.mo:hover .track i, .mo:focus-within .track i { transform: translateX(233%); }
+@media (max-width: 860px) { .motion { grid-template-columns: 1fr; } }
+
+.rules { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0 48px; }
+.rules li { list-style: none; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.rules ol { margin: 0; padding: 0; list-style: none; display: contents; }
+.rules b { font-weight: 600; }
+.rules span { color: var(--ink-2); }
+@media (max-width: 860px) { .rules { grid-template-columns: 1fr; } }
+
+footer { padding: 48px 0 64px; color: var(--ink-2); font-size: 15px; }
+
+/* Typeface trial */
+.trial-bar { display: flex; flex-wrap: wrap; gap: 16px 32px; align-items: end; justify-content: space-between; margin-bottom: 20px; }
+.trial-bar h3 { font-size: 13px; line-height: 16px; font-weight: 600; color: var(--ink-2); margin-bottom: 10px; }
+.seg { display: flex; flex-wrap: wrap; gap: 8px; }
+button.chip { border: 0; color: var(--ink); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; transition: background-color var(--t-press) var(--ease), color var(--t-press) var(--ease); }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--on-ink); box-shadow: none; }
+.note { font-size: 15px; line-height: 20px; color: var(--ink-2); max-width: 28rem; }
+.lbl { font-size: 15px; line-height: 20px; font-weight: 600; margin-bottom: 16px; }
+.trial { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 960px) { .trial { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 600px) { .trial { grid-template-columns: 1fr; } }
+.tcard { border: 1px solid var(--line); border-radius: var(--r-m); overflow: hidden; display: grid; grid-template-rows: auto 1fr; }
+.tcard.pick { border: 2px solid var(--ink); }
+.spec { padding: 20px; font-size: 17px; line-height: 1.4; display: grid; gap: 10px; align-content: start; min-height: 250px; transition: background-color var(--t-expand) var(--ease), font-size var(--t-expand) var(--ease); }
+.spec > * { transition: filter var(--t-expand) var(--ease); }
+.spec .g { font-size: 2.6em; line-height: 1; letter-spacing: .02em; }
+.spec .h { font-size: 2.2em; line-height: 1.05; font-weight: 600; letter-spacing: -.01em; }
+.spec .m { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; font-size: .8em; line-height: 1.3; color: var(--ink-2); }
+.trial[data-test="glance"] .spec > * { filter: blur(1.6px); }
+.trial[data-test="sun"] .spec { background: #8E8E93; }
+.trial[data-test="sun"] .spec .m { color: #F2F2F3; }
+.trial[data-test="small"] .spec .status .i { font-size: 14px; }
+.trial[data-test="small"] .spec { font-size: 11px; }
+.tinfo { padding: 16px 20px 20px; border-top: 1px solid var(--line); display: grid; gap: 6px; align-content: start; }
+.tinfo .top { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.tinfo b { font-weight: 600; }
+.tinfo .by { font-size: 13px; line-height: 18px; color: var(--ink-2); }
+.tinfo p { font-size: 15px; line-height: 20px; color: var(--ink-2); }
+.tinfo p.why { color: var(--ink); }
+.tinfo .chip { margin-top: 8px; justify-self: start; }
+table.refs { width: 100%; border-collapse: collapse; font-size: 15px; line-height: 20px; }
+.refs th { text-align: left; font-size: 13px; line-height: 16px; font-weight: 600; color: var(--ink-2); padding: 0 16px 12px 0; border-bottom: 1px solid var(--ink); }
+.refs td { padding: 12px 16px 12px 0; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--ink-2); }
+.refs td:first-child { color: var(--ink); font-weight: 600; width: 18%; }
+@media (max-width: 600px) { .refs td:nth-child(2) { display: none; } .refs th:nth-child(2) { display: none; } }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="meta"><span><b>Visual system</b></span><span>Draft 4, plainer</span><span>21 November 2026</span></div>
+    <h1 class="hero">Type, colour,<br>space, shape.</h1>
+    <p class="lede">The building blocks for the app, before any screen is designed. Flat and plain, with friendly corners. Each section ends with the decision it needs from you.</p>
+    <nav class="review" aria-label="Decisions to review">
+      <a href="#type"><b>1. Typeface</b><span>Decided: Atkinson Hyperlegible Next</span></a>
+      <a href="#scale"><b>2. Type scale</b><span>Eight styles, two weights, tied to iOS text sizes</span></a>
+      <a href="#colour"><b>3. Colour</b><span>Black first, plus red, yellow and green for states</span></a>
+      <a href="#space"><b>4. Space</b><span>A 4 px base and 20 px screen margins</span></a>
+      <a href="#shape"><b>5. Corners</b><span>Four small radii, 1 px outlines, no pills</span></a>
+      <a href="#states"><b>6. States and icons</b><span>A coloured icon and a word, every time</span></a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <!-- ============ 1. TYPEFACE ============ -->
+  <section class="part" id="type">
+    <div class="wrap">
+      <div class="part-head"><h2>1. Typeface</h2><p>Decided: Atkinson Hyperlegible Next. The other faces stay here so the team can see the comparison. Switch the test to see how each holds up.</p></div>
+
+      <div class="trial-bar">
+        <div><h3 id="h-test">Test</h3>
+          <div class="seg" role="group" aria-labelledby="h-test" id="tests">
+            <button class="chip" type="button" data-test="clear" aria-pressed="true">Clear</button>
+            <button class="chip" type="button" data-test="glance" aria-pressed="false">A quick glance</button>
+            <button class="chip" type="button" data-test="sun" aria-pressed="false">Bright sun</button>
+            <button class="chip" type="button" data-test="small" aria-pressed="false">Small</button>
+          </div>
+        </div>
+        <p class="note" id="test-note">Normal reading, on black.</p>
+      </div>
+
+      <div class="trial" id="trial" data-test="clear"></div>
+
+      <p class="lbl" style="margin-top:48px">Made for safety, but not free to use</p>
+      <table class="vocab refs">
+        <thead><tr><th>Typeface</th><th>Made for</th><th>Can we use it?</th></tr></thead>
+        <tbody>
+          <tr><td>Volvo Centum</td><td>Volvo's in-car screens, read at a glance while driving. Made with Dalton Maag, London. First in the EX60, 2026.</td><td>No. Only Volvo can use it.</td></tr>
+          <tr><td>Frutiger</td><td>Signs at Charles de Gaulle airport. Used by the NHS.</td><td>Paid licence.</td></tr>
+          <tr><td>Transport</td><td>UK road signs, by Kinneir and Calvert. GOV.UK uses a version of it.</td><td>The GOV.UK version is only for government. New Transport is paid.</td></tr>
+          <tr><td>Clearview</td><td>US highway signs, read from a moving car.</td><td>Paid licence.</td></tr>
+          <tr><td>Luciole</td><td>People with low vision. Made with a French centre for visual impairment.</td><td>Yes, free (Creative Commons). Not on Google Fonts, so not shown above.</td></tr>
+        </tbody>
+      </table>
+
+      <div class="decide">
+        <span class="q">Decided: Atkinson Hyperlegible Next</span>
+        <span class="k">Why</span><span class="v">It was made for the hardest readers, people with low vision, so it is clear for everyone else too. It has character, so it doesn't look like every other app. It is free, has 7 weights and covers more than 150 languages.</span>
+        <span class="k">Runner-up</span><span class="v">B612, built by Airbus for glancing at cockpit screens. Dropped because it has only 2 weights and is wide, so headlines wrap sooner.</span>
+        <span class="k">Evidence</span><span class="v">MIT AgeLab found that typefaces with open, rounded shapes (humanist) are read faster at a glance than tight, squared ones. Atkinson has open shapes. The other claims above come from each typeface's makers.</span>
+        <span class="k">Watch out</span><span class="v">None of these cover Arabic, Bengali, Urdu or Chinese. Those fall back to the phone's own fonts, so we test them early.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 2. TYPE SCALE ============ -->
+  <section class="part" id="scale">
+    <div class="wrap">
+      <div class="part-head"><h2>2. Type scale</h2><p>Eight styles and two weights. Each one maps to an iPhone text style, so it grows when the user sets larger text. Sizes are the default, in points.</p></div>
+
+      <div class="scale">
+        <div class="row"><span class="tok">Display</span><span class="t-display">Power is off.</span><span class="spec"><b>44 / 46</b>, semibold, −1%<br>The one fact on opening. Large Title × 1.3</span></div>
+        <div class="row"><span class="tok">Title 1</span><span class="t-title1">Back by about 8pm.</span><span class="spec"><b>28 / 32</b>, semibold, −0.5%<br>Second line, sheet titles, a first-aid step. Title 1</span></div>
+        <div class="row"><span class="tok">Title 2</span><span class="t-title2">What you can find</span><span class="spec"><b>22 / 28</b>, semibold<br>Card titles. Title 2</span></div>
+        <div class="row"><span class="tok">Body</span><span class="t-body">No power in Southwark and north Lambeth.</span><span class="spec"><b>17 / 24</b>, regular<br>Every message. Body</span></div>
+        <div class="row"><span class="tok">Body strong</span><span class="t-strong">Water, Charge phone, Delivered to Mum</span><span class="spec"><b>17 / 24</b>, semibold<br>Topic names, short emphasis. Headline</span></div>
+        <div class="row"><span class="tok">Callout</span><span class="t-callout">Send SOS, Turn on Bluetooth, Delivered</span><span class="spec"><b>15 / 20</b>, semibold<br>Buttons and state words. Subheadline</span></div>
+        <div class="row"><span class="tok">Caption</span><span class="t-caption grey">From UK Power Networks, 2:20pm</span><span class="spec"><b>13 / 18</b>, regular, grey<br>Sources and times only. Footnote</span></div>
+        <div class="row"><span class="tok">Label</span><span class="t-label">2 places, Nothing yet, New</span><span class="spec"><b>13 / 16</b>, semibold<br>The line under a topic, the New tag. Footnote</span></div>
+      </div>
+
+      <div class="stack">
+        <div>
+          <span class="cap">The scale working together, at phone size</span>
+          <span class="t-caption grey">Southwark, now</span>
+          <span class="t-display">Power is off.</span>
+          <span class="t-title1 grey">Since 2:20pm.</span>
+          <span class="t-caption grey" style="margin-top:8px">From UK Power Networks, 2:20pm</span>
+        </div>
+        <div>
+          <span class="cap">The same, with the largest default text size (+35%)</span>
+          <span class="t-caption grey" style="font-size:17px;line-height:22px">Southwark, now</span>
+          <span class="t-display" style="font-size:52px;line-height:54px">Power is off.</span>
+          <span class="t-title1 grey" style="font-size:36px;line-height:40px">Since 2:20pm.</span>
+        </div>
+      </div>
+
+      <div class="decide">
+        <span class="q">Decide: how big is the opening line?</span>
+        <span class="k">Proposed</span><span class="v">44 pt Display. It holds about 15 characters per line on a small phone, which fits "Power is off." or "No phone signal." Longer headlines drop to Title 1.</span>
+        <span class="k">Rules</span><span class="v">Text is left-aligned, never centred or justified. Numbers use tabular figures so times line up. Tracking stays near zero: Atkinson is already spaced for reading, so only the Display size is tightened, by 1%. Nothing goes below 13 pt, and only sources, times and labels use 13.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 3. COLOUR ============ -->
+  <section class="part" id="colour">
+    <div class="wrap">
+      <div class="part-head"><h2>3. Colour</h2><p>Dark by default: white text on black, because black pixels use no power on OLED screens. Three colours each mean one state, like traffic lights. Every ratio below is checked against WCAG 2.2 AA.</p></div>
+
+      <p class="group-t">Neutrals</p>
+      <div class="colours">
+        <div class="sw"><i style="background:#FFFFFF"></i><b>Ink</b><span><span class="hex">#FFFFFF</span><br>Text, primary buttons. 21:1 on black</span></div>
+        <div class="sw"><i style="background:#9A9A9F"></i><b>Ink 2</b><span><span class="hex">#9A9A9F</span><br>Sources, times, hints. 7.5:1 on black</span></div>
+        <div class="sw"><i class="edge" style="background:#000000"></i><b>Surface</b><span><span class="hex">#000000</span><br>Every background. Pixels off on OLED</span></div>
+        <div class="sw"><i style="background:#1C1C1E"></i><b>Surface 2</b><span><span class="hex">#1C1C1E</span><br>Answers, quiet panels, the decide boxes</span></div>
+        <div class="sw"><i class="edge" style="background:#2C2C2E"></i><b>Line</b><span><span class="hex">#2C2C2E</span><br>Card outlines and dividers. Never the only cue</span></div>
+        <div class="sw"><i style="background:#8E8E93"></i><b>Line strong</b><span><span class="hex">#8E8E93</span><br>Outlines that are the only cue. 6.4:1</span></div>
+      </div>
+
+      <p class="group-t">States</p>
+      <div class="colours">
+        <div class="sw"><i style="background:#FF6159"></i><b>Red: emergency</b><span><span class="hex">#FF6159</span><br>Red text and icons. 7.1:1 on black</span></div>
+        <div class="sw"><i style="background:#D7000F"></i><b>Emergency fill</b><span><span class="hex">#D7000F</span><br>The SOS button. White on it 5.4:1</span></div>
+        <div class="sw"><i class="edge" style="background:#3A0A0C"></i><b>Red tint</b><span><span class="hex">#3A0A0C</span><br>Behind red text, 5.8:1</span></div>
+        <div class="sw"><i style="background:#FFD100"></i><b>Yellow: waiting</b><span><span class="hex">#FFD100</span><br>Icons on black 14.4:1. Never text</span></div>
+        <div class="sw"><i style="background:#30D158"></i><b>Green: done</b><span><span class="hex">#30D158</span><br>Green text and icons. 10.4:1 on black</span></div>
+        <div class="sw"><i class="edge" style="background:#0B2A18"></i><b>Green tint</b><span><span class="hex">#0B2A18</span><br>Behind green text, 7.7:1</span></div>
+      </div>
+
+      <div class="pairs" aria-label="Contrast checks">
+        <div class="pair" style="background:#000;color:#fff;box-shadow:inset 0 0 0 1px var(--line)"><span class="s">Ink on surface</span><span class="r"><span>21.0:1</span><span class="pass">Pass</span></span></div>
+        <div class="pair" style="background:#1C1C1E;color:#9A9A9F"><span class="s">Ink 2 on surface 2</span><span class="r"><span>6.07:1</span><span class="pass">Pass</span></span></div>
+        <div class="pair" style="background:#3A0A0C;color:#FF6159"><span class="s">Red on red tint</span><span class="r"><span>5.78:1</span><span class="pass">Pass</span></span></div>
+        <div class="pair" style="background:#0B2A18;color:#30D158"><span class="s">Green on green tint</span><span class="r"><span>7.65:1</span><span class="pass">Pass</span></span></div>
+        <div class="pair" style="background:#FFD100;color:#000"><span class="s">Black on yellow</span><span class="r"><span>14.37:1</span><span class="pass">Pass</span></span></div>
+        <div class="pair" style="background:#D7000F;color:#fff"><span class="s">White on the SOS button</span><span class="r"><span>5.39:1</span><span class="pass">Pass</span></span></div>
+        <div class="pair" style="background:#FFD100;color:#fff"><span class="s">White on yellow</span><span class="r" style="color:#000"><span>1.46:1</span><span class="fail">Never</span></span></div>
+        <div class="pair" style="background:#FFD100;color:#9A9A9F"><span class="s">Ink 2 on yellow</span><span class="r" style="color:#000"><span>1.92:1</span><span class="fail">Never</span></span></div>
+        <div class="pair" style="background:#000;color:#FFD100;box-shadow:inset 0 0 0 1px var(--line)"><span class="s"><span class="i" aria-hidden="true">schedule</span> Yellow icon on black</span><span class="r" style="color:#fff"><span>14.37:1</span><span class="pass">Pass</span></span></div>
+      </div>
+
+      <p class="group-t" style="margin-top:40px">Light alternative, for bright sun</p>
+      <div class="light">
+        <div><i style="background:#000000"></i><b>Ink</b><span>#000000</span></div>
+        <div><i style="background:#6B6B6B"></i><b>Ink 2</b><span>#6B6B6B, 5.3:1</span></div>
+        <div><i style="background:#F2F2F3;box-shadow:inset 0 0 0 1px #E4E4E6"></i><b>Surface 2</b><span>#F2F2F3</span></div>
+        <div><i style="background:#D7000F"></i><b style="color:#D7000F">Emergency</b><span>#D7000F, 5.4:1</span></div>
+        <div><i style="background:#007A3D"></i><b style="color:#007A3D">Done</b><span>#007A3D, 5.5:1</span></div>
+        <div><i style="background:#9A5B00"></i><b style="color:#9A5B00">Waiting</b><span>#9A5B00, 5.4:1. Yellow icons fail on white (1.5:1)</span></div>
+      </div>
+
+      <div class="decide">
+        <span class="q">Decide: the state colours, and whether to offer a light mode</span>
+        <span class="k">Proposed</span><span class="v">Dark by default. Brighter red and green for text on black. The SOS button keeps the deeper red, so white text on it passes.</span>
+        <span class="k">Why dark</span><span class="v">On OLED phones a black pixel is off. Purdue measured 3–9% battery saved at 30–50% brightness and 39–47% at full brightness, which is where phones go outdoors. LCD phones save almost nothing.</span>
+        <span class="k">Rules</span><span class="v">Red only when a life may be at risk. Yellow is for icons, never text. No colour ever appears without its icon and word (section 6).</span>
+        <span class="k">Open</span><span class="v">Dark text on white reads better in bright sun and for some people with astigmatism. Do we follow the phone's light or dark setting, with the light palette above as the alternative?</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 4. SPACE ============ -->
+  <section class="part" id="space">
+    <div class="wrap">
+      <div class="part-head"><h2>4. Space</h2><p>Everything sits on a 4 px base. Generous space does the work that boxes and lines would otherwise do.</p></div>
+      <div class="split">
+        <div class="spaces">
+          <div class="row"><b>4</b><i style="width:4px"></i></div>
+          <div class="row"><b>8</b><i style="width:8px"></i></div>
+          <div class="row"><b>12</b><i style="width:12px"></i></div>
+          <div class="row"><b>16</b><i style="width:16px"></i></div>
+          <div class="row"><b>20</b><i style="width:20px"></i></div>
+          <div class="row"><b>24</b><i style="width:24px"></i></div>
+          <div class="row"><b>32</b><i style="width:32px"></i></div>
+          <div class="row"><b>48</b><i style="width:48px"></i></div>
+        </div>
+        <ul class="uses">
+          <li><span>Screen margin, left and right</span><span>20</span></li>
+          <li><span>Inside a card</span><span>16</span></li>
+          <li><span>Between items in a card</span><span>12</span></li>
+          <li><span>Between buttons and topic tiles</span><span>8</span></li>
+          <li><span>Between messages from the same sender</span><span>8</span></li>
+          <li><span>Between messages from different senders</span><span>24</span></li>
+          <li><span>Before a new group, such as "Near you"</span><span>32</span></li>
+          <li><span>Smallest tap target</span><span>44 × 44</span></li>
+          <li><span>Main action height</span><span>48</span></li>
+        </ul>
+      </div>
+      <div class="decide">
+        <span class="q">Decide: screen margin</span>
+        <span class="k">Proposed</span><span class="v">20 pt, wider than the usual 16, so text never feels crowded against the edge. On a 375 pt phone that leaves 335 pt of text width.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 5. CORNERS ============ -->
+  <section class="part" id="shape">
+    <div class="wrap">
+      <div class="part-head"><h2>5. Corners and depth</h2><p>Flat surfaces with 1 px outlines, like a clean developer tool, but with softer corners so it feels friendly, not sharp. Four small radii, no pills. No shadows: they vanish on black.</p></div>
+      <div class="corners">
+        <div><i style="border-radius:4px"></i><b>4, tail</b>The New tag, and the corner of a message bubble nearest its sender</div>
+        <div><i style="border-radius:8px"></i><b>8, small</b>Things inside cards: the send button, story steps, the place box</div>
+        <div><i style="border-radius:12px"></i><b>12, card</b>Cards, buttons, topic tiles, the text field, message bubbles</div>
+        <div><i style="border-radius:16px"></i><b>16, sheet</b>Anything that slides up, and large panels</div>
+      </div>
+      <div class="nest">
+        <div class="outer"><div class="inner"></div></div>
+        <p>When one rounded shape sits inside another, the inner radius is the outer radius minus the gap. A 12 tile with 4 of padding holds an 8 box. Corners then look parallel instead of pinched.</p>
+      </div>
+      <div class="decide">
+        <span class="q">Decide: how round?</span>
+        <span class="k">Proposed</span><span class="v">The four radii above. Round enough to feel friendly, small enough to stay calm and precise. Pills are gone: a rounded rectangle reads as a button, a pill reads as decoration.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 6. STATES, ICONS, CONTROLS ============ -->
+  <section class="part" id="states">
+    <div class="wrap">
+      <div class="part-head"><h2>6. States and icons</h2><p>A state is a coloured icon and a plain word, with no badge around it. Remove the colour and the icon and word still read, which matters for the 1 in 12 men with colour blindness and for screens in bright sun.</p></div>
+      <div class="states">
+        <div class="state"><span class="status sos"><span class="i" aria-hidden="true">warning</span>Danger</span><p>A life may be at risk. Send SOS, leave, stop.</p><button class="solid red" type="button" tabindex="-1">SOS</button></div>
+        <div class="state"><span class="status wait"><span class="i" aria-hidden="true">schedule</span>Waiting</span><p>Not known yet, or not sent yet.</p><span class="uses-t">Not known yet, Nothing yet, Not sent yet, Not getting through right now</span></div>
+        <div class="state"><span class="status ok"><span class="i" aria-hidden="true">check_circle</span>Done</span><p>Delivered, answered, back on.</p><span class="uses-t">Delivered, Answered, Delivered to Mum, 2 places, Power is back</span></div>
+        <div class="state"><span class="status"><span class="i" aria-hidden="true">close</span>Not now</span><p>Everything else: facts, sources, things that don't work yet. White or grey, no colour.</p><span class="uses-t">Facts, sources, News (not now)</span></div>
+      </div>
+      <div class="cb">
+        <span class="note">The same with colour removed:</span>
+        <span class="status sos"><span class="i" aria-hidden="true">warning</span>Danger</span>
+        <span class="status wait"><span class="i" aria-hidden="true">schedule</span>Waiting</span>
+        <span class="status ok"><span class="i" aria-hidden="true">check_circle</span>Done</span>
+      </div>
+
+      <p class="group-t" style="margin-top:56px">Icons: Material Symbols, Rounded and filled. Pictures from public signs, so they work with little English. The full set, with iPhone names, is in <a href="components.html">components.html</a>.</p>
+      <div class="icons">
+        <div class="icon"><span><span class="i" aria-hidden="true">local_drink</span></span>Water</div>
+        <div class="icon"><span><span class="i" aria-hidden="true">battery_charging_full</span></span>Charge phone</div>
+        <div class="icon"><span><span class="i" aria-hidden="true">restaurant</span></span>Food</div>
+        <div class="icon"><span><span class="i" aria-hidden="true">family_restroom</span></span>Family</div>
+        <div class="icon"><span><span class="i" aria-hidden="true">night_shelter</span></span>Shelter</div>
+        <div class="icon"><span><span class="i" aria-hidden="true">medical_services</span></span>First aid</div>
+        <div class="icon"><span><span class="i" aria-hidden="true">arrow_upward</span></span>Send</div>
+        <div class="icon"><span><span class="i" aria-hidden="true">bluetooth_disabled</span></span>Bluetooth off</div>
+        <div class="icon"><span><span class="i" aria-hidden="true">location_on</span></span>A place</div>
+        <div class="icon"><span><span class="i" aria-hidden="true">sos</span></span>SOS</div>
+        <div class="icon"><span><span class="i" aria-hidden="true">schedule</span></span>Waiting</div>
+        <div class="icon"><span><span class="i" aria-hidden="true">check_circle</span></span>Done</div>
+      </div>
+
+      <p class="group-t" style="margin-top:56px">Controls</p>
+      <div class="controls">
+        <button class="solid ink" type="button" tabindex="-1">Send</button>
+        <button class="solid line" type="button" tabindex="-1">Next step</button>
+        <span class="chip">Some known</span>
+        <span class="chip on">All known</span>
+        <span class="field"><span>Ask something else</span><i><span class="i" aria-hidden="true" style="font-size:20px">arrow_upward</span></i></span>
+        <span class="target" title="44 pt tap area around a 28 pt icon"><i></i></span>
+      </div>
+
+      <div class="decide">
+        <span class="q">Decide: state words</span>
+        <span class="k">Proposed</span><span class="v">Danger, Waiting and Done as the three colours, with plain words inside each (Not known yet, Delivered to Mum). The word always says what happened, never a status code, and never a promise.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MOTION AND RULES ============ -->
+  <section class="part" id="motion">
+    <div class="wrap">
+      <div class="part-head"><h2>Motion</h2><p>Movement only answers something the user did, or shows that something changed. Nothing pulses, glows or loops. Hover or focus a card to see the timing.</p></div>
+      <div class="motion">
+        <div class="mo" tabindex="0" style="--d:150ms"><b>Press, 150 ms</b><span>A button or chip responds to a tap.</span><div class="track"><i></i></div></div>
+        <div class="mo" tabindex="0" style="--d:250ms"><b>Expand, 250 ms</b><span>A card opens, a line fills, a delivery bar fills.</span><div class="track"><i></i></div></div>
+        <div class="mo" tabindex="0" style="--d:320ms"><b>Sheet, 320 ms</b><span>A topic slides up over the home screen.</span><div class="track"><i></i></div></div>
+      </div>
+      <p class="grey" style="margin-top:24px;font-size:15px">One easing curve for everything: fast start, gentle stop. With "Reduce motion" on, changes happen instantly.</p>
+    </div>
+  </section>
+
+  <section class="part" id="rules">
+    <div class="wrap">
+      <div class="part-head"><h2>Ten rules</h2><p>The short version, for anyone designing a screen from this system. The reasoning is in <a href="PRINCIPLES.md">PRINCIPLES.md</a>.</p></div>
+      <ol class="rules">
+        <li><b>One typeface, two weights.</b> <span>Regular and Semibold.</span></li>
+        <li><b>Eight text styles.</b> <span>Nothing in between.</span></li>
+        <li><b>Left-aligned.</b> <span>Never centred, never justified.</span></li>
+        <li><b>Black by default.</b> <span>Colour means state; hierarchy comes from size and weight.</span></li>
+        <li><b>Never colour alone.</b> <span>Always an icon and a word.</span></li>
+        <li><b>Yellow is never text.</b> <span>Icons on black, or a fill with black on it.</span></li>
+        <li><b>Red is for lives.</b> <span>Not for errors or decoration.</span></li>
+        <li><b>4 px steps, 20 px margins.</b> <span>Space before lines and boxes.</span></li>
+        <li><b>Small, friendly corners.</b> <span>4, 8, 12, 16. No pills, no shadows.</span></li>
+        <li><b>44 pt to tap.</b> <span>Main actions are 48 pt high.</span></li>
+      </ol>
+    </div>
+  </section>
+</main>
+
+<footer><div class="wrap">Visual system, draft 4. Fictional examples throughout.</div></footer>
+<script>
+/* Typeface trial: every candidate set the same way, under four tests */
+(function () {
+  const trial = document.getElementById('trial');
+  const q = v => (v || 'normal').replace(/"/g, "'");
+  trial.innerHTML = Object.entries(TYPEFACES).map(([k, f]) => `
+    <article class="tcard${k === 'atkinson' ? ' pick' : ''}">
+      <div class="spec" style="font-family:${q(f.family)}, sans-serif; font-feature-settings:${q(f.features)}">
+        <div class="g">Il1 O0 rn m 8B</div>
+        <p class="h">Power is off.</p>
+        <p>No power in Southwark and north Lambeth.</p>
+        <div class="m"><span class="status wait"><span class="i" aria-hidden="true">schedule</span>Not known yet</span><span>From UK Power Networks, 2:20pm</span></div>
+      </div>
+      <div class="tinfo">
+        <div class="top"><b>${f.name}</b>${k === 'atkinson' ? '<span class="tag">Chosen</span>' : k === 'inter' ? '<span class="tag">First draft</span>' : ''}</div>
+        <span class="by">${f.by}</span>
+        <p class="why">${f.why}</p>
+        <p>${f.facts}</p>
+        <button class="chip" type="button" data-font="${k}" aria-pressed="false">Use for this page</button>
+      </div>
+    </article>`).join('');
+  trial.addEventListener('click', e => { const b = e.target.closest('[data-font]'); if (b) useFont(b.dataset.font); });
+  useFont(document.documentElement.dataset.font);
+
+  const NOTES = {
+    clear: 'Normal reading, on black.',
+    glance: 'Blurred, like a quick look, tired eyes or low vision. Which letters can you still tell apart?',
+    sun: 'Glare on a dark screen turns black into grey and lowers the contrast.',
+    small: 'Small text, or the same text read from further away.',
+  };
+  const tests = document.getElementById('tests'), note = document.getElementById('test-note');
+  tests.addEventListener('click', e => {
+    const b = e.target.closest('[data-test]'); if (!b) return;
+    trial.dataset.test = b.dataset.test; note.textContent = NOTES[b.dataset.test];
+    tests.querySelectorAll('[data-test]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  });
+})();
+</script>
+</body>
+</html>
