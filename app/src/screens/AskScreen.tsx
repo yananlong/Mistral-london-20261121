@@ -27,9 +27,9 @@ export function AskScreen({ openLocate }: { openLocate: () => void }) {
       : <Body style={styles.small}>{hubNearby ? 'Hub is nearby' : 'Hub was seen earlier. It may be out of range.'}</Body>}
     {session.state === 'idle' ? <>
       <Card>
-        <View style={[styles.row, { justifyContent: 'space-between' }]}>
+        <View style={[styles.row, { justifyContent: 'space-between', minHeight: t.target }]}>
           <Body style={{ flex: 1 }}>Attach my location</Body>
-          <Switch accessibilityLabel="Attach my location" value={attachLocation} onValueChange={setAttachLocation}
+          <Switch accessibilityLabel="Attach my location" value={attachLocation} onValueChange={setAttachLocation} hitSlop={{ top: t.space.sm, bottom: t.space.sm, left: t.space.sm, right: t.space.sm }}
             trackColor={{ false: t.color.border, true: t.color.primary }} />
         </View>
         <Body style={styles.small}>{attachLocation ? 'Your coordinates will travel with this question.' : 'Off by default. Your position stays on this phone.'}</Body>
