@@ -12,6 +12,7 @@ parser.add_argument('--host', default='127.0.0.1')
 parser.add_argument('--port', type=int, default=11434)
 parser.add_argument('--port-file')
 parser.add_argument('--record')
+parser.add_argument('--response-file', help='Use this UTF-8 file as the answer body in ok/slow mode')
 args = parser.parse_args()
 
 
@@ -31,6 +32,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         body = (b'not-json' if args.mode == 'badjson' else
                 json.dumps({'message': {'content': '' if args.mode == 'empty' else
+                                         Path(args.response_file).read_text(encoding='utf-8') if args.response_file else
                                          '1. Move to a safe place.'}}).encode())
         self.send_response(200)
         self.send_header('Content-Type', 'application/json')

@@ -21,6 +21,17 @@ struct UncooperativeModel: HubModel {
     }
 }
 
+actor SentMessages {
+    private var items: [String] = []
+    func add(_ text: String) { items.append(text) }
+    func all() -> [String] { items }
+}
+
+struct OutputModel: HubModel {
+    let output: String
+    func answer(system: String, user: String) async throws -> String { output }
+}
+
 struct EmptyModel: HubModel {
     func answer(system: String, user: String) async throws -> String { "  \n" }
 }
@@ -66,7 +77,8 @@ struct HubTests {
             "HUB_NICKNAME": HubProtocol.nickname, "ACK_TEXT": HubProtocol.ackText,
             "ANSWER_LABEL": HubProtocol.answerLabel, "HUB_ERROR_TEXT": HubProtocol.errorText,
             "HUB_EMPTY_TEXT": HubProtocol.emptyText, "LOCATION_SHARE_DEFAULT_NOTE": HubProtocol.locationShareDefaultNote,
-            "MAX_QUESTION_UNITS": HubProtocol.maxQuestionUnits, "MAX_ANSWER_BODY_UNITS": HubProtocol.maxAnswerBodyUnits,
+            "MAX_QUESTION_BYTES": HubProtocol.maxQuestionBytes, "MAX_ANSWER_BODY_BYTES": HubProtocol.maxAnswerBodyBytes,
+            "MAX_MESSAGE_BYTES": HubProtocol.maxMessageBytes, "MAX_ANSWER_PARTS": HubProtocol.maxAnswerParts,
             "ACK_TIMEOUT_MS": HubProtocol.ackTimeoutMS, "ANSWER_TIMEOUT_MS": HubProtocol.answerTimeoutMS,
             "HUB_MODEL_TIMEOUT_MS": HubProtocol.modelTimeoutMS
         ]
@@ -91,15 +103,15 @@ struct HubTests {
             check(HubProtocol.userContent(question) == vector["content"] as? String, "user content")
         }
         for vector in vectors["composeAnswer"] as! [[String: Any]] {
-            check(HubProtocol.composeAnswer(vector["modelOutput"] as! String) == vector["wire"] as? String, "compose answer")
+            check(HubProtocol.composeAnswer(vector["modelOutput"] as! String) == vector["messages"] as? [String], "compose answer")
         }
-        let unicode = String(repeating: "a", count: 499) + "👨‍👩‍👧‍👦"
+        let unicode = String(repeating: "a", count: 199) + "🙂"
         let parsedUnicode = HubProtocol.parseQuestion(unicode)
-        check(parsedUnicode.body == String(repeating: "a", count: 499), "question truncates at character boundary")
+        check(parsedUnicode.body == String(repeating: "a", count: 199), "question truncates at UTF-8 scalar boundary")
         let longUnicode = String(repeating: "🙂", count: 500)
         let longAnswer = HubProtocol.composeAnswer(longUnicode)!
-        let body = longAnswer.components(separatedBy: "\n")[0]
-        check(body.utf16.count <= 900 && body.hasSuffix("…"), "answer truncates at UTF-16 boundary")
+        check(longAnswer.allSatisfy { $0.utf8.count <= HubProtocol.maxMessageBytes } &&
+              longAnswer[longAnswer.count - 2].hasSuffix("…"), "answer truncates and splits at UTF-8 boundaries")
         check(HubProtocol.decodeLocation("loc: +1,2") == nil, "invalid location rejected")
         let middleLoc = HubProtocol.parseQuestion("loc: 51.0,-0.1\nquestion")
         check(middleLoc.location == nil && middleLoc.body == "loc: 51.0,-0.1\nquestion", "only trailing location parsed")
@@ -110,7 +122,15 @@ struct HubTests {
         #else
         check(!HubConfig(environment: ["BITCHAT_HUB": "1"]).enabled, "hub disabled off macOS")
         #endif
+        let referenceData = try Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[3]))
+        let cases = try JSONSerialization.jsonObject(with: referenceData) as! [[String: Any]]
+        for (index, item) in cases.enumerated() {
+            let actual = HubProtocol.composeAnswer(item["output"] as! String)?.map { Data($0.utf8) }
+            let expected = (item["messages"] as? [String])?.map { Data($0.utf8) }
+            check(actual == expected, "reference split and truncation case \(index)")
+        }
         await testResponder()
+        await testResponderVectors(vectors["composeAnswer"] as! [[String: Any]])
         try await testHTTP(directory: CommandLine.arguments[2])
         print("\(count - failures)/\(count) tests passed")
         if failures > 0 { exit(1) }
@@ -127,8 +147,8 @@ struct HubTests {
             let hub = responder(events: events, model: FakeModel(events))
             await hub.handle(text: "help", from: "p")
             let all = await events.all()
-            check(all.count == 3 && all[0] == "send:p:\(HubProtocol.ackText)" && all[1] == "model:help" &&
-                  all[2] == "send:p:answer help\n\(HubProtocol.answerLabel)", "ack before model and labelled answer")
+            check(all == ["send:p:\(HubProtocol.ackText)", "model:help", "send:p:(1/2) answer help",
+                          "send:p:(2/2) \(HubProtocol.answerLabel)"], "ack before model and labelled answer parts")
         }
         do {
             let events = Events()
@@ -173,7 +193,7 @@ struct HubTests {
             let all = await events.all()
             let lines = logs.all()
             check(all.last == "send:1234567890:\(HubProtocol.errorText)", "empty model output gets error reply")
-            check(lines.count == 1 && lines[0].contains("sender=12345678") && lines[0].contains("question_units=4") &&
+            check(lines.count == 1 && lines[0].contains("sender=12345678") && lines[0].contains("question_bytes=4") &&
                   lines[0].contains("location=true") && lines[0].contains("outcome=error") && lines[0].contains("latency_ms="),
                   "one privacy-preserving log line per question")
         }
@@ -185,9 +205,9 @@ struct HubTests {
             let second = Task { await hub.handle(text: "second", from: "p") }
             await first.value; await second.value
             let all = await events.all()
-            let firstAnswer = all.firstIndex(of: "send:p:answer first\n\(HubProtocol.answerLabel)")
+            let firstAnswer = all.firstIndex(of: "send:p:(2/2) \(HubProtocol.answerLabel)")
             let secondModel = all.firstIndex(of: "model:second")
-            let secondAnswer = all.firstIndex(of: "send:p:answer second\n\(HubProtocol.answerLabel)")
+            let secondAnswer = all.lastIndex(of: "send:p:(2/2) \(HubProtocol.answerLabel)")
             check(firstAnswer != nil && secondModel != nil && secondAnswer != nil && firstAnswer! < secondModel! && secondModel! < secondAnswer!, "one sender is ordered")
         }
         do {
@@ -197,10 +217,44 @@ struct HubTests {
             while !(await events.all()).contains("model:slow") { try? await Task.sleep(nanoseconds: 1_000_000) }
             await hub.handle(text: "fast", from: "fast-peer")
             let beforeSlow = await events.all()
-            check(beforeSlow.contains("send:fast-peer:answer fast\n\(HubProtocol.answerLabel)") &&
-                  !beforeSlow.contains("send:slow-peer:answer slow\n\(HubProtocol.answerLabel)"), "different senders run concurrently")
+            check(beforeSlow.contains("send:fast-peer:(2/2) \(HubProtocol.answerLabel)") &&
+                  !beforeSlow.contains("send:slow-peer:(2/2) \(HubProtocol.answerLabel)"), "different senders run concurrently")
             await slow.value
         }
+    }
+    static func testResponderVectors(_ vectors: [[String: Any]]) async {
+        for (index, vector) in vectors.enumerated() {
+            let capture = SentMessages()
+            let model = OutputModel(output: vector["modelOutput"] as! String)
+            let hub = HubResponder(model: model, send: { _, text in await capture.add(text) }, log: { _ in })
+            await hub.handle(text: "help", from: "p")
+            let actual = await capture.all()
+            let expected = [HubProtocol.ackText] + ((vector["messages"] as? [String]) ?? [HubProtocol.errorText])
+            check(actual == expected, "responder sends vector \(index) in order")
+            check(actual.allSatisfy { $0.utf8.count <= HubProtocol.maxMessageBytes },
+                  "every message for vector \(index) fits BitChat")
+        }
+        let longOutput = String(repeating: "🙂", count: 400) + String(repeating: "x", count: 1500) +
+            "\n" + String(repeating: "long line 🚒 ", count: 20)
+        let capture = SentMessages()
+        let hub = HubResponder(model: OutputModel(output: longOutput),
+                               send: { _, text in await capture.add(text) }, log: { _ in })
+        await hub.handle(text: "help", from: "p")
+        let actual = await capture.all()
+        let expected = [HubProtocol.ackText] + HubProtocol.composeAnswer(longOutput)!
+        check(longOutput.utf8.count >= 3000 && actual == expected && actual.count > 3,
+              "three-kilobyte emoji answer is sent as ordered parts")
+        check(actual.allSatisfy { $0.utf8.count <= HubProtocol.maxMessageBytes },
+              "every message for three-kilobyte emoji answer fits BitChat")
+        check(actual.count - 1 <= HubProtocol.maxAnswerParts && actual.last?.hasSuffix(HubProtocol.answerLabel) == true,
+              "last part is label and part count is bounded")
+        let emptyCapture = SentMessages()
+        let emptyHub = HubResponder(model: OutputModel(output: longOutput),
+                                    send: { _, text in await emptyCapture.add(text) }, log: { _ in })
+        await emptyHub.handle(text: " ", from: "p")
+        let empty = await emptyCapture.all()
+        check(empty == [HubProtocol.emptyText] && empty.allSatisfy { $0.utf8.count <= HubProtocol.maxMessageBytes },
+              "empty response fits BitChat")
     }
     static func testHTTP(directory: String) async throws {
         func client(_ mode: String, timeout: Int = 2_000) throws -> OllamaClient {
