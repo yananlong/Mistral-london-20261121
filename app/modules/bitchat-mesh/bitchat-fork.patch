@@ -1,0 +1,122 @@
+diff --git a/bitchat/Protocols/NostrCarrierPacket.swift b/bitchat/Protocols/NostrCarrierPacket.swift
+index 8e7b7c0..c3acc5a 100644
+--- a/bitchat/Protocols/NostrCarrierPacket.swift
++++ b/bitchat/Protocols/NostrCarrierPacket.swift
+@@ -71,6 +71,7 @@ struct NostrCarrierPacket: Equatable {
+         self.eventJSON = eventJSON
+     }
+ 
++    #if !BITCHAT_MESH_EXPO
+     init?(direction: Direction, geohash: String, event: NostrEvent) {
+         guard let json = try? event.jsonString(), !json.isEmpty else { return nil }
+         self.init(direction: direction, geohash: geohash, eventJSON: Data(json.utf8))
+@@ -84,6 +85,7 @@ struct NostrCarrierPacket: Equatable {
+         }
+         return try? NostrEvent(from: dict)
+     }
++    #endif
+ 
+     func encode() -> Data? {
+         var data = Data()
+diff --git a/bitchat/Services/BLE/BLEService.swift b/bitchat/Services/BLE/BLEService.swift
+index a07e5d3..db658c4 100644
+--- a/bitchat/Services/BLE/BLEService.swift
++++ b/bitchat/Services/BLE/BLEService.swift
+@@ -3,6 +3,11 @@ import BitFoundation
+ import Foundation
+ import CoreBluetooth
+ import Combine
++#if BITCHAT_MESH_EXPO
++typealias MeshIdentityBridge = Never?
++#else
++typealias MeshIdentityBridge = NostrIdentityBridge
++#endif
+ #if os(iOS)
+ import UIKit
+ #endif
+@@ -183,7 +188,7 @@ final class BLEService: NSObject {
+     
+     // MARK: - Constants
+     
+-    #if DEBUG
++    #if DEBUG && !BITCHAT_MESH_EXPO
+     static let serviceUUID = CBUUID(string: "F47B5E2D-4A9E-4C5A-9B3F-8E1D2C3A4B5A") // testnet
+     #else
+     static let serviceUUID = CBUUID(string: "F47B5E2D-4A9E-4C5A-9B3F-8E1D2C3A4B5C") // mainnet
+@@ -360,7 +365,9 @@ final class BLEService: NSObject {
+     private let noiseResponderHandshakeTimeout: TimeInterval
+     private let identityManager: SecureIdentityStateManagerProtocol
+     private let keychain: KeychainManagerProtocol
++    #if !BITCHAT_MESH_EXPO
+     private let idBridge: NostrIdentityBridge
++    #endif
+     private let localIdentityState = BLELocalIdentityStateStore()
+ 
+     // MARK: - Advertising Privacy
+@@ -502,7 +509,7 @@ final class BLEService: NSObject {
+     
+     init(
+         keychain: KeychainManagerProtocol,
+-        idBridge: NostrIdentityBridge,
++        idBridge: MeshIdentityBridge,
+         identityManager: SecureIdentityStateManagerProtocol,
+         initializeBluetoothManagers: Bool = true,
+         incomingFileStore: BLEIncomingFileStore = BLEIncomingFileStore(),
+@@ -513,7 +520,9 @@ final class BLEService: NSObject {
+     ) {
+         self.engineScheduler = engineScheduler
+         self.keychain = keychain
++        #if !BITCHAT_MESH_EXPO
+         self.idBridge = idBridge
++        #endif
+         self.incomingFileStore = incomingFileStore
+         self.shouldInitializeBluetoothManagers = initializeBluetoothManagers
+         self._isPanicSuspended = startSuspendedForPanicRecovery
+@@ -2645,11 +2654,13 @@ final class BLEService: NSObject {
+         var includesNostrIdentity = false
+         
+         // Add our Nostr public key if available
++        #if !BITCHAT_MESH_EXPO
+         if let myNostrIdentity = try? idBridge.getCurrentNostrIdentity() {
+             content += ":" + myNostrIdentity.npub
+             includesNostrIdentity = true
+             SecureLogger.debug("📝 Favorite notification includes Nostr npub=\(myNostrIdentity.npub.prefix(16))…", category: .session)
+         }
++        #endif
+         
+         SecureLogger.debug("📤 Sending favorite notification to \(peerID.id.prefix(8))… isFavorite=\(isFavorite) includesNostrIdentity=\(includesNostrIdentity)", category: .session)
+         sendPrivateMessage(content, to: peerID, messageID: UUID().uuidString)
+diff --git a/bitchat/Services/KeychainManager.swift b/bitchat/Services/KeychainManager.swift
+index abc86b1..fdb017a 100644
+--- a/bitchat/Services/KeychainManager.swift
++++ b/bitchat/Services/KeychainManager.swift
+@@ -71,13 +71,13 @@ final class KeychainManager: KeychainManagerProtocol {
+         // PreviewKeychainManager lives in _PreviewHelpers, a development
+         // asset excluded from archive builds — release code must not
+         // reference it. Tests always run Debug, so the guard is lossless.
+-        #if DEBUG
++        #if DEBUG && !BITCHAT_MESH_EXPO
+         if TestEnvironment.isRunningTests { return sharedTestKeychain }
+         #endif
+         return KeychainManager()
+     }
+ 
+-    #if DEBUG
++    #if DEBUG && !BITCHAT_MESH_EXPO
+     /// One store per process, mirroring the real keychain: separate
+     /// default-constructed components (e.g. two NostrIdentityBridge
+     /// instances in BoardManager's publish and delete paths) must see each
+@@ -87,8 +87,13 @@ final class KeychainManager: KeychainManagerProtocol {
+     #endif
+ 
+     // Use consistent service name for all keychain items
++    #if BITCHAT_MESH_EXPO
++    private let service = Bundle.main.bundleIdentifier ?? "chat.bitchat"
++    private let appGroup = "group.\(Bundle.main.bundleIdentifier ?? "chat.bitchat")"
++    #else
+     private let service = BitchatApp.bundleID
+     private let appGroup = "group.\(BitchatApp.bundleID)"
++    #endif
+     #if os(iOS)
+     private let installAccessGate = KeychainInstallAccessGate()
+     #endif
