@@ -43,7 +43,21 @@ describe('transition ignores events that do not apply', () => {
 
   it('ignores retry outside Hub not reachable', () => {
     expect(transition('sent', { type: 'retry' })).toBe('sent');
-    expect(transition('hubNotReachable', { type: 'hubAck' })).toBe('hubNotReachable');
+  });
+});
+
+describe('late hub replies after the timeout are not dropped', () => {
+  it('maps a late ack from Hub not reachable to Received by hub', () => {
+    expect(transition('hubNotReachable', { type: 'hubAck' })).toBe('receivedByHub');
+  });
+
+  it('maps a late answer from Hub not reachable to Answered', () => {
+    expect(transition('hubNotReachable', { type: 'answer' })).toBe('answered');
+  });
+
+  it('still never leaves Answered', () => {
+    expect(transition('answered', { type: 'answer' })).toBe('answered');
+    expect(transition('answered', { type: 'timeout' })).toBe('answered');
   });
 });
 
@@ -93,6 +107,30 @@ describe('AskMachine', () => {
     machine.dispose();
     jest.advanceTimersByTime(10_000);
     expect(machine.current).toBe('sent');
+  });
+
+  it('accepts a late answer after the timeout and stops the timer', () => {
+    const seen: string[] = [];
+    const machine = new AskMachine({ timeoutMs: 1000, onChange: (s) => seen.push(s) });
+    jest.advanceTimersByTime(1000);
+    expect(machine.current).toBe('hubNotReachable');
+    machine.dispatch({ type: 'answer' });
+    expect(machine.current).toBe('answered');
+    jest.advanceTimersByTime(60_000);
+    expect(machine.current).toBe('answered');
+    expect(seen).toEqual(['hubNotReachable', 'answered']);
+    machine.dispose();
+  });
+
+  it('accepts a late ack after the timeout and then the answer', () => {
+    const machine = new AskMachine({ timeoutMs: 1000 });
+    jest.advanceTimersByTime(1000);
+    expect(machine.current).toBe('hubNotReachable');
+    machine.dispatch({ type: 'hubAck' });
+    expect(machine.current).toBe('receivedByHub');
+    machine.dispatch({ type: 'answer' });
+    expect(machine.current).toBe('answered');
+    machine.dispose();
   });
 
   it('exposes a positive default timeout', () => {

@@ -41,6 +41,8 @@ export default function App() {
                 accessibilityRole="button"
               >
                 <Text
+                  // Manually scaled below, so RN must not scale it again on top.
+                  allowFontScaling={false}
                   style={[
                     styles.tabLabel,
                     { fontSize: scaledFontSize(fontSize.body, textScale) },

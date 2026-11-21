@@ -4,6 +4,10 @@
  * The four states are exactly the ones in BLUEPRINT_1.md:
  *   Sent -> Received by hub -> Answered
  *   Sent -> Hub not reachable (timeout) -> retry -> Sent
+ *
+ * A hub reply can arrive after the timeout on a lossy mesh, so
+ * `hubNotReachable` still accepts a late `hubAck` (-> Received by hub) and a
+ * late `answer` (-> Answered) instead of dropping them.
  */
 
 export type AskStatus = 'sent' | 'receivedByHub' | 'answered' | 'hubNotReachable';
@@ -24,10 +28,13 @@ export type AskEvent =
 export function transition(status: AskStatus, event: AskEvent): AskStatus {
   switch (event.type) {
     case 'hubAck':
-      return status === 'sent' ? 'receivedByHub' : status;
+      // A late ack still counts: the question did reach the hub after all.
+      return status === 'sent' || status === 'hubNotReachable' ? 'receivedByHub' : status;
     case 'answer':
-      // Tolerate an answer that arrives without the ack.
-      return status === 'sent' || status === 'receivedByHub' ? 'answered' : status;
+      // Tolerate an answer that arrives without the ack, or after the timeout.
+      return status === 'sent' || status === 'receivedByHub' || status === 'hubNotReachable'
+        ? 'answered'
+        : status;
     case 'timeout':
       // The timeout only guards the first reply; once the hub has it, the
       // question is simply "answer still coming".

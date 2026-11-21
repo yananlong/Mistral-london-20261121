@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import MapView, { LocalTile, Marker } from 'react-native-maps';
+import { PUBLIC_CHANNEL, PeerId } from '../transport/Transport';
 import { useTransport } from '../transport/TransportContext';
 import { usePositionContext } from '../locate/PositionContext';
+import { useCameraPermission } from '../camera/useCameraPermission';
 import { LatLon, findLocLine, formatLocLine } from '../locate/locLine';
 import { LONDON_REGION, TILE_PATH_TEMPLATE, bundledTilesCover } from '../locate/tiles';
 import { colors, fontSize, fontWeight, layout, spacing } from '../theme/tokens';
@@ -14,11 +16,16 @@ interface SharedPin {
   lon: number;
 }
 
+type ShareTarget = PeerId | typeof PUBLIC_CHANNEL;
+
 export function LocateScreen() {
   const transport = useTransport();
   const position = usePositionContext();
+  const cameraPermission = useCameraPermission();
   const [pins, setPins] = useState<SharedPin[]>([]);
   const [justShared, setJustShared] = useState(false);
+  // BLUEPRINT_1.md: Share location sends to one person or to the public channel.
+  const [shareTo, setShareTo] = useState<ShareTarget>(PUBLIC_CHANNEL);
 
   useEffect(() => {
     const unsubscribe = transport.subscribe((message) => {
@@ -38,9 +45,21 @@ export function LocateScreen() {
   // check whether the tiles cover where the user actually is.
   const tilesAvailable = coords ? bundledTilesCover(coords) : true;
 
+  const recipients: { id: ShareTarget; label: string }[] = [
+    { id: PUBLIC_CHANNEL, label: 'Public' },
+    ...transport
+      .peers()
+      .filter((peer) => peer.kind === 'phone')
+      .map((peer) => ({ id: peer.id as ShareTarget, label: peer.name })),
+  ];
+  const shareTargetLabel =
+    shareTo === PUBLIC_CHANNEL
+      ? 'the public channel'
+      : recipients.find((recipient) => recipient.id === shareTo)?.label ?? 'one person';
+
   function shareLocation() {
     if (!coords) return;
-    transport.send('public', formatLocLine(coords));
+    transport.send(shareTo, formatLocLine(coords));
     setJustShared(true);
   }
 
@@ -82,12 +101,42 @@ export function LocateScreen() {
           <Text style={styles.bannerText}>Getting your position…</Text>
         </View>
       )}
-      {!tilesAvailable && (
-        <View style={styles.banner}>
-          <Text style={styles.bannerText}>Map not downloaded for this area</Text>
+      {(cameraPermission === 'denied' || !tilesAvailable) && (
+        <View style={styles.bannerStack}>
+          {cameraPermission === 'denied' && (
+            <Text style={styles.bannerText}>
+              Camera permission denied — enable camera access in Settings to orient yourself on
+              the map.
+            </Text>
+          )}
+          {!tilesAvailable && (
+            <Text style={styles.bannerText}>Map not downloaded for this area</Text>
+          )}
         </View>
       )}
       <View style={styles.bottomPanel}>
+        <View style={styles.recipientRow}>
+          {recipients.map((recipient) => (
+            <TouchableOpacity
+              key={recipient.id}
+              style={[
+                styles.recipientChip,
+                shareTo === recipient.id && styles.recipientChipActive,
+              ]}
+              onPress={() => setShareTo(recipient.id)}
+              accessibilityRole="button"
+            >
+              <Text
+                style={[
+                  styles.recipientChipText,
+                  shareTo === recipient.id && styles.recipientChipTextActive,
+                ]}
+              >
+                {recipient.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
         <TouchableOpacity
           style={[styles.shareButton, !coords && styles.shareButtonDisabled]}
           onPress={shareLocation}
@@ -99,8 +148,8 @@ export function LocateScreen() {
         <Text style={styles.hint}>
           {coords
             ? justShared
-              ? `Shared ${formatLocLine(coords)} with the mesh`
-              : 'Sends a loc: line to the public channel'
+              ? `Shared ${formatLocLine(coords)} with ${shareTargetLabel}`
+              : `Sends a loc: line to ${shareTargetLabel}`
             : 'Waiting for a position fix…'}
         </Text>
       </View>
@@ -133,6 +182,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceRaised,
     padding: spacing.md,
   },
+  bannerStack: {
+    position: 'absolute',
+    top: spacing.lg + 44,
+    left: spacing.lg,
+    right: spacing.lg,
+    borderRadius: layout.radiusMd,
+    backgroundColor: colors.surfaceRaised,
+    padding: spacing.md,
+    gap: spacing.xs,
+  },
   bannerText: { color: colors.text, fontSize: fontSize.body, textAlign: 'center' },
   bottomPanel: {
     padding: spacing.lg,
@@ -140,6 +199,27 @@ const styles = StyleSheet.create({
     borderTopWidth: layout.borderWidth,
     borderTopColor: colors.border,
   },
+  recipientRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  recipientChip: {
+    minHeight: layout.minTapTarget,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+    borderRadius: layout.radiusLg,
+    borderWidth: layout.borderWidth,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceRaised,
+  },
+  recipientChipActive: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  recipientChipText: { color: colors.text, fontSize: fontSize.body, fontWeight: fontWeight.medium },
+  recipientChipTextActive: { color: colors.accentText },
   shareButton: {
     minHeight: layout.minTapTarget,
     borderRadius: layout.radiusMd,

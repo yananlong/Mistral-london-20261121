@@ -105,4 +105,41 @@ describe('SimulatedTransport with the hub unreachable', () => {
     expect(received).toHaveLength(2);
     expect(received[1].text.endsWith(HUB_ANSWER_LABEL)).toBe(true);
   });
+
+  it('cancels an already-scheduled ack when the hub goes offline mid-question', () => {
+    const transport = new SimulatedTransport({ ackDelayMs: 500, answerDelayMs: 500 });
+    const received: MeshMessage[] = [];
+    transport.subscribe((message) => received.push(message));
+    transport.send(HUB_PEER_ID, 'question sent while online');
+    jest.advanceTimersByTime(100);
+    transport.setHubOnline(false); // hub Bluetooth off before the ack fires
+    jest.advanceTimersByTime(10_000);
+    expect(received).toHaveLength(0);
+  });
+
+  it('cancels an already-scheduled answer when the hub goes offline after the ack', () => {
+    const transport = new SimulatedTransport({ ackDelayMs: 500, answerDelayMs: 2000 });
+    const received: MeshMessage[] = [];
+    transport.subscribe((message) => received.push(message));
+    transport.send(HUB_PEER_ID, 'question sent while online');
+    jest.advanceTimersByTime(500);
+    expect(received.map((message) => message.text)).toEqual([HUB_ACK_TEXT]);
+    transport.setHubOnline(false); // hub Bluetooth off before the answer fires
+    jest.advanceTimersByTime(10_000);
+    expect(received).toHaveLength(1); // only the ack, no answer
+  });
+
+  it('still answers questions sent after the hub comes back online', () => {
+    const transport = new SimulatedTransport({ ackDelayMs: 100, answerDelayMs: 100 });
+    const received: MeshMessage[] = [];
+    transport.subscribe((message) => received.push(message));
+    transport.send(HUB_PEER_ID, 'while offline');
+    transport.setHubOnline(false);
+    transport.setHubOnline(true);
+    transport.send(HUB_PEER_ID, 'while back online');
+    jest.advanceTimersByTime(100);
+    expect(received.map((message) => message.text)).toEqual([HUB_ACK_TEXT]);
+    jest.advanceTimersByTime(100);
+    expect(received).toHaveLength(2);
+  });
 });

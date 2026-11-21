@@ -9,6 +9,12 @@ describe('formatLocLine matches the BLUEPRINT_1.md message format exactly', () =
     expect(formatLocLine({ lat: 0, lon: 0 })).toBe('loc: 0.00000,0.00000');
     expect(formatLocLine({ lat: -33.8688, lon: 151.2093 })).toBe('loc: -33.86880,151.20930');
   });
+
+  it('never emits a negative zero', () => {
+    expect(formatLocLine({ lat: -0, lon: -0 })).toBe('loc: 0.00000,0.00000');
+    expect(formatLocLine({ lat: -0.0000001, lon: -0.0000001 })).toBe('loc: 0.00000,0.00000');
+    expect(formatLocLine({ lat: -0.000009, lon: 0.000009 })).toBe('loc: -0.00001,0.00001');
+  });
 });
 
 describe('parseLocLine round trip', () => {
@@ -46,6 +52,15 @@ describe('parseLocLine rejects malformed lines', () => {
     'loc: 0,181',
     'loc: 51.5, -0.1, extra',
     'location: 51.5,-0.1',
+    // Number() would accept these; the strict regex must not.
+    'loc: 0x33,0',
+    'loc: 5e1,1e1',
+    'loc: Infinity,0',
+    'loc: .5,1',
+    'loc: 1.,1',
+    'loc: +1,1',
+    'loc: NaN,0',
+    'loc: 1,0x10',
   ])('rejects %j', (line) => {
     expect(parseLocLine(line)).toBeNull();
   });

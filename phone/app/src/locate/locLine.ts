@@ -14,8 +14,17 @@ export interface LatLon {
 
 export const LOC_PREFIX = 'loc:';
 
+/** One coordinate component: plain decimal only, no hex, exponent or sign tricks. */
+const LOC_COMPONENT = /^-?\d+(\.\d+)?$/;
+
+function formatComponent(value: number): string {
+  const fixed = value.toFixed(5);
+  // toFixed keeps the sign of a tiny negative: -0.0000001 formats as "-0.00000".
+  return fixed === '-0.00000' ? '0.00000' : fixed;
+}
+
 export function formatLocLine(point: LatLon): string {
-  return `${LOC_PREFIX} ${point.lat.toFixed(5)},${point.lon.toFixed(5)}`;
+  return `${LOC_PREFIX} ${formatComponent(point.lat)},${formatComponent(point.lon)}`;
 }
 
 /** Parse one line as a loc: line. Returns null for anything else. */
@@ -27,7 +36,7 @@ export function parseLocLine(line: string): LatLon | null {
   if (parts.length !== 2) return null;
   const latText = parts[0].trim();
   const lonText = parts[1].trim();
-  if (latText === '' || lonText === '') return null;
+  if (!LOC_COMPONENT.test(latText) || !LOC_COMPONENT.test(lonText)) return null;
   const lat = Number(latText);
   const lon = Number(lonText);
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;

@@ -41,7 +41,7 @@ export function TalkScreen() {
     { id: PUBLIC_CHANNEL, label: 'Public' },
     ...peers.map((peer) => ({
       id: peer.id as ConversationId,
-      label: peer.kind === 'hub' ? `${peer.name}` : peer.name,
+      label: peer.name,
     })),
   ];
   const visible = messages.filter(

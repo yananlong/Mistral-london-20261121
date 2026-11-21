@@ -10,12 +10,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import {
-  AskMachine,
-  AskRecord,
-  DEFAULT_HUB_TIMEOUT_MS,
-} from '../ask/askStateMachine';
-import { HUB_ACK_TEXT, HUB_PEER_ID } from '../transport/SimulatedTransport';
+import { AskFlow, AskFlowItem, AskFlowSnapshot } from '../ask/askFlow';
+import { HUB_ACK_TEXT, HUB_ANSWER_LABEL } from '../transport/protocol';
+import { HUB_PEER_ID } from '../transport/SimulatedTransport';
 import { useTransport } from '../transport/TransportContext';
 import { usePositionContext } from '../locate/PositionContext';
 import { formatLocLine } from '../locate/locLine';
@@ -29,54 +26,30 @@ export const SUGGESTED_QUESTIONS = [
   'How do I stay warm and dry overnight?',
 ];
 
-/** Every answer is labelled with this, word for word per BLUEPRINT_1.md. */
-export const AI_ANSWER_LABEL =
-  'AI answer from an open-weight model on the hub. Not verified emergency advice.';
-
-interface AskItem extends AskRecord {
-  machine: AskMachine;
-}
-
 export function AskScreen() {
   const transport = useTransport();
   const position = usePositionContext();
-  const [items, setItems] = useState<AskItem[]>([]);
+  const [snapshot, setSnapshot] = useState<AskFlowSnapshot>({ items: [], queuedCount: 0 });
   const [draft, setDraft] = useState('');
   const [attachLocation, setAttachLocation] = useState(false);
-  const machinesRef = useRef<Map<string, AskMachine>>(new Map());
-  const counterRef = useRef(0);
+  const flowRef = useRef<AskFlow | null>(null);
 
   useEffect(() => {
+    const flow = new AskFlow({
+      sendToHub: (payload) => transport.send(HUB_PEER_ID, payload),
+      onChange: setSnapshot,
+    });
+    flowRef.current = flow;
     const unsubscribe = transport.subscribe((message) => {
       if (message.from !== HUB_PEER_ID) return;
-      const entries = [...machinesRef.current.entries()];
-      const isAck = message.text === HUB_ACK_TEXT;
-      // The hub answers in order: the ack goes to the oldest unacked
-      // question, the answer to the oldest unanswered one.
-      const entry = isAck
-        ? entries.find(([, machine]) => machine.current === 'sent')
-        : entries.find(([, machine]) => machine.current === 'receivedByHub') ??
-          entries.find(([, machine]) => machine.current === 'sent');
-      if (!entry) return;
-      const [id, machine] = entry;
-      if (isAck) {
-        machine.dispatch({ type: 'hubAck' });
-        return;
-      }
-      machine.dispatch({ type: 'answer' });
-      setItems((prev) =>
-        prev.map((item) => (item.id === id ? { ...item, answer: message.text } : item)),
-      );
+      flow.handleHubMessage(message.text, message.text === HUB_ACK_TEXT);
     });
-    return unsubscribe;
-  }, [transport]);
-
-  useEffect(() => {
-    const machines = machinesRef.current;
     return () => {
-      for (const machine of machines.values()) machine.dispose();
+      unsubscribe();
+      flow.dispose();
+      flowRef.current = null;
     };
-  }, []);
+  }, [transport]);
 
   function ask(question: string) {
     const text = question.trim();
@@ -84,30 +57,11 @@ export function AskScreen() {
     const coords = position.coords;
     const payload =
       attachLocation && coords ? `${text}\n${formatLocLine(coords)}` : text;
-    counterRef.current += 1;
-    const id = `ask-${counterRef.current}`;
-    const machine = new AskMachine({
-      timeoutMs: DEFAULT_HUB_TIMEOUT_MS,
-      onChange: (status) =>
-        setItems((prev) => prev.map((item) => (item.id === id ? { ...item, status } : item))),
-    });
-    machinesRef.current.set(id, machine);
-    const item: AskItem = {
-      id,
-      question: text,
-      payload,
-      status: 'sent',
-      answer: null,
-      sentAt: Date.now(),
-      machine,
-    };
-    setItems((prev) => [...prev, item]);
-    transport.send(HUB_PEER_ID, payload);
+    flowRef.current?.ask(text, payload);
   }
 
-  function retry(item: AskItem) {
-    item.machine.dispatch({ type: 'retry' });
-    transport.send(HUB_PEER_ID, item.payload);
+  function retry(item: AskFlowItem) {
+    flowRef.current?.retry(item.id);
   }
 
   function sendDraft() {
@@ -116,6 +70,7 @@ export function AskScreen() {
   }
 
   const canAttach = position.status === 'fix' && position.coords !== null;
+  const items = snapshot.items;
 
   return (
     <KeyboardAvoidingView
@@ -140,9 +95,9 @@ export function AskScreen() {
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => {
           const answer = item.answer
-            ? item.answer.endsWith(AI_ANSWER_LABEL)
+            ? item.answer.endsWith(HUB_ANSWER_LABEL)
               ? item.answer
-              : `${item.answer}\n${AI_ANSWER_LABEL}`
+              : `${item.answer}\n${HUB_ANSWER_LABEL}`
             : null;
           return (
             <View style={styles.card}>
@@ -182,6 +137,12 @@ export function AskScreen() {
             {canAttach ? 'Attach my location (loc: line)' : 'Attach my location (no position fix yet)'}
           </Text>
         </View>
+        {snapshot.queuedCount > 0 && (
+          <Text style={styles.queuedHint}>
+            {snapshot.queuedCount} more question{snapshot.queuedCount === 1 ? '' : 's'} queued —
+            the hub takes one at a time
+          </Text>
+        )}
         <View style={styles.inputRow}>
           <TextInput
             style={styles.input}
@@ -269,6 +230,7 @@ const styles = StyleSheet.create({
     minHeight: layout.minTapTarget,
   },
   attachLabel: { color: colors.textMuted, fontSize: fontSize.caption, flex: 1 },
+  queuedHint: { color: colors.textMuted, fontSize: fontSize.caption, marginBottom: spacing.sm },
   inputRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-end' },
   input: {
     flex: 1,

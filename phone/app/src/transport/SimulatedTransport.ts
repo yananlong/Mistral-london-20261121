@@ -5,15 +5,13 @@ import {
   SELF_PEER_ID,
   Transport,
 } from './Transport';
+import { HUB_ACK_TEXT, HUB_ANSWER_LABEL } from './protocol';
 
 export const HUB_PEER_ID = 'hub';
 
-/** The hub's first reply, word for word per BLUEPRINT_1.md. */
-export const HUB_ACK_TEXT = 'Received. Working on an answer.';
-
-/** The label the hub ends every answer with, word for word per BLUEPRINT_1.md. */
-export const HUB_ANSWER_LABEL =
-  'AI answer from an open-weight model on the hub. Not verified emergency advice.';
+// Re-exported so existing imports from this module keep working; the single
+// definition lives in protocol.ts.
+export { HUB_ACK_TEXT, HUB_ANSWER_LABEL };
 
 export const DEFAULT_PEERS: Peer[] = [
   { id: HUB_PEER_ID, name: 'Hub (DGX Spark)', kind: 'hub' },
@@ -56,6 +54,8 @@ export class SimulatedTransport implements Transport {
   private readonly clearTimeoutFn: ClearTimeoutFn;
   private readonly handlers = new Set<IncomingMessageHandler>();
   private counter = 0;
+  /** Timers for hub replies that are scheduled but have not fired yet. */
+  private readonly pendingTimers = new Set<TimerHandle>();
 
   constructor(options: SimulatedTransportOptions = {}) {
     this.peersList = options.peers ?? DEFAULT_PEERS;
@@ -95,6 +95,12 @@ export class SimulatedTransport implements Transport {
   /** Flip hub reachability at runtime (demo step 5: turn the hub's Bluetooth off). */
   setHubOnline(online: boolean): void {
     this.hubOnline = online;
+    if (!online) {
+      // The hub's radio going off also kills replies already scheduled, so
+      // the sim matches the real "hub Bluetooth off mid-question" case.
+      for (const handle of this.pendingTimers) this.clearTimeoutFn(handle);
+      this.pendingTimers.clear();
+    }
   }
 
   private handleQuestion(question: MeshMessage): void {
@@ -135,6 +141,10 @@ export class SimulatedTransport implements Transport {
   }
 
   private later(ms: number, fn: () => void): void {
-    this.setTimeoutFn(fn, ms);
+    const handle = this.setTimeoutFn(() => {
+      this.pendingTimers.delete(handle);
+      fn();
+    }, ms);
+    this.pendingTimers.add(handle);
   }
 }
