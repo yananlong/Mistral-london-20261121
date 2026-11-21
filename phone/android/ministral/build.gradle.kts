@@ -13,12 +13,18 @@ android {
 
     defaultConfig {
         minSdk = 31                                   // createOnDeviceSpeechRecognizer
-        ndk { abiFilters += "arm64-v8a" }             // CMakeLists.txt refuses other ABIs
+        ndk {
+            abiFilters += "arm64-v8a"                 // CMakeLists.txt refuses other ABIs
+            // Emulator testing: ./gradlew -PministralEmulator=true ... also builds x86_64
+            // (CMakeLists.txt allows it only with -DMINISTRAL_EMULATOR=ON, passed below).
+            if (project.hasProperty("ministralEmulator")) abiFilters += "x86_64"
+        }
         externalNativeBuild {
             cmake {
                 // Force optimized ggml/llama even in the debug variant: AGP's Debug build type is -O0, and llama.cpp
                 // runs several times slower at -O0. CMakeLists.txt only sets -O2 on the JNI file itself.
                 arguments += listOf("-DANDROID_STL=c++_shared", "-DCMAKE_BUILD_TYPE=Release")
+                if (project.hasProperty("ministralEmulator")) arguments += "-DMINISTRAL_EMULATOR=ON"
                 // Offline llama.cpp checkout instead of FetchContent (README "Build" step 2):
                 // arguments += "-DLLAMA_CPP_SOURCE_DIR=/abs/path/to/llama.cpp"
                 // KleidiAI A/B (DESIGN_PIXEL9A.md): arguments += "-DMINISTRAL_KLEIDIAI=OFF"

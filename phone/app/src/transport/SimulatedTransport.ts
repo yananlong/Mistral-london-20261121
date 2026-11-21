@@ -131,7 +131,24 @@ export class SimulatedTransport implements Transport {
   }
 
   private deliver(message: MeshMessage): void {
-    for (const handler of [...this.handlers]) handler(message);
+    // One throwing subscriber must not starve the rest (transport contract).
+    for (const handler of [...this.handlers]) {
+      try {
+        handler(message);
+      } catch {
+        // swallow: a buggy UI handler must not break mesh delivery
+      }
+    }
+  }
+
+  /** Test/demo helper: deliver an inbound message as if it arrived over the mesh. */
+  simulateIncoming(text: string, from: PeerId = HUB_PEER_ID): MeshMessage {
+    const message = this.hubMessage(text);
+    if (from !== HUB_PEER_ID) {
+      message.from = from;
+    }
+    this.deliver(message);
+    return message;
   }
 
   private later(ms: number, fn: () => void): void {
