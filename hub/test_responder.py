@@ -684,12 +684,12 @@ class TestAnswerShaping(ResponderTestCase):
     def test_num_predict_and_keep_alive_are_sent_and_sized_to_the_cap(self):
         payload = responder.build_chat_payload("q?", None)
         self.assertEqual(payload["options"]["num_ctx"], 8192)
-        self.assertEqual(payload["options"]["num_predict"], 256)
+        self.assertEqual(payload["options"]["num_predict"], (780 - 78 - 1) // 3)
         self.assertEqual(payload["keep_alive"], -1)
         self.assertIs(payload["stream"], False)
         with mock.patch.dict(os.environ, {"HUB_MAX_ANSWER_BYTES": "700"}):
             self.assertEqual(
-                responder.build_chat_payload("q?", None)["options"]["num_predict"], 155)
+                responder.build_chat_payload("q?", None)["options"]["num_predict"], 207)
         with mock.patch.dict(os.environ, {"HUB_NUM_PREDICT": "99"}):
             self.assertEqual(
                 responder.build_chat_payload("q?", None)["options"]["num_predict"], 99)
@@ -719,6 +719,130 @@ class TestAnswerShaping(ResponderTestCase):
         self.assertEqual(status, 200)
         self.assertEqual(body["ack"], responder.ACK)
         self.assertEqual(body["status"], "answered")
+
+
+class TestAnswerParts(ResponderTestCase):
+    """BitChat drops a private message over 255 UTF-8 bytes, so answers go as "(i/n) " parts."""
+
+    LABEL = "AI answer from an open-weight model on the hub. Not verified emergency advice."
+
+    def ask_sync(self, raw, env=None, reply_extra=None):
+        def urlopen(req, timeout=None):
+            body = {"message": {"content": raw}}
+            body.update(reply_extra or {})
+            return FakeHTTPResponse(json.dumps(body))
+        with mock.patch.dict(os.environ, env or {}), mock.patch("urllib.request.urlopen", urlopen):
+            return self.post_ask({"sender": "p", "question": "q?", "wait": True})
+
+    def check_parts(self, body):
+        parts = body["parts"]
+        n = len(parts)
+        self.assertGreaterEqual(n, 2)
+        self.assertLessEqual(n, 5)
+        for i, part in enumerate(parts, 1):
+            self.assertLessEqual(len(part.encode("utf-8")), 255, part)
+            self.assertTrue(part.startswith("(%d/%d) " % (i, n)), part)
+            self.assertRegex(part, r"(?s)^\((\d)/(\d)\) (.*)$")  # the phone's parser
+        self.assertEqual(parts[-1], "(%d/%d) %s" % (n, n, self.LABEL))  # label last, alone
+        self.assertEqual(responder.assemble_parts(parts), body["answer"])
+        self.assertTrue(body["answer"].endswith("\n" + self.LABEL))
+        self.assertEqual(body["answer"].count(self.LABEL), 1)
+
+    def test_short_answer_matches_the_protocol_vector(self):
+        raw = ("1. Let the water settle, then pour the clear part through a cloth.\n"
+               "2. Bring it to a rolling boil for at least 1 minute.")
+        status, body = self.ask_sync(raw)
+        self.assertEqual(status, 200)
+        # protocol/vectors.json composeAnswer[0] (PR #17)
+        self.assertEqual(body["parts"], ["(1/2) " + raw, "(2/2) " + self.LABEL])
+        self.assertEqual(body["answer"], raw + "\n" + self.LABEL)
+        self.check_parts(body)
+
+    def test_long_answer_is_split_on_lines_into_parts_of_at_most_255_bytes(self):
+        raw = "\n".join("%d. Keep warm, stay dry and check on your neighbours often." % i
+                        for i in range(1, 12))
+        status, body = self.ask_sync(raw)
+        self.assertEqual(status, 200)
+        self.check_parts(body)
+        self.assertGreaterEqual(len(body["parts"]), 3)
+        for part in body["parts"][:-1]:
+            self.assertRegex(part.split(") ", 1)[1], r"^\d+\. ")  # each part starts a step
+
+    def test_non_ascii_and_one_long_line(self):
+        for raw in ("é " * 650, "水" * 900, "word " * 400, "1. " + "ñandú añade " * 90):
+            status, body = self.ask_sync(raw)
+            self.assertEqual(status, 200)
+            self.check_parts(body)
+            self.assertLessEqual(len(body["answer"].encode("utf-8")), 780)
+
+    def test_too_many_lines_are_capped_with_an_ellipsis(self):
+        raw = "\n".join("%d. %s" % (i, "x" * 200) for i in range(1, 4))
+        status, body = self.ask_sync(raw, {"HUB_MAX_ANSWER_PARTS": "3"})
+        self.assertEqual(len(body["parts"]), 3)
+        self.assertTrue(body["parts"][1].endswith("…"))
+        self.assertEqual(body["parts"][2], "(3/3) " + self.LABEL)
+        for part in body["parts"]:
+            self.assertLessEqual(len(part.encode("utf-8")), 255)
+        self.assertEqual(responder.assemble_parts(body["parts"]), body["answer"])
+
+    def test_split_answer_units(self):
+        self.assertEqual(responder.split_answer("a\nb"), ["a\nb"])
+        chunks = responder.split_answer("a" * 249 + "\n" + "b" * 10)
+        self.assertEqual(chunks, ["a" * 249, "b" * 10])
+        chunks = responder.split_answer("é" * 200)  # 400 bytes, no space
+        self.assertEqual(chunks, ["é" * 124, "é" * 76])
+        self.assertEqual(responder.prefix_bytes("aé", 2), "a")
+
+    def test_callback_body_carries_the_same_parts(self):
+        raw = "\n".join("%d. Keep warm and dry tonight, and stay together." % i for i in range(1, 9))
+        with mock.patch("urllib.request.urlopen",
+                        fake_urlopen_factory(model_reply=raw, callbacks=self.callbacks)):
+            status, _ = self.post_ask({"sender": "p", "question": "q?",
+                                       "callback_url": "http://127.0.0.1:9/cb"})
+            self.assertEqual(status, 202)
+            self.assertTrue(self.wait_for(lambda: len(self.callbacks) == 1))
+            _, sync = self.post_ask({"sender": "p", "question": "q?", "wait": True})
+        cb = self.callbacks[0]["payload"]
+        self.assertEqual(cb["parts"], sync["parts"])
+        self.assertEqual(cb["answer"], sync["answer"])
+        self.check_parts(cb)
+
+    def test_failures_send_the_single_protocol_error_message(self):
+        self.assertEqual(responder.HUB_ERROR_TEXT,
+                         "The hub could not answer right now. Please try again.")
+        err = urllib.error.HTTPError("http://x/api/chat", 404, "nf", {}, None)
+        with mock.patch("urllib.request.urlopen",
+                        fake_urlopen_factory(model_error=err, callbacks=self.callbacks)):
+            status, sync = self.post_ask({"sender": "p", "question": "q?", "wait": True})
+            self.post_ask({"sender": "p", "question": "q?",
+                           "callback_url": "http://127.0.0.1:9/cb"})
+            self.assertTrue(self.wait_for(lambda: len(self.callbacks) == 1))
+        self.assertEqual(status, 502)
+        self.assertEqual(sync["parts"], [responder.HUB_ERROR_TEXT])
+        self.assertEqual(self.callbacks[0]["payload"]["parts"], [responder.HUB_ERROR_TEXT])
+        # a model that returns only the label has not answered
+        status, body = self.ask_sync(self.LABEL)
+        self.assertEqual(status, 502)
+        self.assertEqual(body["parts"], [responder.HUB_ERROR_TEXT])
+
+    def test_answer_cut_by_num_predict_drops_the_unfinished_sentence(self):
+        raw = "1. Call 999 now.\n2. Press hard on the wound.\n3. Keep the person warm and do not"
+        status, body = self.ask_sync(raw, reply_extra={"done_reason": "length"})
+        self.assertEqual(status, 200)
+        self.assertEqual(body["parts"][0], "(1/2) 1. Call 999 now.\n2. Press hard on the wound.")
+        status, body = self.ask_sync(raw, reply_extra={"done_reason": "stop"})
+        self.assertIn("do not", body["answer"])
+
+    def test_question_is_cut_to_200_bytes_not_rejected(self):
+        with mock.patch("urllib.request.urlopen", fake_urlopen_factory(
+                model_reply="1. ok.", ollama_requests=self.ollama_requests)), \
+                mock.patch.dict(os.environ, {"HUB_KB": "0"}):
+            status, _ = self.post_ask({"sender": "p", "wait": True,
+                                       "question": "é" * 150 + "\nloc: 51.50070,-0.12460"})
+        self.assertEqual(status, 200)
+        user = self.ollama_requests[0]["payload"]["messages"][1]["content"]
+        self.assertTrue(user.startswith("é" * 100 + "\n"), user[:120])
+        self.assertIn("51.5007", user)
 
 
 class TestAsyncNeedsCallback(ResponderTestCase):

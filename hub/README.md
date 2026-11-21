@@ -52,10 +52,10 @@ Responses:
 - Async (default): `202 {"status": "accepted", "ack": "Received. Working on an answer."}`
   at once, before the model runs and before any queueing. A worker thread waits
   for a model slot, runs the model, then POSTs
-  `{"sender": ..., "answer": ..., "status": "answered" | "error" | "busy"}` to
-  `callback_url` (one retry). The asker always gets a second message: the
+  `{"sender": ..., "answer": ..., "parts": [...], "status": "answered" | "error" | "busy"}`
+  to `callback_url` (one retry). The asker always gets a second message: the
   answer, or a "No answer: ... Please retry your question." message.
-- Sync (`wait=true`): `200 {"sender", "ack", "answer", "status": "answered"}`.
+- Sync (`wait=true`): `200 {"sender", "ack", "answer", "parts", "status": "answered"}`.
   `502` with `status: "error"` and the retry answer when the model call fails
   or times out; `503` with `status: "busy"` and the busy answer when no model
   slot came free in time. The body carries `ack` too, so a caller with no
@@ -66,6 +66,28 @@ Responses:
   `question`, bad `loc`, multiple `loc:` lines, non-boolean `wait`, disallowed
   `callback_url` host, or an async ask with no `callback_url`). `404` for other
   paths, `413` for bodies over 1 MiB (the connection is closed, not reused).
+
+### `parts`: what to send over the mesh
+
+BitChat rejects a private message whose content is over 255 UTF-8 bytes
+(`bitchat/Protocols/Packets.swift`, `PrivateMessagePacket.encode`). So the peer
+sends **each string in `parts` as one private message, in order**, and never
+sends `answer` as one message.
+
+- `status: "answered"`: 2 to 5 parts, each `(i/n) ` plus text, each at most
+  255 UTF-8 bytes. The last part is the disclaimer alone, for example
+  `(3/3) AI answer from an open-weight model on the hub. Not verified emergency advice.`
+  This is the wire format of `protocol/README.md` (PR #17), and
+  `split_answer()` is a port of its reference `make_vectors.py`.
+- `status: "error"` or `"busy"`: one part, exactly
+  `The hub could not answer right now. Please try again.` (the protocol's
+  `HUB_ERROR_TEXT`, no prefix and no disclaimer), which the phone shows as
+  **Hub could not answer**.
+- `answer` is the same text in one string, kept for callers that show it
+  directly: the part texts joined with newlines, so it ends with the
+  disclaimer. For an error it is a longer "No answer: ..." sentence with the
+  reason.
+- A question is cut to 200 UTF-8 bytes (the protocol's `MAX_QUESTION_BYTES`).
 
 ### Queueing, timeout and answer size
 
@@ -81,13 +103,15 @@ about 3.5 tokens/s each.
   There is no 429: every accepted question gets an answer message.
 - **Timeout.** `HUB_ANSWER_TIMEOUT_SECONDS` (100) is the total deadline from
   arrival, queue wait included: up to 25 s in the queue, then at least 75 s
-  for the run (256 tokens at 3.5 tokens/s is 73 s). A caller should wait a
+  for the run (233 tokens at 3.5 tokens/s is 67 s). A caller should wait a
   little longer than this (for example 120 s) for the second message.
-- **Answer size.** The whole answer message, disclaimer included, is at most
-  `HUB_MAX_ANSWER_BYTES` (1407 UTF-8 bytes: three BitChat fragments of about
-  469 bytes, DATASETS.md). `options.num_predict` is sized to that budget
-  (bytes / 4, at most 256 tokens, about 1 KB), so the model stops before the
-  cap and a run is bounded at about 30 s alone and 73 s with four in parallel. The system prompt asks for at most 6 steps and 120 words, so a
+- **Answer size.** The whole answer text, disclaimer included, is at most
+  `HUB_MAX_ANSWER_BYTES` (780 UTF-8 bytes: about 700 bytes of model text,
+  normally 3 body parts plus the disclaimer part) and at most
+  `HUB_MAX_ANSWER_PARTS` (5) messages. `options.num_predict` is sized to that
+  budget (bytes / 3, 233 tokens), so a run is bounded at about 26 s alone and
+  67 s with four in parallel. When the model stops at that token cap, the
+  unfinished last sentence is dropped. The system prompt asks for at most 6 steps and 120 words, so a
   normal answer is well under the cap.
 
 ## Mesh message format
@@ -123,8 +147,10 @@ Second reply, with the answer:
 AI answer from an open-weight model on the hub. Not verified emergency advice.
 ```
 
-Every answer ends with the disclaimer sentence, exactly once, as the last
-line. Markdown bold and headings are stripped, because the mesh carries plain
+Over the mesh the answer travels as `(i/n) ` parts of at most 255 bytes
+(see `parts` above); the example shows the assembled text. Every answer ends
+with the disclaimer sentence, exactly once, as the last line and the last
+part. Markdown bold and headings are stripped, because the mesh carries plain
 text. An answer over the byte budget is cut at a sentence end (a list marker
 such as `3.` never counts as one, and a cut never leaves a bare marker), and
 the disclaimer is added after the cut so it is never cut off. A failure
@@ -149,9 +175,10 @@ the phone's timeout).
 | `HUB_QUEUE_WAIT_SECONDS` | `25` | Longest wait for a model slot before the busy answer. |
 | `HUB_MAX_QUEUED` | `16` | Questions that may wait at once; more get the busy answer at once. |
 | `HUB_ANSWER_TIMEOUT_SECONDS` | `100` | Total deadline for one question from arrival (queue wait + model run); then the asker gets the retry answer. |
-| `HUB_MAX_ANSWER_BYTES` | `1407` | UTF-8 byte budget of the whole answer message, disclaimer included. |
+| `HUB_MAX_ANSWER_BYTES` | `780` | UTF-8 byte budget of the whole answer text, disclaimer included. |
+| `HUB_MAX_ANSWER_PARTS` | `5` | Most mesh messages per answer, the disclaimer part included (2 to 9). |
 | `HUB_MAX_ANSWER_CHARS` | `1200` | Extra character cap on the model's text. Must be >= 1. |
-| `HUB_NUM_PREDICT` | byte budget / 4, at most `256` | `options.num_predict`, the model's token cap per answer. |
+| `HUB_NUM_PREDICT` | byte budget / 3, at most `256` (`233`) | `options.num_predict`, the model's token cap per answer. |
 | `HUB_WARMUP` | `1` | At startup, load the model and log an error if the tag is not pulled. `0` skips it. |
 | `HUB_CALLBACK_ALLOW_HOSTS` | empty | Comma-separated extra callback hosts (host or host:port) beyond the built-in loopback/private/link-local/peer allowlist. |
 | `HUB_KB` | `1` | `0` turns the knowledge base off. |
@@ -245,8 +272,8 @@ curl -X POST http://10.0.0.2:8080/ask \
   -d '{"sender":"phoneA","question":"How do I make river water safe to drink?\nloc: 51.50070,-0.12460","callback_url":"http://mac.local:9000/mesh-reply"}'
 # -> 202 {"status":"accepted","ack":"Received. Working on an answer."}
 # forward the ack to the phone now; the callback_url receives
-# {"sender","answer","status"} a moment later, which the peer sends on as the
-# second mesh message.
+# {"sender","answer","parts","status"} a moment later; the peer sends each of
+# "parts" as its own mesh message.
 ```
 
 ### Remote testing (the Spark is not next to you)
@@ -265,10 +292,11 @@ ssh -N -L 8080:127.0.0.1:8080 spark &
 curl -X POST http://127.0.0.1:8080/ask \
   -H 'Content-Type: application/json' \
   -d '{"sender":"phoneA","question":"How do I stop heavy bleeding?","wait":true}'
-# -> 200 {"sender":"phoneA","ack":"Received. Working on an answer.","answer":"1. ...","status":"answered"}
+# -> 200 {"sender":"phoneA","ack":"Received. Working on an answer.","answer":"1. ...",
+#         "parts":["(1/3) 1. ...","(2/3) 4. ...","(3/3) AI answer from ..."],"status":"answered"}
 ```
 
-Show `ack` first and `answer` second. Allow up to 120 s for the response.
+Send `ack` first, then each of `parts` as its own message. Allow up to 120 s for the response.
 
 Async with callbacks: add a reverse forward, so a listener on the laptop's
 port 9000 appears on the Spark's loopback.
@@ -279,7 +307,7 @@ ssh -N -L 8080:127.0.0.1:8080 -R 9000:127.0.0.1:9000 spark &
 curl -X POST http://127.0.0.1:8080/ask \
   -H 'Content-Type: application/json' \
   -d '{"sender":"phoneA","question":"How do I stop heavy bleeding?","callback_url":"http://127.0.0.1:9000/cb"}'
-# -> 202 with the ack at once; {"sender","answer","status"} is POSTed to the
+# -> 202 with the ack at once; {"sender","answer","parts","status"} is POSTed to the
 #    laptop's 127.0.0.1:9000/cb when the answer is ready.
 ```
 

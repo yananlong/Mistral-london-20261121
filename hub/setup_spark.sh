@@ -167,7 +167,7 @@ else
     echo "FAIL: POST /ask returned HTTP $HTTP_CODE, expected 200" >&2
     exit 1
   fi
-  if grep -qE "could not answer|No answer:" "$ASK_RESPONSE"; then
+  if grep -qE "could not answer|No answer:" "$ASK_RESPONSE" || ! grep -qF '"status": "answered"' "$ASK_RESPONSE"; then
     echo "FAIL: the hub returned the retry error answer, not a real answer" >&2
     exit 1
   fi
