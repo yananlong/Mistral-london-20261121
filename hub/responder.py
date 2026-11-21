@@ -240,11 +240,15 @@ def truncate_at_sentence(text, cap):
 
 
 def finalize_answer(raw):
-    """Cap the answer length, then make sure the disclaimer is on it."""
+    """Cap the answer length, then make sure the disclaimer is LAST on it.
+
+    The blueprint requires every answer to END with the disclaimer; if the
+    model put it mid-answer, move it to the end instead of skipping it.
+    """
     text = truncate_at_sentence(raw.strip(), max_answer_chars())
-    if DISCLAIMER not in text:
-        text = text + "\n" + DISCLAIMER
-    return text
+    if DISCLAIMER in text:
+        text = text.replace(DISCLAIMER, "").rstrip()
+    return text + "\n" + DISCLAIMER
 
 
 def error_answer(reason):
@@ -279,6 +283,9 @@ def run_async(request):
     except ModelError as e:
         log.warning("model call failed for %s: %s", sender, e)
         answer = error_answer(str(e))
+    except Exception as e:  # never leave the asker hanging: bad env, bugs, ...
+        log.exception("unexpected error answering %s", sender)
+        answer = error_answer("internal error")
     if not request["callback_url"]:
         log.warning("no callback_url for %s; answer not delivered", sender)
         return
