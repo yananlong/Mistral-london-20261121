@@ -25,3 +25,5 @@ With phone A in airplane mode and Bluetooth enabled, the user shares their coord
 ## Project status
 
 This is a hackathon concept. The features, Bitchat integration and technical approach are yet to be built and validated.
+
+See [PLAN.md](PLAN.md) for the open team plan: prior art, constraints, options and open questions.
