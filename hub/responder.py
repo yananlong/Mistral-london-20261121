@@ -11,8 +11,9 @@ Endpoints:
     GET  /health -> 200 {"status": "ok"}
     POST /ask    -> JSON {sender, question, loc?, callback_url?, wait?}
                     202 {"status": "accepted", "ack": ...} in async mode
-                    (callback_url required), or 200 {"sender", "answer",
-                    "status"} when wait=true.
+                    (callback_url required), or 200 {"sender", "ack",
+                    "answer", "parts", "status"} when wait=true. "parts"
+                    are the mesh messages to send, each <= 255 UTF-8 bytes.
 
 Message format (see BLUEPRINT_1.md): a question is question lines plus an
 optional "loc: <lat>,<lon>" line. The first mesh reply is the ack; the second
@@ -76,19 +77,31 @@ MAX_QUESTION_CHARS = 4000  # per-field cap: a question is a short mesh text
 MAX_SENDER_CHARS = 64
 BUSY_REASON = "the hub is busy answering other questions"
 
-# Mesh budget for one answer message, disclaimer included: three BitChat
-# fragments of about 469 bytes (DATASETS.md, "512-byte BLE packets").
-DEFAULT_MAX_ANSWER_BYTES = 1407
+# BitChat rejects a private message whose content is over 255 UTF-8 bytes
+# (bitchat/Protocols/Packets.swift, PrivateMessagePacket.encode: 1-byte TLV
+# length). So an answer crosses the mesh as parts "(i/n) <text>", each at most
+# 255 bytes, with the disclaimer alone as the last part. This is the wire
+# format of protocol/README.md (PR #17); split_answer() is a port of its
+# reference implementation.
+MAX_MESSAGE_BYTES = 255
+PART_BODY_BYTES = MAX_MESSAGE_BYTES - len("(9/9) ")
+PROTOCOL_MAX_ANSWER_PARTS = 9  # "(i/n) " has one digit each
+DEFAULT_MAX_ANSWER_PARTS = 5  # 4 body parts + the disclaimer part
+MAX_QUESTION_BYTES = 200  # a question plus its loc line fits one message
+# The one-message reply when the hub cannot answer (protocol HUB_ERROR_TEXT).
+HUB_ERROR_TEXT = "The hub could not answer right now. Please try again."
+# Byte budget of the whole answer text, disclaimer included: about 700 bytes
+# of model text, which normally packs into 3 body parts.
+DEFAULT_MAX_ANSWER_BYTES = 780
 # Total deadline for one question, from arrival: queue wait plus model run.
 # Measured on the Spark (fp16): one answer alone decodes at about 9 tok/s
 # (warm about 26 s, cold about 36 s); four in parallel decode at about
-# 3.5 tok/s each. DEFAULT_NUM_PREDICT bounds a run at 256 tokens, about 73 s
-# in the worst case (four in parallel). A queued question waits at most 25 s,
-# so it still has 75 s for its own run inside the 100 s deadline.
+# 3.5 tok/s each. num_predict bounds a run at 233 tokens by default, about
+# 67 s in the worst case (four in parallel). A queued question waits at most
+# 25 s, so it still has 75 s for its own run inside the 100 s deadline.
 DEFAULT_ANSWER_TIMEOUT_SECONDS = 100.0
 DEFAULT_QUEUE_WAIT_SECONDS = 25.0
-# About 1 KB of text: DATASETS.md asks for answers of one to three fragments.
-DEFAULT_NUM_PREDICT = 256
+DEFAULT_NUM_PREDICT = 256  # upper bound; the default is sized to the byte budget
 DEFAULT_MAX_QUEUED = 16
 
 LOC_LINE_RE = re.compile(
@@ -242,6 +255,8 @@ def validate_ask_payload(body, peer_host=None):
     if loc is not None:
         loc = parse_loc_field(loc)
     question, text_loc = parse_question(raw_question)
+    # the mesh contract caps a question at 200 UTF-8 bytes; cut, do not reject
+    question = prefix_bytes(question, MAX_QUESTION_BYTES).rstrip()
     if not wait and callback_url is None:
         # without it the answer could not be delivered: the asker would see
         # "Received by hub" forever
@@ -285,6 +300,7 @@ NUMERIC_ENV_SPECS = [
     ("HUB_MAX_ANSWER_CHARS", int, 1, None),
     ("HUB_MAX_ANSWER_BYTES", int, 1, None),
     ("HUB_NUM_PREDICT", int, 1, None),
+    ("HUB_MAX_ANSWER_PARTS", int, 2, PROTOCOL_MAX_ANSWER_PARTS),
     ("HUB_QUEUE_WAIT_SECONDS", float, 0, None),
     ("HUB_MAX_QUEUED", int, 0, None),
     ("OLLAMA_CONTEXT_LENGTH", int, 1, None),
@@ -404,9 +420,15 @@ def model_part_max_bytes():
 
 
 def num_predict():
-    """Token cap for one answer: the byte budget at about 4 bytes per token, at most 256."""
-    sized = min(DEFAULT_NUM_PREDICT, max(32, model_part_max_bytes() // 4))
+    """Token cap for one answer: the byte budget at about 3 bytes per token, at most 256."""
+    sized = min(DEFAULT_NUM_PREDICT, max(32, model_part_max_bytes() // 3))
     return max(1, env_int("HUB_NUM_PREDICT", sized))
+
+
+def max_answer_parts():
+    """Most mesh messages one answer may take, the disclaimer part included (2..9)."""
+    parts = env_int("HUB_MAX_ANSWER_PARTS", DEFAULT_MAX_ANSWER_PARTS)
+    return min(PROTOCOL_MAX_ANSWER_PARTS, max(2, parts))
 
 
 def keep_alive():
@@ -523,12 +545,17 @@ def call_model(question, loc, timeout=None):
         raise ModelError("model call failed: %s" % e, "the model call failed") from e
     raw = outcome["raw"]
     try:
-        content = json.loads(raw.decode("utf-8"))["message"]["content"]
+        reply = json.loads(raw.decode("utf-8"))
+        content = reply["message"]["content"]
     except (ValueError, KeyError, TypeError) as e:
         raise ModelError("malformed response from ollama") from e
     if not isinstance(content, str) or not content.strip():
         raise ModelError("ollama returned an empty answer")
-    return content.strip()
+    content = content.strip()
+    if reply.get("done_reason") == "length":
+        # num_predict stopped the model mid-sentence: drop the unfinished tail
+        content = truncate_at_sentence(content, len(content) - 1) or content
+    return content
 
 
 SENTENCE_END_RE = re.compile(r"[.!?…]+(?=\s|$)")
@@ -588,19 +615,73 @@ def truncate_at_sentence(text, cap, max_bytes=None):
     return cut
 
 
-def finalize_answer(raw):
-    """Shape the mesh answer: plain text, within the byte budget, ENDING with the disclaimer.
+def prefix_bytes(text, limit):
+    """Longest prefix of text with at most `limit` UTF-8 bytes, never splitting a character."""
+    return text.encode("utf-8")[: max(0, limit)].decode("utf-8", "ignore")
 
-    The disclaimer is added after truncation, so it is never cut off, and the
-    whole message (disclaimer included) fits HUB_MAX_ANSWER_BYTES.
+
+def split_answer(body, max_body_parts=PROTOCOL_MAX_ANSWER_PARTS - 1):
+    """Pack body lines into chunks that fit one mesh message after the "(i/n) " prefix.
+
+    A port of split_answer in protocol/make_vectors.py (PR #17): pack whole
+    lines while they fit, break a line that is too long at its last space in
+    the second half, else at the byte limit. Chunks past max_body_parts are
+    dropped and the last kept one ends with an ellipsis.
     """
-    text = strip_markdown(raw.strip())
+    limit = PART_BODY_BYTES
+    chunks, cur = [], ""
+    for line in body.split("\n"):
+        while len(line.encode("utf-8")) > limit:
+            head = prefix_bytes(line, limit)
+            space = head.rfind(" ")
+            if space >= len(head) // 2:
+                head = head[:space]
+            if cur:
+                chunks.append(cur)
+                cur = ""
+            chunks.append(head)
+            line = line[len(head):].lstrip()
+        candidate = line if cur == "" else cur + "\n" + line
+        if len(candidate.encode("utf-8")) <= limit:
+            cur = candidate
+        else:
+            chunks.append(cur)
+            cur = line
+    chunks.append(cur)
+    chunks = [c.strip() for c in chunks if c.strip()]
+    if len(chunks) > max_body_parts:
+        chunks = chunks[:max_body_parts]
+        chunks[-1] = prefix_bytes(chunks[-1], limit - len("\u2026".encode("utf-8"))).rstrip() + "\u2026"
+    return chunks
+
+
+def compose_answer(raw):
+    """Shape the model output into (answer, parts).
+
+    `parts` are the mesh messages in send order: "(i/n) <text>", each at most
+    255 UTF-8 bytes, the last one the disclaimer alone. `answer` is the same
+    text in one string: the part texts joined with newlines, so it ENDS with
+    the disclaimer. Both are plain text within HUB_MAX_ANSWER_BYTES.
+    """
+    lines = raw.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    text = strip_markdown("\n".join(lines).strip())
     if text.endswith(DISCLAIMER):
         text = text[: -len(DISCLAIMER)].rstrip()
     text = truncate_at_sentence(text, max_answer_chars(), model_part_max_bytes())
-    if not text:
-        return DISCLAIMER
-    return text + "\n" + DISCLAIMER
+    chunks = split_answer(text, max_answer_parts() - 1)
+    texts = chunks + [DISCLAIMER]
+    parts = ["(%d/%d) %s" % (i, len(texts), t) for i, t in enumerate(texts, 1)]
+    return "\n".join(texts), parts
+
+
+def finalize_answer(raw):
+    """The answer as one string: plain text, within the byte budget, ENDING with the disclaimer."""
+    return compose_answer(raw)[0]
+
+
+def assemble_parts(parts):
+    """The answer text that a phone rebuilds from the "(i/n) " parts (for tests and checks)."""
+    return "\n".join(p.split(") ", 1)[1] for p in parts)
 
 
 def error_answer(reason):
@@ -624,15 +705,25 @@ def busy_answer():
 
 def answer_question(question, loc, timeout=None):
     """Run the model and shape the answer. Raises ModelError/ModelTimeout."""
-    return finalize_answer(call_model(question, loc, timeout))
+    return answer_with_parts(question, loc, timeout)[0]
+
+
+def answer_with_parts(question, loc, timeout=None):
+    """Run the model; return (answer, parts). Raises ModelError/ModelTimeout."""
+    answer, parts = compose_answer(call_model(question, loc, timeout))
+    if len(parts) < 2:  # nothing but the disclaimer
+        raise ModelError("the model answer was empty after shaping")
+    return answer, parts
 
 
 def produce_answer(server, request, arrived=None):
-    """Queue for a model slot, run the model and return (status, answer, detail).
+    """Queue for a model slot, run the model and return (status, answer, parts, detail).
 
     status is "answered", "busy" (no slot within HUB_QUEUE_WAIT_SECONDS, or
-    the queue is full) or "error". Never raises. The total time from
-    `arrived` stays within HUB_ANSWER_TIMEOUT_SECONDS.
+    the queue is full) or "error". `parts` are the mesh messages to send: the
+    "(i/n) " answer parts, or the single HUB_ERROR_TEXT message when there is
+    no answer. Never raises. The total time from `arrived` stays within
+    HUB_ANSWER_TIMEOUT_SECONDS.
     """
     if arrived is None:
         arrived = time.monotonic()
@@ -641,28 +732,28 @@ def produce_answer(server, request, arrived=None):
     wait = min(queue_wait_seconds(), max(0.0, deadline - time.monotonic()))
     if not server.acquire_slot(wait):
         log.warning("no model slot for %s within %gs; sending the busy answer", sender, wait)
-        return "busy", busy_answer(), BUSY_REASON
+        return "busy", busy_answer(), [HUB_ERROR_TEXT], BUSY_REASON
     try:
         remaining = deadline - time.monotonic()
-        answer = answer_question(request["question"], request["loc"], remaining)
-        return "answered", answer, None
+        answer, parts = answer_with_parts(request["question"], request["loc"], remaining)
+        return "answered", answer, parts, None
     except ModelError as e:
         log.warning("answering %s failed: %s", sender, e)
-        return "error", error_answer(e.public), str(e)
+        return "error", error_answer(e.public), [HUB_ERROR_TEXT], str(e)
     except Exception as e:  # anything else: never drop the asker
         detail = str(e) or e.__class__.__name__
         log.warning("answering %s failed: %s", sender, detail)
-        return "error", error_answer("internal error"), detail
+        return "error", error_answer("internal error"), [HUB_ERROR_TEXT], detail
     finally:
         server.release_slot()
 
 
-def post_callback(callback_url, sender, answer, status="answered"):
-    """POST {sender, answer, status} to the BitChat peer so it can relay over the mesh."""
+def post_callback(callback_url, sender, answer, status="answered", parts=None):
+    """POST {sender, answer, parts, status} to the BitChat peer so it can relay over the mesh."""
     req = urllib.request.Request(
         callback_url,
         data=json.dumps(
-            {"sender": sender, "answer": answer, "status": status}
+            {"sender": sender, "answer": answer, "parts": parts or [], "status": status}
         ).encode("utf-8"),
         headers={"Content-Type": "application/json"},
         method="POST",
@@ -679,16 +770,17 @@ def run_async(request, server, arrived=None):
     """
     sender = request["sender"]
     try:
-        status, answer, _ = produce_answer(server, request, arrived)
+        status, answer, parts, _ = produce_answer(server, request, arrived)
         try:
-            post_callback(request["callback_url"], sender, answer, status)
+            post_callback(request["callback_url"], sender, answer, status, parts)
         except Exception as e:
             log.warning(
                 "callback to %s failed (%s); retrying once", request["callback_url"], e
             )
-            post_callback(request["callback_url"], sender, answer, status)
+            post_callback(request["callback_url"], sender, answer, status, parts)
         log.info(
-            "%s %s (%d bytes)", status, sender, len(answer.encode("utf-8"))
+            "%s %s (%d bytes, %d parts)", status, sender,
+            len(answer.encode("utf-8")), len(parts),
         )
     except Exception as e:
         log.error("could not deliver an answer to %s: %s", sender, e)
@@ -749,11 +841,11 @@ class ResponderHandler(BaseHTTPRequestHandler):
             return
         arrived = time.monotonic()
         if request["wait"]:
-            status, answer, detail = produce_answer(self.server, request, arrived)
+            status, answer, parts, detail = produce_answer(self.server, request, arrived)
             # "ack" lets a caller without a callback listener (remote testing
             # through an SSH tunnel) show both mesh messages from one response
             payload = {"sender": request["sender"], "ack": ACK, "answer": answer,
-                       "status": status}
+                       "parts": parts, "status": status}
             if status == "answered":
                 self._send_json(200, payload)
             else:
