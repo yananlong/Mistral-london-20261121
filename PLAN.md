@@ -10,7 +10,7 @@ The MVP gives people three capabilities while their phones have no internet. The
 
 Mesh messaging apps and off-grid AI projects already exist. Our difference is one open-weight Mistral model on the hub, shared by everyone in mesh range, while the phones have no internet. The model can run on local hardware with no internet, and no question goes to a cloud model API. The phones spend no battery on inference, and the hub can run a larger model and hold a library of survival guides. The same phones message each other and find their position on an offline map.
 
-- **No internet on the phones.** Both iPhones are in airplane mode, and they reach the offline hub only over the BitChat mesh. The demo shows airplane mode at the start, and the Ollama log on the hub shows each run.
+- **No internet on the phones.** Both phones (an iPhone and a Pixel 9a) are in airplane mode, and they reach the offline hub only over the BitChat mesh. The demo shows airplane mode at the start, and the Ollama log on the hub shows each run.
 - **Works with stock BitChat.** The hub answers plain-text private messages, so a person with the stock BitChat app can ask it questions. Our app adds the map, the vision model and a better Ask screen.
 - **Trust is the product.** The person chooses whether to share their location, and every answer is labelled as AI-generated and not verified emergency advice.
 - **Templates, not chat.** The Ask screen offers suggested questions, for example "How do I make water safe to drink?" or "How do I stop heavy bleeding?". Short questions and answers suit a slow link and stressed people.
@@ -29,14 +29,14 @@ Parts of it do. The closest precedent, [bitchat-gateway](https://github.com/spcp
 | Meshnet | Bluetooth mesh | A web server summarises mesh traffic | Phones | The AI only reads the traffic; it doesn't reply to people. |
 | Flood Ready | QR codes between devices | On-device, in the browser | Phones | QR relay is a real, fully offline fallback. |
 | Bridgefy / Briar | Bluetooth / Wi-Fi mesh | No AI | Phones | Audits found security flaws in Bridgefy, so trust has to be designed in. |
-| **Us** | BitChat mesh | Ministral 3 14B Instruct on the hub, an offline DGX Spark that is a BitChat peer | iPhones and a DGX Spark | No internet on the phones, no cloud model API, and stock BitChat users can ask the hub too. |
+| **Us** | BitChat mesh | Ministral 3 14B Instruct on the hub, an offline DGX Spark that is a BitChat peer | iPhones, Android phones and a DGX Spark | No internet on the phones, no cloud model API, and stock BitChat users can ask the hub too. |
 
 ## 3. Hard constraints
 
 - **A web app can't send messages phone to phone over Bluetooth.** Web Bluetooth only connects to accessories, runs only in Chromium and doesn't work on iOS. A real offline link needs a native app, a local Wi-Fi network or QR codes.
-- **Native offline links don't work across platforms.** Apple's Multipeer and Google's Nearby can't talk to each other, so a fallback on either one needs demo phones on the same OS. QR codes work across both. The app runs on iPhone only, so the Multipeer fallback works on every demo phone.
+- **Native offline links don't work across platforms.** Apple's Multipeer and Google's Nearby can't talk to each other, so a fallback on either one needs demo phones on the same OS. QR codes work across both. The app runs on iPhone and Android, so neither Multipeer nor Nearby works as a fallback across the demo phones; we assume BitChat works.
 - **The hub stays in one place and needs power.** Phones reach it only within Bluetooth range, either directly or through other phones on the mesh.
-- **No one needs to pay.** A free Apple ID can install the app onto our own iPhones from Xcode (it re-signs every 7 days, about 3 devices). Only TestFlight needs the $99 account, and we don't need it.
+- **No one needs to pay.** A free Apple ID can install the app onto our own iPhones from Xcode (it re-signs every 7 days, about 3 devices). Only TestFlight needs the $99 account, and we don't need it. Android needs no account: install the APK with `adb install`.
 
 ## 4. Stack
 
@@ -44,7 +44,7 @@ The team chose the stack on 2026-11-21, and [the blueprint's decisions](BLUEPRIN
 
 | Part | Choice | Notes |
 |---|---|---|
-| Front end | A new React Native app | iPhone only. It holds the Talk, Locate and Ask screens. |
+| Front end | A new React Native app | iPhone and Android. It holds the Talk, Locate and Ask screens. |
 | Mesh | A native module that wraps the Swift mesh code from the team's BitChat fork | The native build needs a Mac with Xcode. Multipeer is the fallback. |
 | Hub | One node: the DGX Spark running Ministral 3 14B Instruct 2512 in Ollama, as a BitChat peer | Offline. Open-weight models only. No question goes to a cloud model API. For the demo, a Mac with Xcode builds the BitChat peer and talks to the Spark over a local link. |
 | Vision | A small model on the iPhone, ideally a multimodal Mistral model | Proposed: Ministral 3 3B Instruct 2512 with vision, on-device via llama.cpp. Pending Martin's review. [The blueprint's decisions](BLUEPRINT_1.md#decisions) have the proposal. |
