@@ -1,7 +1,7 @@
 # Running Ministral 3 3B (vision) on the base iPhone 17
 
 Status: design only. Every number marked (est) is an estimate, not a measurement. Nothing here was run on an iPhone 17.
-Code: `MinistralKit/DeviceProfile.swift` (not yet wired into the engine; no swiftc was available to syntax-check it).
+Code: `MinistralKit/DeviceProfile.swift`, wired into the engine by `EngineConfig(profile:)` and `OfflineBundle.selectProfile()` in `OfflineBundle.swift` (no swiftc was available to syntax-check either).
 
 ## Facts vs assumptions
 - Web research, unmeasured: A19, 5-core GPU, 8 GB RAM, no vapor chamber. iPhone 17e has the same RAM.

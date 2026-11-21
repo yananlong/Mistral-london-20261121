@@ -17,9 +17,13 @@ import UIKit
 
 public struct EngineConfig: Sendable {
     public var modelURL: URL
-    public var mmprojURL: URL
+    public var mmprojURL: URL?               // nil => text-only (no projector loaded, image requests refused)
     public var nCtx = 4096
     public var nBatch = 512
+    public var nUbatch = 512
+    public var kvType = EngineProfile.KVType.f16   // .q8_0 needs flash attention, so it forces ENABLED
+    public var forceFlashAttn = false
+    public var mtmdWarmup = true
     public var imageMaxTokens = 512
     public var maxImageSide = 640            // used by the CGImage/UIImage convenience overloads
     public var minHeadroomBytes: Int64 = 1_200_000_000
@@ -43,11 +47,13 @@ public struct EngineConfig: Sendable {
     public var verifySHA256 = false
 
     /// Files in Documents/ (copied there via Finder file sharing).
-    public init(modelFile: String = defaultModelFile, mmprojFile: String = defaultMmprojFile) {
+    public init(modelFile: String = defaultModelFile, mmprojFile: String? = defaultMmprojFile) {
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         modelURL = docs.appendingPathComponent(modelFile)
-        mmprojURL = docs.appendingPathComponent(mmprojFile)
+        mmprojURL = mmprojFile.map { docs.appendingPathComponent($0) }
     }
+
+    public var visionEnabled: Bool { mmprojURL != nil }
 }
 
 public struct GenerationOptions: Sendable {
@@ -57,6 +63,7 @@ public struct GenerationOptions: Sendable {
     public var maxNewTokens = 256
     public var deadline: TimeInterval = 30
     public var seed: UInt32 = .max          // LLAMA_DEFAULT_SEED = random
+    public var temperature: Float = 0.1     // <= 0 => greedy (the foraging task uses 0)
     public init() {}
 }
 
@@ -85,7 +92,7 @@ public enum EngineError: Error, LocalizedError {
     case fileMissing(String), sizeMismatch(String, expected: Int64, actual: Int64), checksumMismatch(String)
     case insufficientMemory(available: Int64, required: Int64)
     case thermalCritical, notReady, busy, backgrounded
-    case modelLoadFailed, contextInitFailed, projectorLoadFailed, projectorHasNoVision
+    case modelLoadFailed, contextInitFailed, projectorLoadFailed, projectorHasNoVision, visionDisabled
     case imageConversionFailed, tokenizeFailed(Int32), promptTooLong(tokens: Int, limit: Int)
     case prefillFailed(Int32), decodeFailed(Int32), invalidGrammar, internalFailure(String)
 
@@ -103,6 +110,7 @@ public enum EngineError: Error, LocalizedError {
         case .contextInitFailed: return "llama_init_from_model failed"
         case .projectorLoadFailed: return "mtmd_init_from_file failed"
         case .projectorHasNoVision: return "Projector has no vision support"
+        case .visionDisabled: return "This phone runs the text-only model; photos are not supported"
         case .imageConversionFailed: return "Image conversion failed"
         case .tokenizeFailed(let c): return "mtmd_tokenize failed (\(c))"
         case .promptTooLong(let t, let l): return "Prompt is \(t) tokens, limit \(l)"
@@ -201,7 +209,7 @@ public final class MinistralEngine: @unchecked Sendable {
         if ProcessInfo.processInfo.thermalState == .critical { throw EngineError.thermalCritical }
         progress(0, "checking files")
         let m = try checkFile(config.modelURL, nominal: config.modelNominalBytes, exact: config.modelExactBytes, sha: config.modelSHA256, progress: { progress(0.05 + 0.1 * $0, "hashing model") })
-        let p = try checkFile(config.mmprojURL, nominal: config.mmprojNominalBytes, exact: config.mmprojExactBytes, sha: config.mmprojSHA256, progress: { progress(0.15 + 0.05 * $0, "hashing projector") })
+        let p = try config.mmprojURL.map { try checkFile($0, nominal: config.mmprojNominalBytes, exact: config.mmprojExactBytes, sha: config.mmprojSHA256, progress: { progress(0.15 + 0.05 * $0, "hashing projector") }) } ?? 0
         // Refuse early rather than get jetsam-killed. (mmap'd weights still count against us.)
         let avail = Int64(os_proc_available_memory())
         let need = m + p + config.minHeadroomBytes
@@ -228,24 +236,29 @@ public final class MinistralEngine: @unchecked Sendable {
         var cp = llama_context_default_params()
         cp.n_ctx = UInt32(config.nCtx)
         cp.n_batch = UInt32(config.nBatch)
-        cp.n_ubatch = UInt32(min(config.nBatch, 512))
+        cp.n_ubatch = UInt32(min(config.nUbatch, config.nBatch))
         cp.n_seq_max = 1
         let threads = Int32(min(4, max(2, ProcessInfo.processInfo.activeProcessorCount - 2)))
         cp.n_threads = threads; cp.n_threads_batch = threads
-        cp.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_AUTO
+        // A quantized V cache requires flash attention, so q8_0 KV forces ENABLED (not AUTO).
+        let fa = (config.forceFlashAttn || config.kvType == .q8_0) ? LLAMA_FLASH_ATTN_TYPE_ENABLED : LLAMA_FLASH_ATTN_TYPE_AUTO
+        cp.flash_attn_type = fa
+        if config.kvType == .q8_0 { cp.type_k = GGML_TYPE_Q8_0; cp.type_v = GGML_TYPE_Q8_0 }
         cp.no_perf = true
         guard let c = llama_init_from_model(mdl, cp) else { throw EngineError.contextInitFailed }
         ctx = c
+        log.info("context: n_ctx \(config.nCtx) batch \(config.nBatch)/\(cp.n_ubatch) kv \(config.kvType.rawValue) fa \(fa.rawValue)")
 
+        guard let mmprojURL = config.mmprojURL else { progress(1, "ready (text only)"); return }
         progress(0.85, "loading projector")
         var mmp = mtmd_context_params_default()
         mmp.use_gpu = true
         mmp.n_threads = threads
-        mmp.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_AUTO
+        mmp.flash_attn_type = fa
         mmp.image_max_tokens = Int32(config.imageMaxTokens)
-        mmp.warmup = true                    // pay Metal shader compile at load, not first request
+        mmp.warmup = config.mtmdWarmup       // on: pay Metal shader compile at load, not first request
         mmp.print_timings = false
-        guard let mc = mtmd_init_from_file(config.mmprojURL.path, mdl, mmp) else { throw EngineError.projectorLoadFailed }
+        guard let mc = mtmd_init_from_file(mmprojURL.path, mdl, mmp) else { throw EngineError.projectorLoadFailed }
         mctx = mc
         guard mtmd_support_vision(mc) else { throw EngineError.projectorHasNoVision }
         progress(1, "ready")
@@ -354,6 +367,7 @@ public final class MinistralEngine: @unchecked Sendable {
         return try await withCheckedThrowingContinuation { (c: CheckedContinuation<(seconds: Double, imageTokens: Int), Error>) in
             queue.async {
                 let r = Result { () -> (seconds: Double, imageTokens: Int) in
+                    guard self.mctx != nil else { throw EngineError.visionDisabled }
                     let tk = try self.tokenize("x", rgb)
                     let t0 = Date()
                     for i in 0..<mtmd_input_chunks_size(tk.chunks) {
@@ -387,20 +401,7 @@ public final class MinistralEngine: @unchecked Sendable {
     /// `[SYSTEM_PROMPT]sys[/SYSTEM_PROMPT][INST]<marker>text[/INST]` (BOS added by add_special).
     /// Control strings are stripped from caller text so mesh messages can't inject roles/images.
     private func tokenize(_ prompt: String, _ rgb: RGBImage?, system: String = GenerationOptions.defaultSystemPrompt) throws -> Tokenized {
-        let marker = String(cString: mtmd_default_marker())
-        func clean(_ s: String) -> String {
-            var o = s
-            // parse_special=true would turn these into control tokens, so strip them from untrusted text.
-            for bad in ["[SYSTEM_PROMPT]", "[/SYSTEM_PROMPT]", "[INST]", "[/INST]", "<s>", "</s>",
-                        "[IMG]", "[IMG_BREAK]", "[IMG_END]", "[TOOL_CALLS]", "[ARGS]",
-                        "[AVAILABLE_TOOLS]", "[/AVAILABLE_TOOLS]", "[TOOL_RESULTS]", "[/TOOL_RESULTS]", marker] {
-                o = o.replacingOccurrences(of: bad, with: "")
-            }
-            return o
-        }
-        let sys = clean(system).isEmpty ? GenerationOptions.defaultSystemPrompt : clean(system)
-        let text = "[SYSTEM_PROMPT]\(sys)[/SYSTEM_PROMPT][INST]\(rgb != nil ? marker : "")\(clean(prompt))[/INST]"
-
+        let text = Self.render(prompt, system: system, withImage: rgb != nil)
         let tk = Tokenized()
         if let rgb {
             tk.bitmap = rgb.data.withUnsafeBufferPointer {
@@ -425,7 +426,38 @@ public final class MinistralEngine: @unchecked Sendable {
         return tk
     }
 
-    private func makeSampler(grammar: String?, seed: UInt32) throws -> UnsafeMutablePointer<llama_sampler> {
+    /// Text-only tokenization (no projector loaded): same template, plain llama_tokenize.
+    private func tokenizeText(_ prompt: String, system: String) throws -> [llama_token] {
+        let text = Self.render(prompt, system: system, withImage: false)
+        let len = Int32(text.utf8.count)
+        var toks = [llama_token](repeating: 0, count: Int(len) + 8)
+        var n = llama_tokenize(vocab, text, len, &toks, Int32(toks.count), true, true)
+        if n < 0 && n != Int32.min {
+            toks = [llama_token](repeating: 0, count: Int(-n))
+            n = llama_tokenize(vocab, text, len, &toks, Int32(toks.count), true, true)
+        }
+        guard n >= 0 else { throw EngineError.tokenizeFailed(n) }
+        return Array(toks.prefix(Int(n)))
+    }
+
+    /// `[SYSTEM_PROMPT]sys[/SYSTEM_PROMPT][INST]<marker?>text[/INST]` with control strings stripped from caller text.
+    private static func render(_ prompt: String, system: String, withImage: Bool) -> String {
+        let marker = String(cString: mtmd_default_marker())
+        func clean(_ s: String) -> String {
+            var o = s
+            // parse_special=true would turn these into control tokens, so strip them from untrusted text.
+            for bad in ["[SYSTEM_PROMPT]", "[/SYSTEM_PROMPT]", "[INST]", "[/INST]", "<s>", "</s>",
+                        "[IMG]", "[IMG_BREAK]", "[IMG_END]", "[TOOL_CALLS]", "[ARGS]",
+                        "[AVAILABLE_TOOLS]", "[/AVAILABLE_TOOLS]", "[TOOL_RESULTS]", "[/TOOL_RESULTS]", marker] {
+                o = o.replacingOccurrences(of: bad, with: "")
+            }
+            return o
+        }
+        let sys = clean(system).isEmpty ? GenerationOptions.defaultSystemPrompt : clean(system)
+        return "[SYSTEM_PROMPT]\(sys)[/SYSTEM_PROMPT][INST]\(withImage ? marker : "")\(clean(prompt))[/INST]"
+    }
+
+    private func makeSampler(grammar: String?, seed: UInt32, temperature: Float) throws -> UnsafeMutablePointer<llama_sampler> {
         guard let chain = llama_sampler_chain_init(llama_sampler_chain_default_params()) else {
             throw EngineError.internalFailure("sampler chain")
         }
@@ -436,9 +468,13 @@ public final class MinistralEngine: @unchecked Sendable {
             llama_sampler_chain_add(chain, gs)     // grammar first, so it masks logits before anything else
         }
         llama_sampler_chain_add(chain, llama_sampler_init_penalties(llama_vocab_n_tokens(vocab), 64, 1.1, 0, 0))
+        if temperature <= 0 {
+            llama_sampler_chain_add(chain, llama_sampler_init_greedy())   // deterministic, as the hub's identify.py
+            return chain
+        }
         llama_sampler_chain_add(chain, llama_sampler_init_top_k(40))
         llama_sampler_chain_add(chain, llama_sampler_init_top_p(0.95, 1))
-        llama_sampler_chain_add(chain, llama_sampler_init_temp(0.1))
+        llama_sampler_chain_add(chain, llama_sampler_init_temp(temperature))
         llama_sampler_chain_add(chain, llama_sampler_init_dist(seed))
         return chain
     }
@@ -455,7 +491,8 @@ public final class MinistralEngine: @unchecked Sendable {
 
     private func run(_ prompt: String, _ rgb: RGBImage?, _ grammar: String?, _ opts: GenerationOptions,
                      _ flag: AbortFlag, _ onToken: (@Sendable (String) -> Void)?) throws -> GenerationResult {
-        guard let ctx, let mctx, vocab != nil else { throw EngineError.notReady }
+        guard let ctx, vocab != nil else { throw EngineError.notReady }
+        if mctx == nil && rgb != nil { throw EngineError.visionDisabled }
         let t0 = Date()
         var res = GenerationResult()
         res.timings.loadSeconds = loadSeconds
@@ -477,11 +514,13 @@ public final class MinistralEngine: @unchecked Sendable {
             // Single-turn: wipe the KV cache every request, never keep image history.
             llama_memory_clear(llama_get_memory(ctx), true)
 
-            let tk = try tokenize(prompt, rgb, system: opts.systemPrompt)
-            res.promptTokens = tk.totalTokens
-            res.imageTokens = tk.imageTokens
+            // Vision path: mtmd chunks. Text-only path (no projector): plain tokens.
+            let tk: Tokenized? = try mctx != nil ? tokenize(prompt, rgb, system: opts.systemPrompt) : nil
+            let textTokens: [llama_token] = try tk == nil ? tokenizeText(prompt, system: opts.systemPrompt) : []
+            res.promptTokens = tk?.totalTokens ?? textTokens.count
+            res.imageTokens = tk?.imageTokens ?? 0
             let limit = config.nCtx - 16
-            if tk.totalTokens >= limit { throw EngineError.promptTooLong(tokens: tk.totalTokens, limit: limit) }
+            if res.promptTokens >= limit { throw EngineError.promptTooLong(tokens: res.promptTokens, limit: limit) }
 
             func finish(_ reason: StopReason) -> GenerationResult {
                 res.stopReason = reason
@@ -492,17 +531,39 @@ public final class MinistralEngine: @unchecked Sendable {
                 return res
             }
 
+            guard let batch = llama_batch_ext_init(ctx) else { throw EngineError.internalFailure("batch_ext_init") }
+            defer { llama_batch_ext_free(batch) }
+
             var nPast: llama_pos = 0
-            let erc = mtmd_helper_eval_chunks(mctx, ctx, tk.chunks, 0, 0, Int32(config.nBatch), true, &nPast)
+            var erc: Int32 = 0
+            if let tk, let mctx {
+                erc = mtmd_helper_eval_chunks(mctx, ctx, tk.chunks, 0, 0, Int32(config.nBatch), true, &nPast)
+            } else {
+                // Prefill in n_batch slices; logits only for the last prompt token.
+                var i = 0
+                while i < textTokens.count && erc == 0 && !flag.isSet {
+                    llama_batch_ext_clear(batch)
+                    let end = min(i + config.nBatch, textTokens.count)
+                    for j in i..<end {
+                        let idx = llama_batch_ext_add_token(batch, 0, textTokens[j])
+                        var p = llama_pos(j)
+                        guard idx >= 0, llama_batch_ext_set_pos(batch, idx, &p),
+                              llama_batch_ext_set_output_logits(batch, idx, j == textTokens.count - 1) else {
+                            throw EngineError.internalFailure("prefill batch add failed (\(idx))")
+                        }
+                    }
+                    erc = llama_process(ctx, LLAMA_PROCESS_TYPE_DECODE, batch)
+                    i = end
+                }
+                nPast = llama_pos(i)
+            }
             res.timings.prefillSeconds = Date().timeIntervalSince(t0)
             peak = max(peak, Footprint.current())
             if let r = flag.reason { return finish(r == .deadline ? .deadline : .cancelled) }
             guard erc == 0 else { throw EngineError.prefillFailed(erc) }
 
-            let smpl = try makeSampler(grammar: grammar, seed: opts.seed)
+            let smpl = try makeSampler(grammar: grammar, seed: opts.seed, temperature: opts.temperature)
             defer { llama_sampler_free(smpl) }
-            guard let batch = llama_batch_ext_init(ctx) else { throw EngineError.internalFailure("batch_ext_init") }
-            defer { llama_batch_ext_free(batch) }
 
             var utf8 = UTF8Assembler()
             var pos = nPast

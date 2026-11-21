@@ -37,6 +37,9 @@ if [[ ! -s phone/map/london.pmtiles ]]; then
   fi
 fi
 scripts/download_guides.sh
+# Foraging: London fruit/poisonous trees from OSM, then CC0/CC-BY species photos (GBIF) + Wikipedia text
+$PY scripts/extract_fruit_trees.py hub/osm/greater-london-latest.osm.pbf phone/foraging
+$PY scripts/fetch_foraging.py 30
 scripts/download_zims.sh "${1:-all}"
 scripts/snapshot_feeds.sh
 $PY scripts/build_manifest.py phone hub
