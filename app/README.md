@@ -78,7 +78,7 @@ Prepare the London map before going offline:
 3. Copy `london.pmtiles` into Mesh Help’s **Documents** directory with Finder file sharing or the Files app. The app enables file sharing for this purpose.
 4. In Locate, tap **Check for downloaded map** or reopen Locate.
 
-The map reads `pmtiles://file://…/london.pmtiles` directly. Its local style draws land, water, roads, and buildings from the Protomaps vector layers. It requests no remote tiles, fonts, sprites, or styles. Native pins show the sharer's nickname using device text. A missing map, an out-of-region position, or a map load failure leaves the coordinate list usable.
+The map reads `pmtiles://file://…/london.pmtiles` directly. Its local style (`src/map/mapStyle.ts`) draws a full offline basemap from the Protomaps vector layers — land cover and land use (woods, parks, urban blocks), water bodies and waterways, building footprints with outlines, admin boundaries, and a road hierarchy (motorway down to paths) with casing and zoom-scaled widths. It requests no remote tiles, fonts, sprites, or styles, so there are no street-name label layers yet (that needs bundled glyph PBFs; pins are native markers with device text). The map is navigable: pan, pinch zoom, rotate and pitch are on, zoom is clamped to z10–z18, and on-map buttons zoom in/out or recenter on the selected position. A missing map, an out-of-region position, or a map load failure leaves the coordinate list usable.
 
 Device builds add the real mesh and native map. The simulated link alone does not demonstrate communication between two physical phones. No iOS build or device run was possible on this machine because Xcode is unavailable.
 
