@@ -28,7 +28,8 @@ function answerFor(question: string): string {
 }
 
 export class SimulatedTransport implements Transport, SimulationControls {
-  readonly kind = 'simulated';
+  readonly kind: Transport['kind'] = 'simulated';
+  protected readonly hubPeer: Peer = HUB;
   readonly hubInbox: string[] = [];
   readonly sent: { to: PeerId | 'public'; text: string }[] = [];
   private listeners = new Set<(event: TransportEvent) => void>();
@@ -49,7 +50,7 @@ export class SimulatedTransport implements Transport, SimulationControls {
     return () => { this.listeners.delete(listener); };
   }
 
-  private emit(event: TransportEvent): void { this.listeners.forEach(listener => listener(event)); }
+  protected emit(event: TransportEvent): void { this.listeners.forEach(listener => listener(event)); }
   private peers(): Peer[] { return [...(this.phoneNearby ? [PHONE] : []), ...(this.mode === 'offline' ? [] : [HUB])]; }
   private announcePeers(): void { if (this.state === 'running') this.emit({ type: 'peers', peers: this.peers() }); }
 
@@ -77,13 +78,14 @@ export class SimulatedTransport implements Transport, SimulationControls {
     this.timers.add(timer);
   }
 
-  private inbound(from: Peer, text: string, channel: 'public' | 'private'): void {
+  protected inbound(from: Peer, text: string, channel: 'public' | 'private'): void {
     const message: InboundMessage = { id: `sim-${++this.serial}`, from: from.id, fromNickname: from.nickname, text, channel, receivedAt: Date.now() };
     this.emit({ type: 'message', message });
   }
 
-  private checkRunning(): void { if (this.state !== 'running') throw new Error('The link is stopped. Start it before sending.'); }
-  private checkMessage(text: string): void { if (utf8Bytes(text) > MAX_MESSAGE_BYTES) throw new Error('The message exceeds the mesh byte limit.'); }
+  protected isRunning(): boolean { return this.state === 'running'; }
+  protected checkRunning(): void { if (this.state !== 'running') throw new Error('The link is stopped. Start it before sending.'); }
+  protected checkMessage(text: string): void { if (utf8Bytes(text) > MAX_MESSAGE_BYTES) throw new Error('The message exceeds the mesh byte limit.'); }
 
   async sendPublic(text: string): Promise<void> {
     this.checkRunning();

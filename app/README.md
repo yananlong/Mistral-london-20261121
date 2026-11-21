@@ -120,3 +120,11 @@ The screens use one runtime context. Mesh peers, conversations, and the latest l
 Messages and pins last for the current app session. The plain-text protocol has no question id. A stale answer after reset and another submission can belong to the new question, as described in the contract.
 
 The canned demo text uses short paraphrases of [St John Ambulance bleeding guidance](https://www.sja.org.uk/first-aid-advice/severe-bleeding/), [NHS burns guidance](https://www.nhs.uk/conditions/burns-and-scalds/), [NHS carbon monoxide guidance](https://www.nhs.uk/conditions/carbon-monoxide-poisoning/), [FDA food safety during power outages](https://www.fda.gov/food/buy-store-serve-safe-food/food-and-water-safety-during-power-outages-and-floods), and [CDC boil-water guidance](https://www.cdc.gov/natural-disasters/psa-toolkit/boil-water-advisory.html). Demo answers remain labelled as unverified AI advice under the message contract.
+
+## Android hub link (dev, via Mac)
+
+Android has no native BitChat mesh yet, so on Android the app uses `HubLinkTransport`: Ask questions go over plain HTTP to the hub's Ollama-compatible `POST /api/chat`. It is not a mesh, and the header says "Hub link (dev, via Mac)". Talk and Locate stay simulated. iOS is unchanged.
+
+- Hub URL: `EXPO_PUBLIC_HUB_URL`, default `http://127.0.0.1:8081` (USB phone with `adb reverse`). Use `http://10.0.2.2:8081` on the emulator.
+- Mac: `ssh -N -L 8081:127.0.0.1:8081 spark`, then `adb reverse tcp:8081 tcp:8081`. Metro must then run on another port (for example `npx expo start --port 8082`), because 8081 is taken by the tunnel.
+- Cleartext HTTP is allowed by `plugins/withAndroidCleartextHub.js` (applied at prebuild / `npx expo run:android`). Debug builds already allow it.

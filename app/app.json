@@ -40,6 +40,7 @@
     "plugins": [
       "@maplibre/maplibre-react-native",
       "./modules/bitchat-mesh/app.plugin.js",
+      "./plugins/withAndroidCleartextHub.js",
       [
         "expo-location",
         {

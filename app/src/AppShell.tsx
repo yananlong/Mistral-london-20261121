@@ -32,7 +32,7 @@ function AppShell() {
       <View style={local.header}>
         <Text accessibilityRole="header" style={local.brand}>MESH HELP</Text>
         <View style={styles.row}>
-          <View style={local.badge}><Text style={local.badgeText}>{runtime.kind === 'simulated' ? 'Simulated link' : 'BitChat mesh'}</Text></View>
+          <View style={local.badge}><Text style={local.badgeText}>{runtime.kind === 'simulated' ? 'Simulated link' : runtime.kind === 'hublink' ? 'Hub link (dev, via Mac)' : 'BitChat mesh'}</Text></View>
           <Text style={local.link}>{mesh.link === 'running' ? `${mesh.peers.filter(peer => peer.reachable).length} nearby` : LINK_COPY[mesh.link]}</Text>
         </View>
       </View>

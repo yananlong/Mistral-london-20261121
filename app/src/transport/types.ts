@@ -10,7 +10,7 @@ export type TransportEvent =
   | { type: 'message'; message: InboundMessage }
   | { type: 'state'; state: LinkState; detail?: string };
 export interface Transport {
-  readonly kind: 'simulated' | 'bitchat';
+  readonly kind: 'simulated' | 'bitchat' | 'hublink';
   start(nickname: string): Promise<void>;
   stop(): Promise<void>;
   sendPublic(text: string): Promise<void>;

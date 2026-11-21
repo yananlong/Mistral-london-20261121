@@ -4,6 +4,7 @@ import { SUGGESTED_QUESTIONS } from '../ask/questions';
 import { AskStatus } from '../components/AskStatus';
 import { Body, Button, Card, Heading, Notice, styles } from '../components/ui';
 import { ANSWER_LABEL, formatCoordinate, MAX_QUESTION_BYTES, prefixBytes, trim, utf8Bytes } from '../protocol';
+import { HUB_LINK_ERROR_PREFIX, hubUrl } from '../transport/HubLinkTransport';
 import { useAsk, useLocation, useMesh, useRuntime } from '../store/Runtime';
 import { tokens as t } from '../theme/tokens';
 
@@ -19,11 +20,14 @@ export function AskScreen({ openLocate }: { openLocate: () => void }) {
   const remaining = MAX_QUESTION_BYTES - utf8Bytes(question);
   const canAsk = mesh.hubId !== null && (!attachLocation || location.kind === 'ready');
   const submit = (text: string) => ask.submit(text, attachLocation && location.kind === 'ready' ? location.position : null);
+  const hubThread = mesh.hubId ? mesh.conversations[mesh.hubId] ?? [] : [];
+  const hubLinkError = [...hubThread].reverse().find(message => message.direction === 'in' && message.text.startsWith(HUB_LINK_ERROR_PREFIX))?.text;
   const hubNearby = mesh.peers.some(peer => peer.id === mesh.hubId && peer.reachable);
 
   return <View style={styles.stack}>
     <View><Heading>Ask the hub</Heading><Body>Practical questions. One question at a time.</Body></View>
     {kind === 'simulated' && <Notice>Demo answers are canned. No model is running on this simulated link.</Notice>}
+    {kind === 'hublink' && <Notice>Hub link (dev, via Mac): questions go over HTTP to {hubUrl()}, not over a mesh. Talk and Locate are simulated.</Notice>}
     {mesh.hubId === null ? <Notice>Looking for the hub… Your question can be sent after the hub has been seen.</Notice>
       : <Body style={styles.small}>{hubNearby ? 'Hub is nearby' : 'Hub was seen earlier. It may be out of range.'}</Body>}
     {session.state === 'idle' ? <>
@@ -58,6 +62,7 @@ export function AskScreen({ openLocate }: { openLocate: () => void }) {
         <Body selectable>{session.body || 'The hub returned an empty answer.'}</Body>
         <Notice>{ANSWER_LABEL}</Notice>
       </Card>}
+      {kind === 'hublink' && session.state === 'failed' && hubLinkError && <Notice>{hubLinkError}</Notice>}
       {(session.state === 'unreachable' || session.state === 'failed') && <Button title="Retry" onPress={() => ask.retry()} />}
       {(session.state === 'answered' || session.state === 'unreachable' || session.state === 'failed') &&
         <Button title="Ask another question" secondary onPress={() => { ask.reset(); setQuestion(''); setAttachLocation(false); }} />}
