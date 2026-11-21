@@ -114,6 +114,7 @@ about 3.5 tokens/s each.
   unfinished last sentence is dropped. The system prompt asks for at most 6 steps and 120 words, so a
   normal answer is well under the cap.
 
+
 ## Mesh message format
 
 Questions and answers are plain-text BitChat private messages, so stock
@@ -138,13 +139,15 @@ First reply from the hub (the ack in the `202` body, forwarded over the mesh):
 Received. Working on an answer.
 ```
 
-Second reply, with the answer:
+Then the answer, as several private messages. BitChat rejects private message
+content over 255 UTF-8 bytes (`bitchat/bitchat/Protocols/Packets.swift:251-265`),
+so the hub splits each answer into `(i/n) ` parts of at most 255 bytes, with
+the AI label as the last part:
 
 ```text
-1. Let the water settle, then pour the clear part through a cloth.
+(1/2) 1. Let the water settle, then pour the clear part through a cloth.
 2. Bring it to a rolling boil for at least 1 minute.
-...
-AI answer from an open-weight model on the hub. Not verified emergency advice.
+(2/2) AI answer from an open-weight model on the hub. Not verified emergency advice.
 ```
 
 Over the mesh the answer travels as `(i/n) ` parts of at most 255 bytes
@@ -159,6 +162,7 @@ with the same disclaimer line, like every second message from the hub. On the
 phone these map to the Ask states: **Sent**, **Received by hub** (ack
 arrived), **Answered** (answer arrived), **Hub not reachable** (no ack within
 the phone's timeout).
+
 
 ## Environment variables
 
