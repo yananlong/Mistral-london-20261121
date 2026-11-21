@@ -48,6 +48,7 @@ Ministral 3 14B Instruct is open-weight ([released in December 2025](https://tec
 - **Pre-pull.** Pull the model, and any other model, before the hub goes offline. Then disconnect the network and check that `ollama list` still shows the model.
 - **Endpoint.** `POST /api/chat` on port 11434. Set `OLLAMA_HOST` to the address of the local link between the Mac and the Spark, not to `0.0.0.0` or any internet-facing interface.
 - **Server settings.** `OLLAMA_NUM_PARALLEL=4` answers several questions in parallel and queues the rest. `OLLAMA_KEEP_ALIVE=-1` keeps the model loaded. `OLLAMA_CONTEXT_LENGTH=8192` sets the context length.
+- **Setting them.** On DGX OS, Ollama runs as the `ollama` systemd service, so variables exported in a shell don't apply. Run `sudo systemctl edit ollama.service` and add `[Service]` lines such as `Environment="OLLAMA_NUM_PARALLEL=4"` for each variable (`OLLAMA_HOST`, `OLLAMA_NUM_PARALLEL`, `OLLAMA_KEEP_ALIVE`, `OLLAMA_CONTEXT_LENGTH`). Then run `sudo systemctl daemon-reload && sudo systemctl restart ollama`.
 
 The implementation team sets the answer time targets, the timeout, the maximum answer length and the BitChat timebox while building. Yanan's evals own the quality thresholds, which are [deferred](#deferred-questions).
 
@@ -133,7 +134,7 @@ The MVP leaves all four out. If the demo shows any of them, it uses recorded fee
 
 The demo takes three minutes. It uses two iPhones, phone A and phone B, and the hub, which is the team's DGX Spark.
 
-1. Show the setup. Phones A and B are in airplane mode with Bluetooth on. Say that the hub is offline and that no question goes to a cloud model API. Open the Ollama log on the hub.
+1. Show the setup. Phones A and B are in airplane mode with Bluetooth on. Say that the hub is offline and that no question goes to a cloud model API. Open the Ollama log on the hub (`journalctl -u ollama -f`).
 2. Phone A sends a message to phone B over the mesh.
 3. Phone A opens the map, finds its position and uses the vision model to orient itself. Phone A shares its location, and a pin appears on the map on phone B.
 4. Move phone A out of the hub's direct range, so its question travels through phone B. A judge types a question on phone A. The status changes to **Received by hub** and then to **Answered**. The Ollama log on the hub shows the model run.

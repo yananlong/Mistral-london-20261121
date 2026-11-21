@@ -47,7 +47,7 @@ The team chose the stack on 2026-11-21, and [the blueprint's decisions](BLUEPRIN
 | Front end | A new React Native app | iPhone only. It holds the Talk, Locate and Ask screens. |
 | Mesh | A native module that wraps the Swift mesh code from the team's BitChat fork | The native build needs a Mac with Xcode. Multipeer is the fallback. |
 | Hub | One node: the DGX Spark running Ministral 3 14B Instruct 2512 in Ollama, as a BitChat peer | Offline. Open-weight models only. No question goes to a cloud model API. For the demo, a Mac with Xcode builds the BitChat peer and talks to the Spark over a local link. |
-| Vision | A small model on the iPhone, ideally a multimodal Mistral model | Not chosen yet. [The blueprint's open questions](BLUEPRINT_1.md#open-questions) track it. |
+| Vision | A small model on the iPhone, ideally a multimodal Mistral model | Proposed: Ministral 3 3B Instruct 2512 with vision, on-device via llama.cpp. Pending Martin's review. [The blueprint's decisions](BLUEPRINT_1.md#decisions) have the proposal. |
 
 ## 5. How does the message move?
 
