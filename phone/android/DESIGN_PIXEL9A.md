@@ -53,6 +53,16 @@ CPU only, Q4_0 weights (repacked for i8mm), Q8_0 mmproj, 4 threads pinned to the
 - `ActivityManager.MemoryInfo.availMem` is the figure the tiers use. I could not confirm whether it includes reclaimable file cache (likely roughly "free + cached"); treat it as optimistic. `lowMemory` and `threshold` are logged too.
 - How much a foreground app can really use on an 8 GB Pixel: not found in any source. Typical `totalMem` reads ~7.3 to 7.7 GB. Planning figure (est): 3 to 3.5 GB of anonymous memory is survivable if no other heavy apps run. Measure it (test plan step 2).
 
+### Android 17 app memory limit
+- What Android 17 says: it "introduces app memory limits based on the device's total RAM". This applies to all apps, whatever their target SDK. A kill shows in `ApplicationExitInfo` as `REASON_OTHER`, with `MemoryLimiter:AnonSwap` in the description. Source: developer.android.com/about/versions/17/behavior-changes-all.
+- What Google doesn't publish: the figure for an 8 GB phone, or what exactly is counted.
+- What "AnonSwap" suggests (unconfirmed): anonymous memory is counted. Because of the Q4_0 repack above, that likely includes most of the ~2 GB of weights, as well as the KV cache and compute buffers.
+- Commands to check it: `adb shell am memory-limiter status` reads the limit. `adb shell am memory-limiter ignore <uid>` lifts it for diagnosis only.
+- If the limiter kills the app:
+  - drop a tier (test plan section 6);
+  - or load with CPU weight repacking off. Set `llama_model_params.use_extra_bufts = false` (`--no-repack` in the CLI). The weights then stay file-backed mmap pages, which are probably not counted, but decoding is slower. This option is untested here, so measure it before relying on it.
+- `targetSdk` 37 is fine. bitchat-android already targets 37. The target-37 rule that native files loaded with `System.load()` must be read-only does not affect us, because `:ministral` uses `System.loadLibrary` from the APK.
+
 ### Budget (MB, est). KV per token: f16 ~104 KB, q8_0 ~55 KB
 | Tier | Weights | Projector | KV | Compute | App | Total (est) | Min availMem |
 |---|---|---|---|---|---|---|---|
@@ -110,7 +120,7 @@ Throttled runs will be slower by 20 to 40%.
 - `checkRecognitionSupport(intent, executor, callback)` and `triggerModelDownload(intent)`: API 33. The listener variant of `triggerModelDownload` is API 34. The download may prompt the user.
 - Needs `RECORD_AUDIO`. Needs `<queries>` for `android.speech.RecognitionService` for apps targeting 30+.
 - Language packs must be downloaded BEFORE the venue (no internet). The error `ERROR_LANGUAGE_UNAVAILABLE` (API 31) means "supported but not downloaded". Verify the pack is present in airplane mode, in the test plan.
-- Unconfirmed: Pixel 9a ships Android 15 (API 35), so the API exists; whether the on-device service's offline English pack is present on a fresh phone was not verified. Fallback: type the question.
+- Unconfirmed: Pixel 9a ships Android 15 (API 35) and may now run Android 17, so the API exists; whether the on-device service's offline English pack is present on a fresh phone was not verified. Fallback: type the question.
 - Memory: the recognizer runs in the Google process, not ours; its memory still competes. Do not run speech and the LLM at the same time.
 - Out of scope here: the speech wiring code and BitChat.
 

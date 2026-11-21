@@ -6,7 +6,13 @@
 ```
 phone/android/
   DESIGN_PIXEL9A.md
+  INSTALL.md                                   install runbook: bitchat-android, :ministral in the host app, model files
   README.md
+  settings.gradle.kts, build.gradle.kts,       standalone Gradle build of :ministral (AGP 9.3.1, as bitchat-android)
+  gradle.properties, .gitignore
+  ministral/build.gradle.kts                   library module: compileSdk 37, minSdk 31, arm64-v8a, native built Release
+  ministral/consumer-rules.pro                 R8 keep rules for the classes JNI looks up by name
+  ministral/src/main/AndroidManifest.xml       empty library manifest
   ministral/src/main/cpp/CMakeLists.txt        llama.cpp b12606 (commit e412c6f4...) + JNI lib
   ministral/src/main/cpp/ministral_jni.cpp     engine: one request at a time, abort callback, UTF-8 streaming
   ministral/src/main/java/com/mistral/london/ministral/
@@ -15,23 +21,7 @@ phone/android/
     ImagePrep.kt         EXIF orientation, scale, ARGB_8888 to RGB
     EngineBenchmark.kt   go/no-go harness; same CSV columns as iOS
 ```
-There is no Gradle project here; add `ministral` as a library module to an app. Minimal `ministral/build.gradle.kts` (check versions yourself):
-```kotlin
-plugins { id("com.android.library"); id("org.jetbrains.kotlin.android") }
-android {
-    namespace = "com.mistral.london.ministral"
-    compileSdk = 35
-    ndkVersion = "27.2.12479018"          // any recent NDK; must be installed
-    defaultConfig {
-        minSdk = 31                         // createOnDeviceSpeechRecognizer
-        ndk { abiFilters += "arm64-v8a" }
-        externalNativeBuild { cmake { arguments += listOf("-DANDROID_STL=c++_shared") } }
-    }
-    externalNativeBuild { cmake { path = file("src/main/cpp/CMakeLists.txt"); version = "3.22.1" } }
-}
-dependencies { implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1") }
-```
-ProGuard/R8: keep `TokenSink`, `NativeResult`, `EngineException` and `MinistralNative` (JNI looks them up by name).
+Add `ministral` as a library module to the host app (React Native, or bitchat-android as benchmark host). The steps are in `INSTALL.md` section 3. The Gradle files are unbuilt too; check them on the first sync. `consumer-rules.pro` applies the keep rules for `TokenSink`, `NativeResult`, `EngineException` and `MinistralNative` to the host app automatically.
 
 ## Build (on a dev machine with internet)
 1. Install Android Studio with the NDK and CMake 3.22.1 (SDK Manager).
