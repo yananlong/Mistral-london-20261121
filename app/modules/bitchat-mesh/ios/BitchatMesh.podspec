@@ -11,7 +11,7 @@ Pod::Spec.new do |s|
   s.dependency 'ExpoModulesCore'
   s.dependency 'BitFoundation'
   s.dependency 'BitLogger'
-  s.frameworks = 'CoreBluetooth', 'CryptoKit', 'Security', 'Combine', 'UIKit'
+  s.frameworks = 'CoreBluetooth', 'CryptoKit', 'Security', 'Combine', 'UIKit', 'AVFoundation', 'UniformTypeIdentifiers', 'ImageIO'
   s.pod_target_xcconfig = {
     'DEFINES_MODULE' => 'YES',
     'SWIFT_ACTIVE_COMPILATION_CONDITIONS' => '$(inherited) BITCHAT_MESH_EXPO'

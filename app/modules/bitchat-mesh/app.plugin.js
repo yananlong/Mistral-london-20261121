@@ -1,4 +1,4 @@
-const { withDangerousMod, withInfoPlist } = require('@expo/config-plugins');
+const { withDangerousMod, withInfoPlist } = require('expo/config-plugins');
 const prepareSources = require('./prepare-sources');
 
 module.exports = function withBitchatMesh(config) {
