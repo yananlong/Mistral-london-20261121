@@ -14,7 +14,7 @@ Each iPhone runs our React Native app. A native module in the app wraps the mesh
 
 ## Hackathon scope
 
-For the hackathon, the hub is the team's offline DGX Spark, which runs Ministral 3 14B Instruct 2512 in Ollama. Phones reach it only over the BitChat mesh. The MVP is all three capabilities working on 2 iPhones. Both iPhones are in airplane mode with Bluetooth on, so the phones have no internet. The claim is that the model can run on local hardware with no internet, and that no question goes to a cloud model API. On stage, both iPhones show airplane mode, and the Ollama log on the hub shows each run.
+For the hackathon, the hub is the team's offline DGX Spark, which runs Ministral 3 14B Instruct 2512 in Ollama. Phones reach it only over the BitChat mesh. The MVP is all three capabilities working on an iPhone and an Android phone (Pixel 9a). Both phones are in airplane mode with Bluetooth on, so the phones have no internet. The claim is that the model can run on local hardware with no internet, and that no question goes to a cloud model API. On stage, both phones show airplane mode, and the Ollama log on the hub shows each run.
 
 Live information and messages to family come after the MVP. If they appear in the demo with recorded data, the pitch says so.
 
@@ -22,7 +22,7 @@ The demo uses a fictional disaster scenario. Every answer from the hub is labell
 
 ## Demo
 
-Phones A and B are iPhones in airplane mode. The hub is offline. Phone A messages phone B, finds its position on the offline map and shares it with phone B. A judge then uses phone A to ask the hub a survival question, and the answer arrives over the mesh. The Ollama log on the hub shows the run. The beat-by-beat version is in [the blueprint's demo script](BLUEPRINT_1.md#demo-script).
+Phone A is an iPhone and phone B is a Pixel 9a, both in airplane mode. The hub is offline. Phone A messages phone B, finds its position on the offline map and shares it with phone B. A judge then uses phone A to ask the hub a survival question, and the answer arrives over the mesh. The Ollama log on the hub shows the run. The beat-by-beat version is in [the blueprint's demo script](BLUEPRINT_1.md#demo-script).
 
 ## Project status
 

@@ -24,9 +24,9 @@ Phone A can reach the hub through phone B when the hub is out of phone A's Bluet
 
 ## Talk: the BitChat mesh
 
-[BitChat](https://github.com/permissionlesstech/bitchat) is a public-domain app for iOS and macOS. It sends messages over Bluetooth Low Energy and relays them through nearby devices for up to 7 hops. Its Nostr mode needs internet, so the MVP does not use it.
+[BitChat](https://github.com/permissionlesstech/bitchat) is a public-domain app for iOS and macOS, and [bitchat-android](https://github.com/permissionlesstech/bitchat-android) (GPL-3.0) is its protocol-compatible Android app. It sends messages over Bluetooth Low Energy and relays them through nearby devices for up to 7 hops. Its Nostr mode needs internet, so the MVP does not use it.
 
-- We fork the BitChat iOS app for its Swift mesh code. The front end is a new React Native app, and a native module in it wraps the BitChat mesh. People get all three capabilities in one app on one mesh. The app runs on iPhone only.
+- We fork the BitChat iOS app for its Swift mesh code and bitchat-android for its Kotlin mesh code. The front end is a new React Native app, and a native module on each platform wraps that platform's BitChat mesh. People get all three capabilities in one app on one mesh. The app runs on iPhone and Android, and iPhones and Android phones share the same mesh.
 - The team fork is [cole-dorrestein/bitchat](https://github.com/cole-dorrestein/bitchat), and the `bitchat/` submodule points at it. The iOS mesh changes and the hub change both go into this fork.
 - Keep mesh traffic to short text. Bluetooth packets are small, and a long message is slow over several hops. Images and audio stay off the mesh.
 - If the fork cannot send messages between two of our phones within a fixed timebox, switch the native module to Apple's Multipeer Connectivity. The implementation team sets the timebox while building. Multipeer also runs on macOS, so the hub can use it too. Multipeer has no multi-hop relay, so every phone must be in range of the hub. Keep the same message format. [PLAN.md section 5](PLAN.md#5-how-does-the-message-move) compares the other transports.
@@ -38,7 +38,7 @@ In the MVP, the hub is a single node, the team's NVIDIA DGX Spark (Linux, arm64)
 - A BitChat build with one change. When a private message arrives for the hub, the build forwards the text to Ollama and replies to the sender with the answer. BitChat has no bot API, so the change goes into BitChat's source in the team fork. [spcpza/bitchat-gateway](https://github.com/spcpza/bitchat-gateway) describes a BitChat peer that answers mesh users with internet AI. Read it before you write the change.
 - [Ollama](https://ollama.com), which serves the model. [Ollama on the hub](#ollama-on-the-hub) gives the settings.
 
-Implementation note: BitChat runs only on iOS and macOS, so for the demo a Mac is the hub's BitChat peer and talks to the Spark over a local link with no internet. To the phones and the docs, the two are one hub.
+Implementation note: BitChat has no Linux build, so for the demo a Mac is the hub's BitChat peer and talks to the Spark over a local link with no internet. To the phones and the docs, the two are one hub.
 
 Ministral 3 14B Instruct is open-weight ([released in December 2025](https://techcrunch.com/2025/12/02/mistral-closes-in-on-big-ai-rivals-with-mistral-3-open-weight-frontier-and-small-models)), so it runs on local hardware with no internet. No question goes to a cloud model API.
 
@@ -132,7 +132,7 @@ The MVP leaves all four out. If the demo shows any of them, it uses recorded fee
 
 ## Demo script
 
-The demo takes three minutes. It uses two iPhones, phone A and phone B, and the hub, which is the team's DGX Spark.
+The demo takes three minutes. It uses two phones, phone A (an iPhone) and phone B (an Android phone, the Pixel 9a), and the hub, which is the team's DGX Spark.
 
 1. Show the setup. Phones A and B are in airplane mode with Bluetooth on. Say that the hub is offline and that no question goes to a cloud model API. Open the Ollama log on the hub (`journalctl -u ollama -f`).
 2. Phone A sends a message to phone B over the mesh.
@@ -140,13 +140,13 @@ The demo takes three minutes. It uses two iPhones, phone A and phone B, and the 
 4. Move phone A out of the hub's direct range, so its question travels through phone B. A judge types a question on phone A. The status changes to **Received by hub** and then to **Answered**. The Ollama log on the hub shows the model run.
 5. Turn off Bluetooth on the hub, and ask again. Phone A shows **Hub not reachable**. Turn Bluetooth back on and retry, and the answer arrives.
 
-The proof on stage is both iPhones in airplane mode, the hub with no network, and the Ollama log on the hub for each run. [critique.md](critique.md) lists the evidence that each run should record.
+The proof on stage is both phones in airplane mode, the hub with no network, and the Ollama log on the hub for each run. [critique.md](critique.md) lists the evidence that each run should record.
 
 ## Build order
 
 Each step ends in a check. Martin owns steps 2 and 6. Qubula owns the React Native front end in steps 4 and 5. Steps 4, 5 and 6 can run in parallel with steps 1 to 3.
 
-1. **Mesh between two phones.** Install stock BitChat on two iPhones in airplane mode. The step is done when messages arrive in both directions.
+1. **Mesh between two phones.** Install stock BitChat on an iPhone and stock bitchat-android on the Pixel 9a, both in airplane mode. The step is done when messages arrive in both directions.
 2. **Local model on the DGX Spark.** Run Ministral 3 14B Instruct in Ollama on the hub, with the settings in [Ollama on the hub](#ollama-on-the-hub). The step is done when a test question gets an answer and you have recorded the answer time.
 3. **The hub answers over BitChat.** Build the BitChat change in the team fork, and run it on the hub. The step is done when a phone with stock BitChat sends the hub a private message and gets an answer over the mesh, and the Ollama log on the hub shows the run.
 4. **Map and location sharing.** Build the React Native app with a native module that wraps the mesh code from the team fork. Add the offline map of London and **Share location**. The step is done when phone B shows a pin for phone A while both phones are in airplane mode.
@@ -167,16 +167,15 @@ The stretch goals come after step 6:
 - Images and audio over the mesh.
 - Plant and fungus identification, because a wrong answer can poison someone.
 - Any connected volunteer's phone acting as the gateway. That was the earlier design, and the target system uses a fixed hub instead.
-- Android phones. The app runs on iPhone only.
 
 ## Decisions
 
 The team made these decisions on 2026-11-21. Each one names its owner where the team has chosen one.
 
-- **Phone app.** We fork the BitChat iOS app for its Swift mesh code. The front end is a new React Native app, and a native module in it wraps the BitChat mesh. The app runs on iPhone only, and the demo uses 2 iPhones. Qubula owns the React Native front end.
+- **Phone app.** We fork the BitChat iOS app for its Swift mesh code. The front end is a new React Native app, and a native module in it wraps the BitChat mesh on each platform (Swift on iPhone, Kotlin from bitchat-android on Android). The app runs on iPhone and Android, and the demo uses an iPhone and a Pixel 9a. bitchat-android is GPL-3.0, so the Android build that includes it is distributed under GPL-3.0. Qubula owns the React Native front end.
 - **BitChat fork.** The team fork is [cole-dorrestein/bitchat](https://github.com/cole-dorrestein/bitchat), and the `bitchat/` submodule points at it. The iOS mesh changes and the hub change go into this fork.
 - **Hub.** The hub is one node: the team's NVIDIA DGX Spark (Linux, arm64), running Ministral 3 14B Instruct 2512 in Ollama. It runs offline, and phones reach it only over the BitChat mesh, with no internet, no Tailscale and no cloud. It is a BitChat peer that answers with the 14B model. The Mac is only a convenience for the demo: it is the BitChat peer and talks to the Spark over a local link with no internet. Martin owns the hub. [Ollama on the hub](#ollama-on-the-hub) gives the model tag and settings.
-- **Open-weight models only.** The model on the hub is open-weight and runs on local hardware with no internet. No question goes to a cloud model API. The proof on stage is both iPhones in airplane mode, the hub with no network, and the Ollama log on the hub for each run.
+- **Open-weight models only.** The model on the hub is open-weight and runs on local hardware with no internet. No question goes to a cloud model API. The proof on stage is both phones in airplane mode, the hub with no network, and the Ollama log on the hub for each run.
 - **Vision on the phone (proposed, for Martin's review).** The vision model for Locate runs on the phone. It is Ministral 3 3B Instruct 2512 with vision, not the Reasoning or 8B models. Reasoning output is too slow on a phone, and 8B does not fit the phone's memory limit for one app. The hub's model gets text only, and no photo crosses the mesh.
 	- **Runtime.** llama.cpp release b12606, which includes its multimodal library (mtmd). It runs on Metal on iPhone and on the CPU on Android. Each request is a single turn, and the phone clears the model's memory before each one.
 	- **Files.** The 12 GB iPhones (18 Pro, 18 Pro Max, 17 Pro, 17 Pro Max and Air) use the official mistralai `Q4_K_M` file, 2.15 GB. The vision file is ggml-org's `Q8_0` mmproj, 0.45 GB. The base iPhone 17 (8 GB) picks a smaller setting at start-up, down to unsloth `Q3_K_M` or text only. The Pixel 9a uses unsloth `Q4_0`. [scripts/check_model_pair.sh](scripts/check_model_pair.sh) and [phone/ios/DESIGN_IPHONE17.md](phone/ios/DESIGN_IPHONE17.md) list the hashes.
@@ -190,7 +189,6 @@ The team made these decisions on 2026-11-21. Each one names its owner where the 
 ## Open questions
 
 - [ ] Does Ministral 3 3B Instruct with vision meet the pass bar in [phone/TEST_PLAN.md](phone/TEST_PLAN.md) on the iPhone 18 Pro and the Pixel 9a? Martin owns the model choice.
-- [ ] Is an Android phone (Pixel 9a) part of the demo, or only a test device for the on-device model? The app is iPhone only so far.
 - [ ] Which vision approach do we build, and in which case does it beat satellite positioning and the compass?
 - [ ] Which tile source do we use for the London map?
 - [ ] Which survival guides do we load on the hub, and under which licences? [DATASETS.md](DATASETS.md) has a proposal.
