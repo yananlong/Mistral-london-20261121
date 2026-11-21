@@ -1,4 +1,4 @@
-import { ACK_TIMEOUT_MS, ANSWER_TIMEOUT_MS, AnswerPart, assembleAnswer, classifyHubReply, Coordinates, encodeQuestion, MAX_MESSAGE_BYTES, MAX_QUESTION_BYTES, normalize, utf8Bytes } from '../protocol';
+import { ACK_TIMEOUT_MS, ANSWER_TIMEOUT_MS, AnswerPart, assembleAnswer, classifyHubReply, Coordinates, encodeQuestion, MAX_MESSAGE_BYTES, MAX_QUESTION_BYTES, normalize, trim, utf8Bytes } from '../protocol';
 import { MeshStore } from '../store/MeshStore';
 import { InboundMessage, PeerId } from '../transport/types';
 import { AskEvent, askReducer } from './machine';
@@ -43,7 +43,7 @@ export class AskController {
   }
   submit(text: string, location: Coordinates | null): void {
     const to = this.mesh.getSnapshot().hubId;
-    const question = normalize(text).trim();
+    const question = trim(normalize(text));
     if (!to || !question || utf8Bytes(question) > MAX_QUESTION_BYTES || askReducer(this.session.state, 'submit') !== 'sent' || this.session.state !== 'idle') return;
     const wire = encodeQuestion(question, location);
     if (utf8Bytes(wire) > MAX_MESSAGE_BYTES) return;

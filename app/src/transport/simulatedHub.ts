@@ -1,4 +1,4 @@
-import { ANSWER_LABEL, Coordinates, MAX_ANSWER_BODY_BYTES, MAX_ANSWER_PARTS, MAX_MESSAGE_BYTES, MAX_QUESTION_BYTES, normalize, prefixBytes, splitTrailingLoc, utf8Bytes } from '../protocol';
+import { ANSWER_LABEL, Coordinates, MAX_ANSWER_BODY_BYTES, MAX_ANSWER_PARTS, MAX_MESSAGE_BYTES, MAX_QUESTION_BYTES, normalize, prefixBytes, splitTrailingLoc, trim, trimEnd, trimStart, utf8Bytes } from '../protocol';
 
 export function parseQuestion(wire: string): { kind: 'empty' | 'question'; body: string; loc: Coordinates | null } {
   const { body, loc } = splitTrailingLoc(wire);
@@ -15,7 +15,7 @@ function truncateBody(body: string): string {
     const space = cut.lastIndexOf(' ');
     if (space >= floor) cut = cut.slice(0, space);
   }
-  return `${cut.join('').trimEnd()}…`;
+  return `${trimEnd(cut.join(''))}…`;
 }
 
 function splitAnswer(body: string): string[] {
@@ -30,25 +30,25 @@ function splitAnswer(body: string): string[] {
       if (space >= Math.floor(characters.length / 2)) head = characters.slice(0, space).join('');
       if (current) { chunks.push(current); current = ''; }
       chunks.push(head);
-      line = Array.from(line).slice(Array.from(head).length).join('').trimStart();
+      line = trimStart(Array.from(line).slice(Array.from(head).length).join(''));
     }
     const candidate = current === '' ? line : `${current}\n${line}`;
     if (utf8Bytes(candidate) <= limit) current = candidate;
     else { chunks.push(current); current = line; }
   }
   chunks.push(current);
-  chunks = chunks.map(chunk => chunk.trim()).filter(Boolean);
+  chunks = chunks.map(trim).filter(Boolean);
   if (chunks.length > MAX_ANSWER_PARTS - 1) {
     chunks = chunks.slice(0, MAX_ANSWER_PARTS - 1);
     const last = chunks.length - 1;
-    chunks[last] = `${prefixBytes(chunks[last], limit - utf8Bytes('…')).trimEnd()}…`;
+    chunks[last] = `${trimEnd(prefixBytes(chunks[last], limit - utf8Bytes('…')))}…`;
   }
   return chunks;
 }
 
 export function composeAnswer(modelOutput: string): string[] | null {
-  const lines = normalize(modelOutput).split('\n').filter(line => line.trim() !== ANSWER_LABEL);
-  const body = lines.join('\n').trim();
+  const lines = normalize(modelOutput).split('\n').filter(line => trim(line) !== ANSWER_LABEL);
+  const body = trim(lines.join('\n'));
   if (!body) return null;
   const parts = [...splitAnswer(truncateBody(body)), ANSWER_LABEL];
   return parts.map((part, index) => `(${index + 1}/${parts.length}) ${part}`);

@@ -22,6 +22,14 @@ export interface Coordinates { lat: number; lon: number }
 export interface LocationShare extends Coordinates { note: string }
 
 export const normalize = (text: string): string => text.replace(/\r\n?/g, '\n');
+// Match the reference implementation's Unicode whitespace, which differs from JavaScript trim.
+const WHITESPACE = '[\\u0009-\\u000d\\u001c-\\u0020\\u0085\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000]';
+const LEADING_WHITESPACE = new RegExp(`^${WHITESPACE}+`, 'u');
+const TRAILING_WHITESPACE = new RegExp(`${WHITESPACE}+$`, 'u');
+const LOC_PATTERN = new RegExp(`^loc:${WHITESPACE}*(-?\\d{1,3}(?:\\.\\d+)?)${WHITESPACE}*,${WHITESPACE}*(-?\\d{1,3}(?:\\.\\d+)?)$`, 'u');
+export const trimStart = (text: string): string => text.replace(LEADING_WHITESPACE, '');
+export const trimEnd = (text: string): string => text.replace(TRAILING_WHITESPACE, '');
+export const trim = (text: string): string => trimEnd(trimStart(text));
 
 function characterBytes(character: string): number {
   const codePoint = character.codePointAt(0) ?? 0;
@@ -52,7 +60,7 @@ export function encodeLoc(lat: number, lon: number): string {
 }
 
 export function decodeLoc(line: string): Coordinates | null {
-  const match = /^loc:\s*(-?\d{1,3}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)$/.exec(line.trim());
+  const match = LOC_PATTERN.exec(trim(line));
   if (!match) return null;
   const lat = Number(match[1]);
   const lon = Number(match[2]);
@@ -61,14 +69,14 @@ export function decodeLoc(line: string): Coordinates | null {
 
 export function splitTrailingLoc(text: string): { body: string; loc: Coordinates | null } {
   const lines = normalize(text).split('\n');
-  while (lines.length && lines[lines.length - 1].trim() === '') lines.pop();
+  while (lines.length && trim(lines[lines.length - 1]) === '') lines.pop();
   const loc = lines.length ? decodeLoc(lines[lines.length - 1]) : null;
   if (loc) lines.pop();
-  return { body: lines.join('\n').trim(), loc };
+  return { body: trim(lines.join('\n')), loc };
 }
 
 export function encodeQuestion(text: string, loc: Coordinates | null): string {
-  const body = normalize(text).trim();
+  const body = trim(normalize(text));
   return loc ? `${body}\n${encodeLoc(loc.lat, loc.lon)}` : body;
 }
 
@@ -76,14 +84,14 @@ export interface AnswerPart { index: number; total: number; text: string }
 export type HubReply = { kind: 'ack' } | { kind: 'hub_error' } | ({ kind: 'answer_part' } & AnswerPart) | { kind: 'other' };
 
 export function classifyHubReply(wire: string): HubReply {
-  const text = normalize(wire).trim();
+  const text = trim(normalize(wire));
   if (text === ACK_TEXT) return { kind: 'ack' };
   if (text === HUB_ERROR_TEXT) return { kind: 'hub_error' };
   const match = /^\((\d)\/(\d)\) ([\s\S]*)$/.exec(text);
   if (match) {
     const index = Number(match[1]);
     const total = Number(match[2]);
-    if (index >= 1 && index <= total) return { kind: 'answer_part', index, total, text: match[3].trim() };
+    if (index >= 1 && index <= total) return { kind: 'answer_part', index, total, text: trim(match[3]) };
   }
   return { kind: 'other' };
 }
@@ -100,11 +108,11 @@ export function assembleAnswer(parts: readonly AnswerPart[]): string | null {
     if (text === undefined) return null;
     body.push(text);
   }
-  return body.join('\n').trim();
+  return trim(body.join('\n'));
 }
 
 export function encodeLocationShare(note: string | null, lat: number, lon: number): string {
-  return `${note?.trim() || LOCATION_SHARE_DEFAULT_NOTE}\n${encodeLoc(lat, lon)}`;
+  return `${(note === null ? '' : trim(note)) || LOCATION_SHARE_DEFAULT_NOTE}\n${encodeLoc(lat, lon)}`;
 }
 
 export function decodeLocationShare(wire: string): LocationShare | null {
