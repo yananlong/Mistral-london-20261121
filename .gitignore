@@ -48,3 +48,7 @@ next-env.d.ts
 .swc
 voxtral/.venv/
 voxtral/out/
+
+# python
+__pycache__/
+*.pyc
