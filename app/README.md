@@ -82,6 +82,25 @@ The map reads `pmtiles://file://…/london.pmtiles` directly. Its local style (`
 
 Device builds add the real mesh and native map. The simulated link alone does not demonstrate communication between two physical phones. No iOS build or device run was possible on this machine because Xcode is unavailable.
 
+## Configure the transport and backend
+
+`src/config.ts` holds the runtime configuration, ported from `phone/app` (PR #18):
+
+- `transportMode`: `auto` (default) uses the native BitchatMesh module when it is linked and the simulated mesh otherwise. `simulated` always uses the simulated mesh. `native` throws at startup if the module is missing.
+- `hubNickname`, `ackTimeoutMs`, `answerTimeoutMs`: how Ask finds the hub and how long it waits.
+- `apiBaseUrl`: the post-MVP live-information backend. It stays `null`, so the app makes no HTTP calls. `src/api/client.ts` fails loudly until it is set.
+
+## Build for Android
+
+`android/` is generated and ignored by git. From `app/`, regenerate it and run it on a device or emulator:
+
+```sh
+npx expo prebuild --platform android --clean
+npx expo run:android
+```
+
+The BitchatMesh native module is iOS-only for now, so the Android build runs on the simulated link with the **Simulated link** badge visible.
+
 ## Run the checks
 
 From `app/`, run:
