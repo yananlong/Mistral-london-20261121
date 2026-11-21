@@ -1,8 +1,10 @@
 # MVP blueprint
 
-This blueprint describes how the MVP gives people three capabilities with no internet. They can talk over a Bluetooth mesh, locate themselves on an offline map, and ask a Mistral model that runs on an offline Mac mini. It is a proposal for the team, and the decisions that are still open are listed at the end. [README.md](README.md) has the overview.
+This blueprint describes how the MVP gives people three capabilities when their phones have no signal. They can talk over a Bluetooth mesh, locate themselves on an offline map, and ask a Mistral model on a hub that they reach through the mesh. It is a proposal for the team, and the decisions that are still open are listed at the end. [README.md](README.md) has the overview.
 
-The MVP replaces [the earlier design](https://github.com/yananlong/Mistral-london-20261121/blob/145a442e4950d988264bfd06662707746da5627e/PLAN.md), in which a connected volunteer forwarded requests to the cloud Mistral API. No part of the MVP uses the internet.
+**The target system** is a central hub with internet access that people reach by passing messages from phone to phone. The hub answers questions with its own Mistral model, passes on live official information and sends messages to people outside the mesh. **The MVP** proves the mesh path and the local answers. A Mac mini stands in for the hub, and its network stays off during the core demo. [From the MVP to the target hub](#from-the-mvp-to-the-target-hub) covers what the internet connection adds.
+
+The hub replaces [the earlier design](https://github.com/yananlong/Mistral-london-20261121/blob/145a442e4950d988264bfd06662707746da5627e/PLAN.md), in which any connected volunteer's phone forwarded requests to the cloud Mistral API. The hub is a fixed, managed node that people can rely on and verify, and it keeps answering from its own model if its internet connection fails.
 
 ## Two kinds of device share one mesh
 
@@ -28,9 +30,9 @@ Phone A can reach the hub through phone B when the hub is out of phone A's Bluet
 - Keep mesh traffic to short text. Bluetooth packets are small, and a long message is slow over several hops. Images and audio stay off the mesh.
 - If the fork cannot send messages between two of our phones within a fixed timebox (for example 4 hours), switch to Apple's Multipeer Connectivity. Multipeer also runs on macOS, so the hub can stay on the Mac mini. Multipeer has no multi-hop relay, so every phone must be in range of the hub. Keep the same message format. [PLAN.md section 5](PLAN.md#5-open-decision-how-does-the-message-move) compares the other transports.
 
-## Ask: Mistral on an offline Mac mini
+## Ask: Mistral on the hub
 
-The Mac mini is the hub. Its Wi-Fi is off, its Ethernet cable is unplugged and its Bluetooth is on. It runs two programs:
+In the MVP, the Mac mini is the hub. Its Wi-Fi is off, its Ethernet cable is unplugged and its Bluetooth is on. It runs two programs:
 
 - A BitChat for macOS build with one change. When a private message arrives for the hub, the build sends the text to the local inference server and replies to the sender with the answer. BitChat has no bot API, so the change goes into BitChat's source. [spcpza/bitchat-gateway](https://github.com/spcpza/bitchat-gateway) describes a BitChat peer that answers mesh users with internet AI. Read it before you write the change.
 - A local inference server on `localhost`. [llama.cpp](https://github.com/ggml-org/llama.cpp) `llama-server` and [Ollama](https://ollama.com) both expose an OpenAI-compatible chat API.
@@ -42,9 +44,9 @@ The hub answers in a fixed way:
 - The hub replies "Received. Working on an answer." as soon as a question arrives. The asker then knows that the hub is in range. The answer follows in a second message.
 - The system prompt asks for short numbered steps in plain language, with the most urgent action first. Short answers suit a slow link and a stressed reader.
 - The hub ends every answer with "AI answer from an offline model. Not verified emergency advice." The label reaches people who use stock BitChat too.
-- The model knows only its training data and the guides that we load. It has no live information about the disaster.
+- In the MVP, the model knows only its training data and the guides that we load. It has no live information about the disaster. The target hub adds live information, each item with its source and time.
 
-Start with the system prompt alone. After the round trip works, add retrieval over a curated set of survival and first-aid guides that are stored on the hub.
+Start with the system prompt alone. After the round trip works, add retrieval over a curated set of survival and first-aid guides that are stored on the hub. [DATASETS.md](DATASETS.md#6-suggested-hackathon-shortlist) proposes a starter set and its licences.
 
 ### Message format
 
@@ -92,13 +94,26 @@ The Ask screen shows one of four states for each question:
 
 Test one premise before you build the vision model. Satellite positioning and the compass already give position and heading without internet. Name the case where the vision model does better, such as indoors, between tall buildings or when satellite positioning has no fix. The demo then shows that case.
 
+## From the MVP to the target hub
+
+The hub's internet connection is what lets the system carry the information that matters most in an emergency. [DATASETS.md](DATASETS.md#1-what-information-matters-most) ranks that information using evidence from past disasters and lists the sources. The connected hub adds four things:
+
+- **Safe and well messages.** A person sends "I'm safe", with an optional location. The hub forwards it to a named contact by SMS or email and sends a delivery receipt back over the mesh. Reaching family was the top concern after the 2011 Japan earthquake, and only a connected hub can do it.
+- **Live bulletins.** The hub pulls official feeds (GOV.UK Emergency Alerts, Environment Agency flood warnings, Met Office warnings, power-cut restoration times and transport status). It condenses them into short bulletins, each with its source and time, and posts them to the public mesh channel. Phones keep and re-share them, so one fetch serves the whole area. Met Office warnings are passed on word for word.
+- **Service status.** The hub reports which pharmacies, A&E departments, rest centres and water stations are open, on top of the locations that phones already hold offline.
+- **Priority for urgent traffic.** Alerts go first, then safe and well messages, then requests for help, then answers, then news.
+
+If the hub loses its own connection, it keeps answering from its local model and guides, and it serves the last bulletins with their age, for example "EA flood warnings as of 09:40, 3 h ago".
+
+The MVP leaves all four out. If the demo shows any of them, it uses recorded feeds or a simulated delivery, and the pitch says so. [critique.md](critique.md) explains why each claim must match the arrangement that is actually shown.
+
 ## How the six survival needs map to the MVP
 
 | Need in [IDEA.md](IDEA.md) | Capability |
 | --- | --- |
-| Communication | Talk |
+| Communication | Talk, plus safe and well messages through the target hub |
 | Navigation | Locate |
-| Food, water, energy and medical | Ask |
+| Food, water, energy and medical | Ask, plus live service status through the target hub |
 
 ## Demo script
 
@@ -128,13 +143,15 @@ The stretch goals come after step 6:
 - Retrieval over the survival guides on the hub.
 - Answers read aloud with the iOS text-to-speech API, `AVSpeechSynthesizer`.
 - Answers about the nearest shelter or water source, from map data stored on the Mac mini.
+- A safe and well message that reaches a contact outside the mesh, with a delivery receipt back to the sender.
+- One live bulletin, built from recorded feeds if the Mac mini stays offline.
 
 ## Out of scope for the MVP
 
 - Cloud services of any kind, including the Mistral API and cloud Voxtral. [SETUP_VOXTRAL.md](SETUP_VOXTRAL.md) and `voxtral/tts.py` cover the cloud path, which can only make audio before a disaster.
 - Images and audio over the mesh.
 - Plant and fungus identification, because a wrong answer can poison someone.
-- A connected volunteer who forwards requests to cloud Mistral. That was the earlier design.
+- Any connected volunteer's phone acting as the gateway. That was the earlier design, and the target system uses a fixed hub instead.
 
 ## Open questions
 
@@ -145,5 +162,7 @@ The stretch goals come after step 6:
 - [ ] Which model and inference server answer fast enough over two hops?
 - [ ] Which vision approach do we build, and in which case does it beat satellite positioning and the compass?
 - [ ] Which map region and tile source do we use for the demo?
-- [ ] Which survival guides do we load on the hub, and under which licences?
-- [ ] What powers the hub in a real deployment?
+- [ ] Which survival guides do we load on the hub, and under which licences? [DATASETS.md](DATASETS.md) has a proposal.
+- [ ] Does the demo show any of the target hub's online features, with recorded data or a live connection?
+- [ ] In a real deployment, where does the hub sit, what powers it, and what keeps it connected when local networks fail (for example satellite, or a building with backup power and fibre)?
+- [ ] How do people verify that they are talking to the real hub?
