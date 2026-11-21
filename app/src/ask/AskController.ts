@@ -1,4 +1,5 @@
-import { ACK_TIMEOUT_MS, ANSWER_TIMEOUT_MS, AnswerPart, assembleAnswer, classifyHubReply, Coordinates, encodeQuestion, MAX_MESSAGE_BYTES, MAX_QUESTION_BYTES, normalize, trim, utf8Bytes } from '../protocol';
+import { AnswerPart, assembleAnswer, classifyHubReply, Coordinates, encodeQuestion, MAX_MESSAGE_BYTES, MAX_QUESTION_BYTES, normalize, trim, utf8Bytes } from '../protocol';
+import { config } from '../config';
 import { MeshStore } from '../store/MeshStore';
 import { InboundMessage, PeerId } from '../transport/types';
 import { AskEvent, askReducer } from './machine';
@@ -26,8 +27,8 @@ export class AskController {
   private publish(session: AskSession): void {
     clearTimeout(this.timer);
     this.session = session;
-    if (session.state === 'sent') this.timer = setTimeout(() => this.transition('ack_timeout'), ACK_TIMEOUT_MS);
-    if (session.state === 'received') this.timer = setTimeout(() => this.transition('answer_timeout'), ANSWER_TIMEOUT_MS);
+    if (session.state === 'sent') this.timer = setTimeout(() => this.transition('ack_timeout'), config.ackTimeoutMs);
+    if (session.state === 'received') this.timer = setTimeout(() => this.transition('answer_timeout'), config.answerTimeoutMs);
     this.listeners.forEach(listener => listener());
   }
   private transition(event: AskEvent, body = ''): void {

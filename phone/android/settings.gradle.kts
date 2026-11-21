@@ -18,3 +18,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "ministral-android"
 include(":ministral")
+include(":app")   // minimal test host: load the model, run a prompt or EngineBenchmark (emulator or Pixel)

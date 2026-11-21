@@ -1,0 +1,54 @@
+{
+ "version": 1,
+ "generated_by": "hand-written for geolocate/ (see geolocate/README.md)",
+ "system_prompt": "You help a person in London who has no phone signal work out where they are from one photo. List every sign or name in the photo that could identify the place: street name plates, bus stop names and stop letters, Underground or rail station names, shop, pub and building names, and named landmarks you are sure of.\nRules:\n1. Copy text exactly as printed, including a postcode district such as SW1 or NW8 if it is on the plate.\n2. kind is street_sign, bus_stop, station, shop, landmark or other.\n3. Never guess. A landmark is only listed if you are certain; otherwise leave it out.\n4. If nothing in the photo can identify the place, return an empty list and set nothing_useful to true.",
+ "user_prompt": "Which signs or names in this photo identify where I am?",
+ "json_schema": {
+  "type": "object",
+  "properties": {
+   "signs": {
+    "type": "array",
+    "minItems": 0,
+    "maxItems": 6,
+    "items": {
+     "type": "object",
+     "properties": {
+      "text": {
+       "type": "string"
+      },
+      "kind": {
+       "type": "string",
+       "enum": [
+        "street_sign",
+        "bus_stop",
+        "station",
+        "shop",
+        "landmark",
+        "other"
+       ]
+      }
+     },
+     "required": [
+      "text",
+      "kind"
+     ]
+    }
+   },
+   "nothing_useful": {
+    "type": "string",
+    "enum": [
+     "true",
+     "false"
+    ]
+   }
+  },
+  "required": [
+   "signs",
+   "nothing_useful"
+  ]
+ },
+ "sampling": {
+  "temperature": 0,
+  "max_new_tokens": 200
+ }
+}

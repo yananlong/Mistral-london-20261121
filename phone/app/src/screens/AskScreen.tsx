@@ -10,16 +10,21 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import {
-  AskMachine,
-  AskRecord,
-  DEFAULT_HUB_TIMEOUT_MS,
-} from '../ask/askStateMachine';
-import { HUB_ACK_TEXT, HUB_PEER_ID } from '../transport/SimulatedTransport';
+import { AskMachine, AskRecord } from '../ask/askStateMachine';
+import { config } from '../config';
 import { useTransport } from '../transport/TransportContext';
 import { usePositionContext } from '../locate/PositionContext';
 import { formatLocLine } from '../locate/locLine';
 import { AskStatusBadge } from '../components/AskStatusBadge';
+import {
+  ANSWER_LABEL,
+  AnswerPart,
+  assembleAnswer,
+  classifyHubReply,
+  MAX_QUESTION_BYTES,
+  prefixBytes,
+  utf8Bytes,
+} from '../ask/meshMessages';
 import { colors, fontSize, fontWeight, layout, spacing } from '../theme/tokens';
 
 export const SUGGESTED_QUESTIONS = [
@@ -44,13 +49,15 @@ export function AskScreen() {
   const [draft, setDraft] = useState('');
   const [attachLocation, setAttachLocation] = useState(false);
   const machinesRef = useRef<Map<string, AskMachine>>(new Map());
+  const partsRef = useRef<Map<string, AnswerPart[]>>(new Map());
   const counterRef = useRef(0);
 
   useEffect(() => {
     const unsubscribe = transport.subscribe((message) => {
-      if (message.from !== HUB_PEER_ID) return;
+      if (message.from !== config.hubPeerId) return;
       const entries = [...machinesRef.current.entries()];
-      const isAck = message.text === HUB_ACK_TEXT;
+      const reply = classifyHubReply(message.text);
+      const isAck = reply.kind === 'ack';
       // The hub answers in order: the ack goes to the oldest unacked
       // question, the answer to the oldest unanswered one.
       const entry = isAck
@@ -63,9 +70,22 @@ export function AskScreen() {
         machine.dispatch({ type: 'hubAck' });
         return;
       }
+      let answer = message.text;
+      if (reply.kind === 'answer_part') {
+        // The hub sends each answer as "(i/n) " parts to fit BitChat's
+        // 255-byte limit (protocol/README.md). Answered once all have arrived.
+        const parts = [...(partsRef.current.get(id) ?? []), reply];
+        const body = assembleAnswer(parts);
+        if (body === null) {
+          partsRef.current.set(id, parts);
+          return;
+        }
+        partsRef.current.delete(id);
+        answer = `${body}\n${ANSWER_LABEL}`;
+      }
       machine.dispatch({ type: 'answer' });
       setItems((prev) =>
-        prev.map((item) => (item.id === id ? { ...item, answer: message.text } : item)),
+        prev.map((item) => (item.id === id ? { ...item, answer } : item)),
       );
     });
     return unsubscribe;
@@ -80,14 +100,15 @@ export function AskScreen() {
 
   function ask(question: string) {
     const text = question.trim();
-    if (text === '') return;
+    // Capped so the question plus its loc: line fits one BitChat message.
+    if (text === '' || utf8Bytes(text) > MAX_QUESTION_BYTES) return;
     const coords = position.coords;
     const payload =
       attachLocation && coords ? `${text}\n${formatLocLine(coords)}` : text;
     counterRef.current += 1;
     const id = `ask-${counterRef.current}`;
     const machine = new AskMachine({
-      timeoutMs: DEFAULT_HUB_TIMEOUT_MS,
+      timeoutMs: config.hubTimeoutMs,
       onChange: (status) =>
         setItems((prev) => prev.map((item) => (item.id === id ? { ...item, status } : item))),
     });
@@ -102,12 +123,13 @@ export function AskScreen() {
       machine,
     };
     setItems((prev) => [...prev, item]);
-    transport.send(HUB_PEER_ID, payload);
+    transport.send(config.hubPeerId, payload);
   }
 
   function retry(item: AskItem) {
     item.machine.dispatch({ type: 'retry' });
-    transport.send(HUB_PEER_ID, item.payload);
+    partsRef.current.delete(item.id);
+    transport.send(config.hubPeerId, item.payload);
   }
 
   function sendDraft() {
@@ -186,7 +208,7 @@ export function AskScreen() {
           <TextInput
             style={styles.input}
             value={draft}
-            onChangeText={setDraft}
+            onChangeText={(text) => setDraft(prefixBytes(text, MAX_QUESTION_BYTES))}
             placeholder="Ask the hub…"
             placeholderTextColor={colors.textMuted}
             onSubmitEditing={sendDraft}

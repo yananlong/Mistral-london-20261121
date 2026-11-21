@@ -73,6 +73,8 @@ BitChat rejects a private message whose content is over 255 UTF-8 bytes
 (`bitchat/Protocols/Packets.swift`, `PrivateMessagePacket.encode`). So the peer
 sends **each string in `parts` as one private message, in order**, and never
 sends `answer` as one message.
+`messages` carries the same list as `parts` (the name `protocol/README.md` and
+PR #20 use); a peer may read either.
 
 - `status: "answered"`: 2 to 5 parts, each `(i/n) ` plus text, each at most
   255 UTF-8 bytes. The last part is the disclaimer alone, for example

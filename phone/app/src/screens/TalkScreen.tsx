@@ -17,6 +17,7 @@ import {
   SELF_PEER_ID,
 } from '../transport/Transport';
 import { useTransport } from '../transport/TransportContext';
+import { MAX_MESSAGE_BYTES, prefixBytes, utf8Bytes } from '../ask/meshMessages';
 import { colors, fontSize, fontWeight, layout, spacing } from '../theme/tokens';
 
 type ConversationId = PeerId | typeof PUBLIC_CHANNEL;
@@ -53,7 +54,8 @@ export function TalkScreen() {
 
   function send() {
     const text = draft.trim();
-    if (text === '') return;
+    // BitChat rejects message content over 255 UTF-8 bytes.
+    if (text === '' || utf8Bytes(text) > MAX_MESSAGE_BYTES) return;
     const sent = transport.send(selected, text);
     setMessages((prev) => [...prev, sent]);
     setDraft('');
@@ -109,7 +111,7 @@ export function TalkScreen() {
         <TextInput
           style={styles.input}
           value={draft}
-          onChangeText={setDraft}
+          onChangeText={(text) => setDraft(prefixBytes(text, MAX_MESSAGE_BYTES))}
           placeholder="Message the mesh"
           placeholderTextColor={colors.textMuted}
           onSubmitEditing={send}

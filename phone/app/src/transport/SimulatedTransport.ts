@@ -1,12 +1,14 @@
 import {
+  HUB_PEER_ID,
   IncomingMessageHandler,
   MeshMessage,
   Peer,
+  PeerId,
   SELF_PEER_ID,
   Transport,
 } from './Transport';
 
-export const HUB_PEER_ID = 'hub';
+export { HUB_PEER_ID };
 
 /** The hub's first reply, word for word per BLUEPRINT_1.md. */
 export const HUB_ACK_TEXT = 'Received. Working on an answer.';
@@ -102,21 +104,26 @@ export class SimulatedTransport implements Transport {
     this.later(this.ackDelayMs, () => {
       this.deliver(this.hubMessage(HUB_ACK_TEXT));
       this.later(this.answerDelayMs, () => {
-        this.deliver(this.hubMessage(this.answerFor(question.text)));
+        for (const part of this.answerPartsFor(question.text)) this.deliver(this.hubMessage(part));
       });
     });
   }
 
-  /** The mock hub's canned answer: short numbered steps plus the required label. */
-  private answerFor(question: string): string {
+  /**
+   * The mock hub's canned answer as the real hub sends it: "(i/n) " parts,
+   * each one BitChat message of at most 255 bytes, with the label last
+   * (protocol/README.md). Here each step is its own part.
+   */
+  private answerPartsFor(question: string): string[] {
     const firstLine = question.split('\n')[0].trim();
-    return [
+    const parts = [
       `Short answer to: ${firstLine}`,
       '1. Make the scene safe before you help anyone.',
       '2. Keep the person warm, dry and still.',
       '3. Watch for changes and ask again if anything worsens.',
       HUB_ANSWER_LABEL,
-    ].join('\n');
+    ];
+    return parts.map((text, i) => `(${i + 1}/${parts.length}) ${text}`);
   }
 
   private hubMessage(text: string): MeshMessage {
