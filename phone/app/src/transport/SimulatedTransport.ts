@@ -1,4 +1,5 @@
 import {
+  HUB_PEER_ID,
   IncomingMessageHandler,
   MeshMessage,
   Peer,
@@ -6,7 +7,7 @@ import {
   Transport,
 } from './Transport';
 
-export const HUB_PEER_ID = 'hub';
+export { HUB_PEER_ID };
 
 /** The hub's first reply, word for word per BLUEPRINT_1.md. */
 export const HUB_ACK_TEXT = 'Received. Working on an answer.';

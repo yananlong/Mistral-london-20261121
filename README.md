@@ -26,7 +26,7 @@ Phone A is an iPhone and phone B is a Pixel 9a, both in airplane mode. The hub i
 
 ## Project status
 
-This repository contains planning documents, a Voxtral TTS script and the BitChat submodule. The app, the hub and the vision model are not built or tested yet.
+This repository contains planning documents, a Voxtral TTS script and the BitChat submodule. The React Native app shell (`phone/app`, Talk/Locate/Ask on a simulated mesh) and the offline hub responder (`hub/`) exist; the BitChat native module, the on-device vision model wiring and the Xcode/Android app shells are still to land. `phone/TESTFLIGHT.md` lists what is needed to ship the app to TestFlight.
 
 | File | Contents |
 | --- | --- |
