@@ -30,7 +30,9 @@ pulled tag. Cloud tags (`:cloud`, `-cloud`) are refused at startup.
 | --- | --- |
 | `responder.py` | HTTP server on the Spark. Python 3 standard library only, no pip installs. |
 | `setup_spark.sh` | Runbook: Ollama settings and model pull on the Spark, plus the offline check. |
+| `kb.py` | Knowledge base: dataset facts (nearest places, guide passages, optional recorded bulletin) added to each question. |
 | `test_responder.py` | stdlib unittest suite with a stubbed Ollama (urllib monkeypatched). |
+| `test_kb.py` | KB tests against the repo's `datasets/`. |
 
 ## HTTP API
 
@@ -152,9 +154,42 @@ the phone's timeout).
 | `HUB_NUM_PREDICT` | byte budget / 4, at most `256` | `options.num_predict`, the model's token cap per answer. |
 | `HUB_WARMUP` | `1` | At startup, load the model and log an error if the tag is not pulled. `0` skips it. |
 | `HUB_CALLBACK_ALLOW_HOSTS` | empty | Comma-separated extra callback hosts (host or host:port) beyond the built-in loopback/private/link-local/peer allowlist. |
+| `HUB_KB` | `1` | `0` turns the knowledge base off. |
+| `HUB_DATASETS_DIR` | `../datasets` (next to `hub/`) | Root of the datasets tree that the KB reads. |
+| `HUB_FEEDS_DIR` | unset (off) | A feed snapshot dir, such as `datasets/feeds/latest`, which turns on the recorded bulletin. |
 
 Numeric variables are validated once at startup; a malformed value exits with
 a clear message instead of crashing per request.
+
+## Knowledge base
+
+`kb.py` builds its index once, at startup (about 0.07 s and under 10 MB on the
+Spark), and never touches the network. For each question, `build_user_content()`
+appends a numbered block after the question (and the `Asker location` line)
+that starts `Facts from the hub's offline datasets (use these for any place,
+distance or number; do not invent others):`. Each fact names its source. The
+block stays under about 1,500 tokens.
+
+- **Nearest places.** This runs only when the question has a loc and asks for a
+  place ("where", "nearest", "which way", ...). Keywords map to a
+  `phone/pois/london_pois.sqlite` category, for example tap, fountain or
+  drinking water to `water`, A&E or hospital to `medical` (hospitals tagged
+  `emergency=yes` come first), defibrillator or AED to `aed`, and rest centre or
+  warm space to `shelter`. Food banks come from `phone/givefood/foodbanks.geojson`.
+  The KB returns the 3 nearest within 3 km, each with its distance (rounded to
+  10 m), compass bearing, opening hours and OSM id.
+- **Guides.** BM25 runs over chunks of about 160 words from
+  `phone/guides/govuk/*.json` and `phone/guides/beready/*.html`. It keeps up to
+  3 chunks above a score and query-coverage threshold, and it skips guides when
+  the question already got place facts.
+- **Recorded bulletin.** This is opt-in, through `HUB_FEEDS_DIR`. It covers EA
+  floods, Met Office warnings, GOV.UK alerts, TfL line status, UKPN/NGED power
+  cuts by postcode and UKPN/UKHSA alerts, and it runs only when the question is
+  on that topic. Each fact reads "Recorded snapshot (not live), as of <UTC
+  time>".
+
+If the datasets are missing or the KB fails, the hub logs a warning and answers
+without facts. The ack and the disclaimer don't change.
 
 ## Run steps
 
@@ -265,3 +300,6 @@ model timeout, Ollama down, HTTP 404/500 and bad model output (retry answer /
 only-Ollama-and-callback egress rule, cloud-tag and public-`OLLAMA_HOST`
 refusal, the callback host allowlist, field size caps, the 413 connection
 handling, and malformed input (400).
+It runs with the KB stubbed off. `test_kb.py` checks the KB against the real
+datasets: Q04 water at 424 m to the SE, Q18 St Thomas', keyword mapping, guide
+retrieval, feeds off by default, and graceful degradation.
