@@ -1,0 +1,278 @@
+{
+  "version": 1,
+  "purpose": "Shared reference cases for phone vision tests (phone/TEST_PLAN.md). Offline orientation use case: no photo leaves the phone.",
+  "system_prompt": "You are a helpful, concise assistant running offline on a phone. Answer briefly and accurately.",
+  "sampling": {
+    "temperature": 0.1,
+    "top_k": 40,
+    "top_p": 0.95,
+    "repeat_penalty": 1.1,
+    "repeat_last_n": 64,
+    "seed": 42,
+    "max_new_tokens": 128,
+    "deadline_seconds": 60
+  },
+  "output_format": "free text; no JSON grammar or schema is used (EngineBenchmark passes grammar: nil)",
+  "photo_notes": "Photos are taken by hand on the day, saved as <file> next to this JSON in the app's Documents/golden/, EXIF intact. Fill ground_truth from what is physically visible before running any model.",
+  "cases": [
+    {
+      "id": "street-sign",
+      "file": "street-sign.jpg",
+      "description": "Photograph a London street-name plate (white or black plate with the street name, often with borough and a postcode district) square-on from 2 to 4 m, daylight, text readable by eye.",
+      "prompt": "I am lost in London and have no signal. What street name is on the sign in this photo? Reply in one sentence.",
+      "ground_truth": {
+        "street_name": "",
+        "borough_or_postcode": "(optional)"
+      },
+      "expected_key_facts": [
+        "The street name printed on the plate"
+      ],
+      "rubric": {
+        "usable_if": "Every must_mention item is present in the answer (case-insensitive; a one-character spelling slip is accepted) AND no must_not item applies.",
+        "must_mention": [
+          "{street_name} (the street name as printed)"
+        ],
+        "must_not": [
+          "States as fact any street, station, landmark, number or text that is not visible in the photo (read the photo, not the model).",
+          "Gives a different street name from the plate.",
+          "Adds a postcode or borough that is not printed."
+        ],
+        "notes": ""
+      }
+    },
+    {
+      "id": "tube-entrance",
+      "file": "tube-entrance.jpg",
+      "description": "Photograph a Tube station entrance with the roundel and the station name visible, daylight, taken from the pavement opposite.",
+      "prompt": "I am lost in London and have no signal. Which Underground station entrance is this? Reply in one sentence.",
+      "ground_truth": {
+        "station_name": "",
+        "line_colours_visible": "(optional)"
+      },
+      "expected_key_facts": [
+        "Station name on the roundel or fascia",
+        "It is an Underground (Tube) entrance"
+      ],
+      "rubric": {
+        "usable_if": "Every must_mention item is present in the answer (case-insensitive; a one-character spelling slip is accepted) AND no must_not item applies.",
+        "must_mention": [
+          "{station_name}"
+        ],
+        "must_not": [
+          "States as fact any street, station, landmark, number or text that is not visible in the photo (read the photo, not the model).",
+          "Names a different station.",
+          "Names Tube lines that are not shown on any sign in the photo."
+        ],
+        "notes": ""
+      }
+    },
+    {
+      "id": "landmark",
+      "file": "landmark.jpg",
+      "description": "Photograph one well-known landmark visible from a public place near the venue (a named tower, bridge, church or station facade), whole building in frame, daylight.",
+      "prompt": "I am lost in London and have no signal. What landmark is this, and which way would I be facing if I can see it from where I stand? Reply in two sentences.",
+      "ground_truth": {
+        "landmark_name": "",
+        "facing_direction_if_known": "(optional; compass bearing of the camera, measured by hand)"
+      },
+      "expected_key_facts": [
+        "Landmark name",
+        "If a facing direction is given it matches ground truth within one compass octant (45 degrees)"
+      ],
+      "rubric": {
+        "usable_if": "Every must_mention item is present in the answer (case-insensitive; a one-character spelling slip is accepted) AND no must_not item applies.",
+        "must_mention": [
+          "{landmark_name} (or an unambiguous alternative name)"
+        ],
+        "must_not": [
+          "States as fact any street, station, landmark, number or text that is not visible in the photo (read the photo, not the model).",
+          "Names a different landmark.",
+          "Gives a compass direction when facing_direction_if_known is blank (invented), or one that is more than 45 degrees from the measured bearing."
+        ],
+        "notes": "A landmark name alone is usable; a direction is only judged if the model gives one."
+      }
+    },
+    {
+      "id": "bus-stop",
+      "file": "bus-stop.jpg",
+      "description": "Photograph a London bus stop sign (flag or shelter panel) showing the stop name, stop letter and route numbers, daylight.",
+      "prompt": "I am lost in London and have no signal. Read the bus stop sign. What is the stop name and which bus routes stop here? Reply briefly.",
+      "ground_truth": {
+        "stop_name": "",
+        "stop_letter": "(optional)",
+        "routes": []
+      },
+      "expected_key_facts": [
+        "Stop name",
+        "Route numbers listed on the sign"
+      ],
+      "rubric": {
+        "usable_if": "Every must_mention item is present in the answer (case-insensitive; a one-character spelling slip is accepted) AND no must_not item applies.",
+        "must_mention": [
+          "{stop_name}",
+          "at least all-but-one of {routes} (route numbers)"
+        ],
+        "must_not": [
+          "States as fact any street, station, landmark, number or text that is not visible in the photo (read the photo, not the model).",
+          "Lists a route number that is not on the sign.",
+          "Gives a different stop name."
+        ],
+        "notes": ""
+      }
+    },
+    {
+      "id": "printed-map",
+      "file": "printed-map.jpg",
+      "description": "Photograph a printed street map or Tube map on a pavement or station wall (for example a 'You are here' map), the whole panel in frame, text legible by eye.",
+      "prompt": "I am lost in London and have no signal. This is a printed map. What does it show, and what is the name of the marked 'You are here' point or the nearest labelled street or station?",
+      "ground_truth": {
+        "map_type": "",
+        "you_are_here_or_nearest_label": ""
+      },
+      "expected_key_facts": [
+        "It is a map",
+        "A label that is printed on the map near the marked position"
+      ],
+      "rubric": {
+        "usable_if": "Every must_mention item is present in the answer (case-insensitive; a one-character spelling slip is accepted) AND no must_not item applies.",
+        "must_mention": [
+          "type of map (street map or Tube map) matches {map_type}",
+          "{you_are_here_or_nearest_label}"
+        ],
+        "must_not": [
+          "States as fact any street, station, landmark, number or text that is not visible in the photo (read the photo, not the model).",
+          "Describes a labelled place that is not on the map.",
+          "Claims a precise position or direction on the map that the photo does not show."
+        ],
+        "notes": "If the map has no 'You are here' marker, set ground truth to a street label that is clearly readable; do not require a position."
+      }
+    },
+    {
+      "id": "shop-front",
+      "file": "shop-front.jpg",
+      "description": "Photograph a shop front with its name and a street number or address visible on the fascia or door, daylight.",
+      "prompt": "I am lost in London and have no signal. Read this shop front. What is the shop's name, and what address or street number is shown? Reply in one sentence.",
+      "ground_truth": {
+        "shop_name": "",
+        "number_or_address_text": ""
+      },
+      "expected_key_facts": [
+        "Shop name",
+        "Number or address text printed on the front"
+      ],
+      "rubric": {
+        "usable_if": "Every must_mention item is present in the answer (case-insensitive; a one-character spelling slip is accepted) AND no must_not item applies.",
+        "must_mention": [
+          "{shop_name}",
+          "{number_or_address_text} (as printed; digits must match exactly)"
+        ],
+        "must_not": [
+          "States as fact any street, station, landmark, number or text that is not visible in the photo (read the photo, not the model).",
+          "Gives a different number (digits wrong).",
+          "Invents a street name that is not printed anywhere in the photo."
+        ],
+        "notes": "Digits are checked exactly: a wrong digit makes the answer unusable."
+      }
+    },
+    {
+      "id": "low-light",
+      "file": "low-light.jpg",
+      "description": "Photograph a sign (street plate or shop name) at dusk, at night, or in a dim underpass, no flash, text still readable by eye.",
+      "prompt": "I am lost in London and have no signal. What does the sign in this dark photo say? If you cannot read it, say so.",
+      "ground_truth": {
+        "sign_text": "",
+        "readable_by_eye": true
+      },
+      "expected_key_facts": [
+        "Sign text if the model can read it",
+        "Otherwise an honest statement that it is too dark"
+      ],
+      "rubric": {
+        "usable_if": "Usable if the answer matches sign_text, OR honestly says it cannot read it and does not guess. A wrong guess is unusable.",
+        "must_mention": [
+          "{sign_text}, OR an explicit statement that the text cannot be read reliably"
+        ],
+        "must_not": [
+          "States as fact any street, station, landmark, number or text that is not visible in the photo (read the photo, not the model).",
+          "Presents a guess as certain when the text is wrong."
+        ],
+        "notes": ""
+      }
+    },
+    {
+      "id": "rotated",
+      "file": "rotated.jpg",
+      "description": "Take a street-name plate or shop fascia with the phone held in landscape (or upside down) so the JPEG carries an EXIF orientation other than 1 (the file shows upright in the Photos app). Do NOT rotate or re-save it. Record the EXIF orientation value.",
+      "prompt": "I am lost in London and have no signal. What does the sign in this photo say? Reply in one sentence.",
+      "ground_truth": {
+        "sign_text": "",
+        "exif_orientation": "",
+        "upright_in_photos_app": true
+      },
+      "expected_key_facts": [
+        "Sign text as it reads upright"
+      ],
+      "rubric": {
+        "usable_if": "Usable if the answer matches sign_text. An answer saying the image is sideways or upside down and failing to read it is unusable.",
+        "must_mention": [
+          "{sign_text}"
+        ],
+        "must_not": [
+          "States as fact any street, station, landmark, number or text that is not visible in the photo (read the photo, not the model).",
+          "Says the image is rotated, sideways or upside down (means the app did not apply the EXIF orientation).",
+          "Reads mirrored or partial text as if complete."
+        ],
+        "notes": "Exercises ImagePrep's orientation fix. A failure here with the same file passing on the Spark (auto-oriented copy) is an orientation bug, not a model limit."
+      }
+    },
+    {
+      "id": "cluttered",
+      "file": "cluttered.jpg",
+      "description": "Photograph a busy street scene with at least 4 different signs or labels in frame (market, high street at a junction), daylight.",
+      "prompt": "I am lost in London and have no signal. List the signs or place names you can read in this photo. Only list text you can actually read.",
+      "ground_truth": {
+        "readable_signs": [],
+        "at_least_n_to_find": 2
+      },
+      "expected_key_facts": [
+        "Two or more of the signs that are readable by eye"
+      ],
+      "rubric": {
+        "usable_if": "Usable if at least 2 listed signs are in readable_signs and none of the listed signs is invented.",
+        "must_mention": [
+          "at least 2 items from {readable_signs}"
+        ],
+        "must_not": [
+          "States as fact any street, station, landmark, number or text that is not visible in the photo (read the photo, not the model).",
+          "Lists any sign that is not in the photo.",
+          "Merges text from two signs into one."
+        ],
+        "notes": "Partial lists are fine; invented items are not."
+      }
+    },
+    {
+      "id": "no-info",
+      "file": "no-info.jpg",
+      "description": "Photograph something with no orienting information: a blank wall, the pavement, the sky, or a hand over the lens. No text, no recognisable building.",
+      "prompt": "I am lost in London and have no signal. Where am I? Which street or landmark is this? If you cannot tell from the photo, say so.",
+      "ground_truth": {
+        "has_orienting_info": false
+      },
+      "expected_key_facts": [
+        "An honest 'cannot tell' answer",
+        "May describe only what is visible (wall, sky, pavement)"
+      ],
+      "rubric": {
+        "usable_if": "Usable only if the answer honestly says it cannot tell and gives no place name.",
+        "must_mention": [
+          "States that the photo does not show enough to say where the user is (words such as cannot tell, not enough information, no visible sign or landmark)"
+        ],
+        "must_not": [
+          "Names any street, station, landmark, borough or area.",
+          "Gives a direction or location with confidence."
+        ],
+        "notes": "Any confident place name is unusable, even a plausible one."
+      }
+    }
+  ]
+}
