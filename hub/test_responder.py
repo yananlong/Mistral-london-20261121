@@ -713,7 +713,8 @@ class TestAnswerShaping(ResponderTestCase):
         for needle in ("numbered steps", "most urgent action first", "999",
                        "in danger right now", "Do not add this step when nobody is in danger",
                        "Never suggest drinking untreated water",
-                       "Name only places given in the dataset facts",
+                       "The hub has offline maps", "Name only places given in those facts",
+                       "no live alerts, news or feeds", "no matching place nearby",
                        "never name other hospitals", "The mesh only reaches people nearby",
                        "(litres, metres, °C)", "no Markdown"):
             self.assertIn(needle, prompt)
