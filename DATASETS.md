@@ -1,10 +1,10 @@
 # Datasets and live feeds (open draft)
 
-A catalogue of data the project could carry or relay when the internet is down, focused on **urban emergencies in the UK (London first)**, because Bitchat's Bluetooth mesh only works where phones are dense. Compiled on **21 November 2026**. Entries marked **✓** had their access and terms checked against a source on that date. Entries marked **?** are leads that still need checking. Nothing here has been integrated or tested yet.
+A catalogue of data the project could carry or relay when the internet is down, focused on **urban emergencies in the UK (London first)**, because BitChat's Bluetooth mesh only works where phones are dense. Compiled on **21 November 2026**. Entries marked **✓** had their access and terms checked against a source on that date. Entries marked **?** are leads that still need checking. Nothing here has been integrated or tested yet.
 
 See [README.md](README.md) for the concept, [BLUEPRINT_1.md](BLUEPRINT_1.md) for the MVP architecture and [PLAN.md](PLAN.md) for the open decisions.
 
-**The target system.** A central hub has internet access, and people reach it by daisy-chaining phone to phone over the BitChat mesh. The Mac mini in [BLUEPRINT_1.md](BLUEPRINT_1.md) is a proof-of-concept stand-in for that hub. If the Mac mini runs offline in the demo, it can replay recorded snapshots of the live feeds below. This doc also answers three of the blueprint's open questions: which guides to load on the hub and under which licences, which map region and tile source to use, and the stretch goal "nearest shelter or water source".
+**The target system.** A central hub has internet access, and people reach it by daisy-chaining phone to phone over the BitChat mesh. In the MVP described in [BLUEPRINT_1.md](BLUEPRINT_1.md#decisions), the hub is the team's DGX Spark, a remote GPU server that serves Ministral 3 14B Instruct through Ollama. The Mac bridge at the venue joins the mesh and forwards each question to the hub over the internet. The MVP uses that connection only to reach the hub's open-weight model, and the live feeds below come after the MVP. If the demo shows any of them, it uses recorded snapshots or a live connection, and the pitch says which. This doc also proposes answers to two of the blueprint's open questions and data for one stretch goal: which guides to load on the hub and under which licences, which tile source to use for the London map, and "nearest shelter or water source".
 
 ---
 
@@ -34,18 +34,18 @@ The purpose of this doc is to work out which information is most crucial in an u
 
 ## 2. The constraint that shapes everything: the mesh is tiny
 
-Bitchat sends **512-byte BLE packets**. Larger messages are split into fragments of about 469 bytes, and a packet starts with **TTL 7**, which relays cap at 5 in dense areas ([whitepaper][bitchat-wp], [fragmentation notes][bitchat-frag]). So every answer that crosses the mesh should fit in **one to three fragments (≤ ~1 KB)**. That gives each piece of data one of four places to live:
+BitChat sends **512-byte BLE packets**. Larger messages are split into fragments of about 469 bytes, and a packet starts with **TTL 7**, which relays cap at 5 in dense areas ([whitepaper][bitchat-wp], [fragmentation notes][bitchat-frag]). So every answer that crosses the mesh should fit in **one to three fragments (≤ ~1 KB)**. That gives each piece of data one of four places to live:
 
 | Tier | Where the data lives | How the offline user gets it | Good for |
 |---|---|---|---|
 | **0. On the phone** | Downloaded before the emergency with the offline map | Instantly, with no mesh and no hub | Map tiles, place locations (water, AEDs, pharmacies, shelters) and a small set of first-aid cards. **The most robust tier**, because it still works when the hub is out of range |
-| **1. On the hub** | Stored on the Mac mini and searched by the local Mistral model (the blueprint's "retrieval over survival guides") | A BitChat private message with a short question, answered in the blueprint's two-message format | Guide collections too big for a phone (WikiMed, iFixit, Wikipedia), and "nearest X" lookups against OSM data on the hub |
+| **1. On the hub** | Stored on the hub and searched by its open-weight Mistral model (the blueprint's "retrieval over the survival guides") | A BitChat private message with a short question, answered in the blueprint's two-message format | Guide collections too big for a phone (WikiMed, iFixit, Wikipedia), and "nearest X" lookups against OSM data on the hub |
 | **2. Live, via the hub** | The hub pulls live feeds over its internet connection and condenses them into bulletins | Asking the hub "what's happening?", or bulletins posted to the public mesh channel, which phones cache and re-share so **one fetch serves the whole area** | Alerts, news, floods, power cuts, service status, transport (ranks 2, 4, 5 and 6) |
 | **3. Made on the mesh** | Reports that users send to the hub | Shared back as aggregates | "I'm safe" check-ins, needs, sightings of working taps or open shops |
 
-**When the hub loses its own connection,** it keeps serving the **last snapshot with its age** ("EA flood warnings as of 09:40, 3 h ago") instead of going silent. The same mechanism lets the offline Mac mini prototype replay recorded feeds.
+**When the hub loses its own connection,** it keeps serving the **last snapshot with its age** ("EA flood warnings as of 09:40, 3 h ago") instead of going silent. The same mechanism lets the MVP demo replay recorded feeds, if it shows any.
 
-**Trust in the hub.** BitChat private messages use Noise sessions, so if a user verifies the hub's fingerprint once (in person or by QR code), answers can be traced back to the hub. A separate signature (for example a 64-byte Ed25519 signature) only matters if phones re-share bulletins that other phones then rely on. Check how BitChat signs public messages before adding one.
+**Trust in the hub.** BitChat private messages use Noise sessions. The hub is not a BitChat peer, so each session ends at the Mac bridge. If a user verifies the Mac bridge's fingerprint once (in person or by QR code), answers can be traced back to the Mac bridge, and the link from the Mac bridge to the hub needs its own check. A separate signature (for example a 64-byte Ed25519 signature) only matters if phones re-share bulletins that other phones then rely on. Check how BitChat signs public messages before adding one. The team deferred hub identity verification, and [the blueprint's deferred questions](BLUEPRINT_1.md#deferred-questions) list it.
 
 **Many queries need no LLM.** "Nearest drinking water" is a lookup against OpenStreetMap that returns three coordinates. Use Mistral where it adds value (answering first-aid or repair questions from retrieved guides, condensing feeds, translating) and let deterministic lookups win everywhere else. This is also what [critique.md](critique.md) asks for.
 
@@ -87,7 +87,7 @@ Places where help is available:
 | [UK CMOs' scripts for a national power outage][cmo-scripts] (December 2025) | Official advice on water, sanitation, food and nutrition during a long blackout, written for broadcast | 0 | GOV.UK | ✓ |
 | [Prepare (GOV.UK)][prepare] | Power cuts, water outages and phone/broadband outages, plus a supplies checklist | 0 | GOV.UK campaign site. Licence not confirmed | ✓ / ? |
 | Sphere Handbook | Humanitarian minimum standards, e.g. litres of water per person per day | 0 | Free online at spherestandards.org | ? |
-| Water company incident pages (Thames Water and others) | Where bottled-water stations and standpipes are | 2 | No known API, so the gateway would have to scrape them | ? |
+| Water company incident pages (Thames Water and others) | Where bottled-water stations and standpipes are | 2 | No known API, so the hub would have to scrape them | ? |
 
 ### 3.3 Food
 
@@ -169,10 +169,9 @@ Places where help is available:
 
 These are datasets **we** create. They may matter most for the critique's "complete a useful job" test.
 
-- **Safe and well check-ins.** "I'm OK" plus an optional coarse location, delivered by the server to named family contacts, with delivery confirmed back to the sender.
+- **Safe and well check-ins.** "I'm OK" plus an optional coarse location, delivered by the hub to named family contacts, with delivery confirmed back to the sender.
 - **Needs reports**, such as "2 people, need water, insulin". Use structured fields (possibly [HXL][hxl] tags) so responders can aggregate them.
 - **Resource sightings**, such as "Tesco on X Road open", "tap at Y working" or "charging available at the library". Each one is timestamped and fades out as it ages.
-- **Gateway registry.** Which nodes have internet right now, so requests take the shortest path.
 
 Each of these needs consent, minimal location precision and an expiry, in line with the trust principles in PLAN.md.
 
@@ -180,7 +179,7 @@ Each of these needs consent, minimal location precision and an expiry, in line w
 
 ## 4. On-device AI option
 
-The blueprint runs inference on the hub so the phones spend no battery on it. One of the hub's candidate models is also an option for phones: [Ministral 3 3B][ministral] (Apache 2.0, released December 2025) runs fully on a phone. A community int4 build is about 2.7 GB and decodes at about 17.6 tokens/s on an iPhone 17 Pro. Combined with Tier 0 data, it could answer basic first-aid questions **when the hub is out of range**. That needs a large download in advance, so treat it as a fallback after the MVP, not the core flow.
+The blueprint runs question answering on the hub, so the phones spend no battery on it. The only model on the phones is the vision model for Locate. [Ministral 3 3B][ministral] (Apache 2.0, released December 2025) runs fully on a phone, and the blueprint names it as one candidate for that model. Martin owns the choice. A community int4 build is about 2.7 GB and decodes at about 17.6 tokens/s on an iPhone 17 Pro. Combined with Tier 0 data, it could also answer basic first-aid questions **when the hub is out of range**. That needs a large download in advance, so treat it as a fallback after the MVP, not the core flow.
 
 ---
 
@@ -197,22 +196,22 @@ The blueprint runs inference on the hub so the phones spend no battery on it. On
 
 ## 6. Suggested hackathon shortlist
 
-The shortlist follows the ranking in section 1. If the Mac mini stays offline in the demo, items 1, 2, 4 and 5 use recorded snapshots and a simulated outbound delivery, and the demo should say so.
+The shortlist follows the ranking in section 1. The MVP leaves the target hub's live information and outside messages out. If the demo shows items 1, 2, 4 or 5, they come from recorded snapshots and a simulated outbound delivery or from a live connection. The pitch says which, and [the blueprint's open questions](BLUEPRINT_1.md#open-questions) leave that choice open.
 
 1. **Rank 1: safe and well check-in.** The phone sends "I'm safe" plus an optional location. The hub forwards it to a named contact (SMS or email) and sends a delivery receipt back over the mesh. This is the one thing only an internet-connected hub can do, and it closes the delivery gap in [critique.md](critique.md).
 2. **Ranks 2 and 5: one live bulletin under about 400 bytes.** Combine the GOV.UK alerts feed, EA flood warnings and Met Office warnings (verbatim), the UKPN restoration estimate and TfL status. Give each item its source and timestamp, and push it ahead of other mesh traffic.
 3. **Rank 3: life-saving cards on the phone.** Severe bleeding, CPR with the nearest AED from OSM, choking, burns, carbon monoxide, hypothermia and heat. Base them on IFRC, NHS and the UK CMOs' outage scripts. They are a few kilobytes of text and need no hub.
 4. **Rank 4: "where can I get my medicine?"** Pharmacies and hospitals from OSM, with opening status from NHS service data where available.
 5. **Rank 6: nearest water, shelter, charging point or food bank.** A Geofabrik London extract on the hub. This is a deterministic lookup that fits in one packet, so no model run is needed.
-6. **Underneath everything:** a Protomaps extract of the demo area as the offline map (build step 4), and a guide library on the hub for other questions (WikiMed mini, the WHO Psychological First Aid guide, the Prepare pages and iFixit). The hub should **name the guide each answer came from**.
-7. **The critique's evaluation set.** Draw the ten paired scenarios from ranks 1 to 6. Use the guides and feeds above as the source of expected facts, so that a "correct answer" means one that matches a named source.
+6. **Underneath everything:** a Protomaps extract of London, the demo map region, as the offline map (build step 4), and a guide library on the hub for other questions (WikiMed mini, the WHO Psychological First Aid guide, the Prepare pages and iFixit). The hub should **name the guide each answer came from**.
+7. **The evaluation set.** Yanan's evals own the test questions and the answer rubric, which [the blueprint defers](BLUEPRINT_1.md#deferred-questions). Draw candidate scenarios from ranks 1 to 6. Use the guides and feeds above as the source of expected facts, so that a "correct answer" means one that matches a named source.
 
 ## 7. Open questions
 
-- [ ] Is the Mac mini online or offline in the demo? Online means real live feeds and real delivery to family. Offline means replayed snapshots, and the pitch has to say so.
+- [x] Is the hub online or offline in the demo? [The blueprint's decisions](BLUEPRINT_1.md#decisions) answer it. The hub is the remote DGX Spark, and the Mac bridge reaches it over the internet, so do not call the demo hub offline. The phones have no internet. Live feeds and delivery to family come after the MVP, and [the blueprint's open questions](BLUEPRINT_1.md#open-questions) still ask whether the demo shows them with recorded data or a live connection.
 - [ ] Does the team agree with the ranking in section 1? A quick check with someone from a local resilience forum or the British Red Cross would strengthen it.
-- [ ] What's the demo area (Greater London?), and how much Tier 0 data can each phone hold?
-- [ ] How do users verify the hub's identity, and does the team need a signature beyond BitChat's own?
+- [ ] How much Tier 0 data can each iPhone hold? [The blueprint's decisions](BLUEPRINT_1.md#decisions) set London as the demo map region.
+- [ ] How do users verify the hub's identity, and does the team need a signature beyond BitChat's own? The team deferred this question, and [the blueprint's deferred questions](BLUEPRINT_1.md#deferred-questions) list it.
 - [ ] Do we keep anything non-commercial (iFixit, Hesperian) given the commercial direction in critique.md?
 - [ ] Which ? entries do we verify first?
 
