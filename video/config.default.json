@@ -1,0 +1,32 @@
+{
+  "run": {"out_root": "video/runs", "auto_approve": false},
+  "video": {"width": 1920, "height": 1080, "fps": 30, "transition_s": 0},
+  "duration": {"min_s": 35, "max_s": 40, "target_s": 38, "quantum_s": 0.5},
+  "concurrency": 4,
+  "llm": {"provider": "stub", "model": "stub", "latency_s": 3},
+  "generators": [
+    {"name": "gen_a", "backend": "stub", "model": "stub-alpha",
+     "style": "clean, high-contrast, calm", "style_suffix": "Clean layout, high contrast, slow deliberate motion.",
+     "latency_s": 15, "cost_per_s": 0.05},
+    {"name": "gen_b", "backend": "stub", "model": "stub-beta",
+     "style": "dynamic, punchy", "style_suffix": "Dynamic pacing, punchy cuts, bolder type.",
+     "latency_s": 45, "cost_per_s": 0.10}
+  ],
+  "director": {"max_attempts": 3},
+  "curator": {
+    "max_attempts": 3,
+    "min_total_score": 30,
+    "rubric": "Score 0-10 on on_brief, motion, artifacts (10=clean), consistency, legibility. Winner = highest total per shot. retry=true when winner total < min_total_score or artifacts <= 4."
+  },
+  "assemble": {
+    "max_attempts": 2,
+    "render_seconds_per_video_second": 0.5,
+    "captions": true,
+    "audio": {"bed": true, "voiceover": true, "provider": "stub", "voice": "Jane - Neutral"}
+  },
+  "backends": {
+    "stub": {"poster": true},
+    "remotion": {"preview_mode": "still", "render": true, "crf": 20}
+  },
+  "design_refs": ["design/PRINCIPLES.md", "design/system.html", "design/components.html"]
+}
