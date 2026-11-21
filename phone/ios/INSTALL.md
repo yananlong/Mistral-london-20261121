@@ -46,20 +46,29 @@ cd bitchat && cp Configs/Local.xcconfig.example Configs/Local.xcconfig
 
 ## 3. Copy the model files onto each phone
 
-1. On the Mac, download and verify the pair once with `scripts/check_model_pair.sh`: Q4_K_M plus the Q8_0 mmproj, ~2.6 GB total.
-2. Copy each file into Documents over USB (~1-2 min per phone):
+The model list is [models.json](models.json). A 12 GB phone (17 Pro, Pro Max, Air, 18 Pro) gets Q4_K_M plus the Q8_0
+projector (~2.6 GB). An 8 GB phone (17, 17e) also gets Q3_K_M (~4.4 GB) for the `tight` and `textOnly` tiers.
+
+1. On the Mac, download and verify the files once (SHA-256 checked, resumable):
    ```bash
-   cd models   # MODEL_DIR used by check_model_pair.sh
-   for f in Ministral-3-3B-Instruct-2512-Q4_K_M.gguf mmproj-Ministral-3-3B-Instruct-2512-Q8_0.gguf; do
-     xcrun devicectl device copy to --device <UDID> \
-       --domain-type appDataContainer --domain-identifier <APP_BUNDLE_ID> \
-       --user mobile --source "$f" --destination "Documents/$f"
-   done
+   scripts/fetch_ios_models.sh all ./models
    ```
-   `devicectl` doesn't copy directories, so loop over the golden photos and `cases.json` from `phone/test/golden/` into
-   `Documents/golden/` the same way. `--user mobile` comes from forum posts and is unconfirmed; if it errors, try omitting
-   it or using `--user root`. Fallback: Finder > the iPhone > Files tab, then drag the files onto the app.
-3. The files survive rebuilds as long as you don't delete the app or change the team or bundle ID.
+2. Copy models, the phone data bundle (`datasets/phone/`, ~0.9 GB, every file in its `manifest.json`) and the golden
+   test set into Documents over USB:
+   ```bash
+   xcrun devicectl list devices                                  # find the UDID
+   scripts/push_ios.sh <UDID> <APP_BUNDLE_ID> 12GB ./models      # or 8GB
+   scripts/push_ios.sh <UDID> <APP_BUNDLE_ID> 12GB ./models data # only re-push one part: models, data or golden
+   ```
+   `devicectl` doesn't copy directories, so the script copies one file at a time. `--user mobile` comes from forum posts
+   and is unconfirmed; if it errors, rerun with `DEVICECTL_USER=` (omit it) or `DEVICECTL_USER=root`. Also unconfirmed:
+   whether `devicectl` creates the `datasets/...` subfolders; if it doesn't, use the fallback.
+   Fallback: Finder > the iPhone > Files tab, then drag the files (and the `datasets` folder) onto the app.
+3. Before going offline, on each phone: enable Dictation (Settings > General > Keyboard) so iOS downloads the en-GB
+   on-device speech model, and download an Enhanced en-GB voice (Settings > Accessibility > Spoken Content > Voices).
+4. At launch the app calls `OfflineBundle.selectProfile()` and `OfflineBundle.verifyDatasets()` (README section 4);
+   both report missing or half-copied files.
+5. The files survive rebuilds as long as you don't delete the app or change the team or bundle ID.
 
 ## Skip
 

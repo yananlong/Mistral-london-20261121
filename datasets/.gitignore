@@ -7,3 +7,5 @@
 *.tmp
 .tools/
 logs/
+hub/foraging/images/
+hub/foraging/wiki/

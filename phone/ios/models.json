@@ -1,0 +1,47 @@
+{
+ "version": 1,
+ "note": "Offline model files for the iOS app. Used by scripts/fetch_ios_models.sh and scripts/push_ios.sh. Sizes and SHA-256 are from the Hugging Face tree API (LFS oid), 2026-11-21. Must match EngineProfile in MinistralKit/DeviceProfile.swift.",
+ "files": [
+  {
+   "file": "Ministral-3-3B-Instruct-2512-Q4_K_M.gguf",
+   "role": "language model",
+   "url": "https://huggingface.co/mistralai/Ministral-3-3B-Instruct-2512-GGUF/resolve/main/Ministral-3-3B-Instruct-2512-Q4_K_M.gguf",
+   "bytes": 2147023008,
+   "sha256": "9ed150d4367e68df0ac8e1540f6ddc65b42d0ee26378329d1ecbca60f93fc5f8",
+   "tiers": ["full", "lean"],
+   "licence": "Apache 2.0"
+  },
+  {
+   "file": "mmproj-Ministral-3-3B-Instruct-2512-Q8_0.gguf",
+   "role": "vision projector",
+   "url": "https://huggingface.co/ggml-org/Ministral-3-3B-Instruct-2512-GGUF/resolve/main/mmproj-Ministral-3-3B-Instruct-2512-Q8_0.gguf",
+   "bytes": 448285088,
+   "sha256": "57af826536cde496dde1e8343b8e72c89fdbd89084d58e18eb391ef34c39c9f2",
+   "tiers": ["full", "lean", "tight"],
+   "licence": "Apache 2.0"
+  },
+  {
+   "file": "Ministral-3-3B-Instruct-2512-Q3_K_M.gguf",
+   "role": "language model (8 GB phones)",
+   "url": "https://huggingface.co/unsloth/Ministral-3-3B-Instruct-2512-GGUF/resolve/main/Ministral-3-3B-Instruct-2512-Q3_K_M.gguf",
+   "bytes": 1795552544,
+   "sha256": "91489d8d75b0a9e682e2f17ab9f25260ab935cddf6edc8f3510b8c691993c5d5",
+   "tiers": ["tight", "textOnly"],
+   "licence": "Apache 2.0",
+   "untested": "unsloth LM with the ggml-org projector is an untested pairing (DESIGN_IPHONE17.md)"
+  }
+ ],
+ "devices": {
+  "12GB": {"examples": "iPhone 17 Pro / Pro Max / Air, iPhone 18 Pro", "push": ["full", "lean"]},
+  "8GB": {"examples": "iPhone 17, iPhone 17e", "push": ["lean", "tight", "textOnly"]}
+ },
+ "speech": {
+  "stt": "SFSpeechRecognizer, en-GB, requiresOnDeviceRecognition = true (no file to copy; the OS downloads the en-GB on-device model when Dictation is enabled, which needs internet once)",
+  "tts": "AVSpeechSynthesizer, en-GB voice (download an Enhanced voice in Settings > Accessibility > Spoken Content > Voices before going offline)"
+ },
+ "data": {
+  "source": "datasets/phone/",
+  "destination": "Documents/datasets/",
+  "manifest": "datasets/phone/manifest.json"
+ }
+}
