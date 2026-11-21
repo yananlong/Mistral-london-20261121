@@ -7,8 +7,10 @@
     "HUB_ERROR_TEXT": "The hub could not answer right now. Please try again.",
     "HUB_EMPTY_TEXT": "Send a question in plain words, for example: How do I make water safe to drink?",
     "LOCATION_SHARE_DEFAULT_NOTE": "Shared location",
-    "MAX_QUESTION_UNITS": 500,
-    "MAX_ANSWER_BODY_UNITS": 900,
+    "MAX_MESSAGE_BYTES": 255,
+    "MAX_QUESTION_BYTES": 200,
+    "MAX_ANSWER_BODY_BYTES": 900,
+    "MAX_ANSWER_PARTS": 9,
     "ACK_TIMEOUT_MS": 30000,
     "ANSWER_TIMEOUT_MS": 150000,
     "HUB_MODEL_TIMEOUT_MS": 120000
@@ -193,7 +195,7 @@
       "wire": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
       "result": {
         "kind": "question",
-        "body": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "body": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
         "loc": null
       }
     }
@@ -216,35 +218,57 @@
   "composeAnswer": [
     {
       "modelOutput": "1. Let the water settle, then pour the clear part through a cloth.\n2. Bring it to a rolling boil for at least 1 minute.",
-      "wire": "1. Let the water settle, then pour the clear part through a cloth.\n2. Bring it to a rolling boil for at least 1 minute.\nAI answer from an open-weight model on the hub. Not verified emergency advice."
+      "messages": [
+        "(1/2) 1. Let the water settle, then pour the clear part through a cloth.\n2. Bring it to a rolling boil for at least 1 minute.",
+        "(2/2) AI answer from an open-weight model on the hub. Not verified emergency advice."
+      ]
     },
     {
       "modelOutput": "  1. Press hard on the wound.\r\n2. Call for help.  \n\n",
-      "wire": "1. Press hard on the wound.\n2. Call for help.\nAI answer from an open-weight model on the hub. Not verified emergency advice."
+      "messages": [
+        "(1/2) 1. Press hard on the wound.\n2. Call for help.",
+        "(2/2) AI answer from an open-weight model on the hub. Not verified emergency advice."
+      ]
     },
     {
       "modelOutput": "1. Open a window.\nAI answer from an open-weight model on the hub. Not verified emergency advice.",
-      "wire": "1. Open a window.\nAI answer from an open-weight model on the hub. Not verified emergency advice."
+      "messages": [
+        "(1/2) 1. Open a window.",
+        "(2/2) AI answer from an open-weight model on the hub. Not verified emergency advice."
+      ]
     },
     {
       "modelOutput": "",
-      "wire": null
+      "messages": null
     },
     {
       "modelOutput": "   \n",
-      "wire": null
+      "messages": null
     },
     {
       "modelOutput": "AI answer from an open-weight model on the hub. Not verified emergency advice.",
-      "wire": null
+      "messages": null
     },
     {
       "modelOutput": "1. Step 1: keep the casualty warm, still and talking, and check their breathing every few minutes.\n2. Step 2: keep the casualty warm, still and talking, and check their breathing every few minutes.\n3. Step 3: keep the casualty warm, still and talking, and check their breathing every few minutes.\n4. Step 4: keep the casualty warm, still and talking, and check their breathing every few minutes.\n5. Step 5: keep the casualty warm, still and talking, and check their breathing every few minutes.\n6. Step 6: keep the casualty warm, still and talking, and check their breathing every few minutes.\n7. Step 7: keep the casualty warm, still and talking, and check their breathing every few minutes.\n8. Step 8: keep the casualty warm, still and talking, and check their breathing every few minutes.\n9. Step 9: keep the casualty warm, still and talking, and check their breathing every few minutes.\n10. Step 10: keep the casualty warm, still and talking, and check their breathing every few minutes.\n11. Step 11: keep the casualty warm, still and talking, and check their breathing every few minutes.\n12. Step 12: keep the casualty warm, still and talking, and check their breathing every few minutes.\n13. Step 13: keep the casualty warm, still and talking, and check their breathing every few minutes.\n14. Step 14: keep the casualty warm, still and talking, and check their breathing every few minutes.",
-      "wire": "1. Step 1: keep the casualty warm, still and talking, and check their breathing every few minutes.\n2. Step 2: keep the casualty warm, still and talking, and check their breathing every few minutes.\n3. Step 3: keep the casualty warm, still and talking, and check their breathing every few minutes.\n4. Step 4: keep the casualty warm, still and talking, and check their breathing every few minutes.\n5. Step 5: keep the casualty warm, still and talking, and check their breathing every few minutes.\n6. Step 6: keep the casualty warm, still and talking, and check their breathing every few minutes.\n7. Step 7: keep the casualty warm, still and talking, and check their breathing every few minutes.\n8. Step 8: keep the casualty warm, still and talking, and check their breathing every few minutes.\n9. Step 9: keep the casualty warm, still and talking, and check their breathing every few minutes.…\nAI answer from an open-weight model on the hub. Not verified emergency advice."
+      "messages": [
+        "(1/6) 1. Step 1: keep the casualty warm, still and talking, and check their breathing every few minutes.\n2. Step 2: keep the casualty warm, still and talking, and check their breathing every few minutes.",
+        "(2/6) 3. Step 3: keep the casualty warm, still and talking, and check their breathing every few minutes.\n4. Step 4: keep the casualty warm, still and talking, and check their breathing every few minutes.",
+        "(3/6) 5. Step 5: keep the casualty warm, still and talking, and check their breathing every few minutes.\n6. Step 6: keep the casualty warm, still and talking, and check their breathing every few minutes.",
+        "(4/6) 7. Step 7: keep the casualty warm, still and talking, and check their breathing every few minutes.\n8. Step 8: keep the casualty warm, still and talking, and check their breathing every few minutes.",
+        "(5/6) 9. Step 9: keep the casualty warm, still and talking, and check their breathing every few minutes.…",
+        "(6/6) AI answer from an open-weight model on the hub. Not verified emergency advice."
+      ]
     },
     {
       "modelOutput": "Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it.",
-      "wire": "Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it.…\nAI answer from an open-weight model on the hub. Not verified emergency advice."
+      "messages": [
+        "(1/5) Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one",
+        "(2/5) full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you",
+        "(3/5) drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water",
+        "(4/5) for one full minute before you drink it. Boil the water for one full minute before you drink it. Boil the water for one full minute before you drink it.…",
+        "(5/5) AI answer from an open-weight model on the hub. Not verified emergency advice."
+      ]
     }
   ],
   "classifyHubReply": [
@@ -252,6 +276,36 @@
       "wire": "Received. Working on an answer.",
       "result": {
         "kind": "ack"
+      }
+    },
+    {
+      "wire": "(1/2) 1. Let the water settle.\n2. Boil it for 1 minute.",
+      "result": {
+        "kind": "answer_part",
+        "index": 1,
+        "total": 2,
+        "text": "1. Let the water settle.\n2. Boil it for 1 minute."
+      }
+    },
+    {
+      "wire": "(2/2) AI answer from an open-weight model on the hub. Not verified emergency advice.",
+      "result": {
+        "kind": "answer_part",
+        "index": 2,
+        "total": 2,
+        "text": "AI answer from an open-weight model on the hub. Not verified emergency advice."
+      }
+    },
+    {
+      "wire": "(3/2) bad index",
+      "result": {
+        "kind": "other"
+      }
+    },
+    {
+      "wire": "(1/2)no space",
+      "result": {
+        "kind": "other"
       }
     },
     {
@@ -275,15 +329,7 @@
     {
       "wire": "1. Let the water settle.\n2. Boil it for 1 minute.\nAI answer from an open-weight model on the hub. Not verified emergency advice.",
       "result": {
-        "kind": "answer",
-        "body": "1. Let the water settle.\n2. Boil it for 1 minute."
-      }
-    },
-    {
-      "wire": "1. Press hard on the wound.\r\nAI answer from an open-weight model on the hub. Not verified emergency advice.\r\n",
-      "result": {
-        "kind": "answer",
-        "body": "1. Press hard on the wound."
+        "kind": "other"
       }
     },
     {
@@ -297,6 +343,102 @@
       "result": {
         "kind": "other"
       }
+    }
+  ],
+  "assembleAnswer": [
+    {
+      "parts": [
+        [
+          1,
+          2,
+          "1. Boil it."
+        ],
+        [
+          2,
+          2,
+          "AI answer from an open-weight model on the hub. Not verified emergency advice."
+        ]
+      ],
+      "result": "1. Boil it."
+    },
+    {
+      "parts": [
+        [
+          2,
+          3,
+          "2. Cool it."
+        ],
+        [
+          1,
+          3,
+          "1. Boil it."
+        ],
+        [
+          3,
+          3,
+          "AI answer from an open-weight model on the hub. Not verified emergency advice."
+        ]
+      ],
+      "result": "1. Boil it.\n2. Cool it."
+    },
+    {
+      "parts": [
+        [
+          1,
+          3,
+          "1. Boil it."
+        ],
+        [
+          1,
+          3,
+          "1. Boil it."
+        ],
+        [
+          3,
+          3,
+          "AI answer from an open-weight model on the hub. Not verified emergency advice."
+        ]
+      ],
+      "result": null
+    },
+    {
+      "parts": [
+        [
+          1,
+          2,
+          "1. Boil it."
+        ],
+        [
+          1,
+          2,
+          "1. Boil it."
+        ],
+        [
+          2,
+          2,
+          "AI answer from an open-weight model on the hub. Not verified emergency advice."
+        ]
+      ],
+      "result": "1. Boil it."
+    },
+    {
+      "parts": [
+        [
+          1,
+          2,
+          "1. Boil it."
+        ],
+        [
+          2,
+          2,
+          "not the label"
+        ]
+      ],
+      "result": null
+    },
+    {
+      "parts": [],
+      "result": null
     }
   ],
   "encodeLocationShare": [
