@@ -24,6 +24,8 @@ if SwiftPM complains, recompute with `swift package compute-checksum`.) Target i
 
 ## 2. Models: Finder file sharing, not bundled
 
+Full install steps (signing, `devicectl` copy): [INSTALL.md](INSTALL.md).
+
 Default pair (in the app's Documents/):
 - `Ministral-3-3B-Instruct-2512-Q4_K_M.gguf` (2.15 GB, mistralai repo)
 - `mmproj-Ministral-3-3B-Instruct-2512-Q8_0.gguf` (0.45 GB, ggml-org repo). Default because the BF16
