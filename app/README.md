@@ -1,6 +1,6 @@
 # Run Mesh Help
 
-Run Talk, Locate, and Ask in Expo Go or a web browser. The default demo has an in-memory Phone B, an in-memory hub, canned answers, and a labelled London position.
+Run the two-tab app — **Info** (Ask the hub, Locate on the offline map) and **Chats** (Talk) — in Expo Go or a web browser. The default demo has an in-memory Phone B, an in-memory hub, canned answers, and a labelled London position.
 
 ## Start on web
 
@@ -34,16 +34,26 @@ Scan Expo’s QR code with the iPhone camera. The simulator runs inside the app.
 
 The demo starts at Westminster with **Demo position** visible. In Locate, tap **Use device position** to request location permission and use real GPS. Web geolocation requires localhost or HTTPS. An unavailable fix or denied permission has its own state.
 
+## The two tabs
+
+The app has two fixed bottom tabs, so the layout stays still however busy the mesh gets:
+
+- **Info** (the first view) — access information. A pinned switcher at the top of the tab flips between **Ask** (questions to the hub, one at a time, with its status and the AI disclaimer pinned below) and **Locate** (the offline map, your position, shared pins).
+- **Chats** — communicate with family and the people around you: the public channel and private threads.
+
+The header holds a small **SOS** pill. It opens a guided emergency sheet, in escalation order: **first aid** (ask the hub for first-aid guidance), **help** (message people nearby in Chats), **what is happening** (ask the hub for an analysis), **call for help** (broadcast `SOS — I need help` to everyone, with your `loc:` line so your pin appears on their maps). The top action, **Send SOS + get first-aid guidance**, does both at once. If you can reach 999 or 112, call them.
+
 ## Walk through the demo
 
-1. In Talk, choose **Phone B**, enter a message, and tap **Send message**. Choose **Public channel** to send publicly.
+1. In the **Chats** tab, choose **Phone B**, enter a message, and tap **Send message**. Choose **Public channel** to send publicly.
 2. Open **Demo controls** and tap **Phone B sends a private message**. Open Phone B’s thread to read it.
-3. Tap **Phone B shares a location**, then open its location row. Locate selects that location and lists Phone B’s latest pin.
-4. In Locate, tap **Share location** and choose the public channel or Phone B. The hub is excluded from this picker.
-5. In Ask, tap a suggested question. Watch **Sent**, **Received by hub** after about 0.8 seconds, and **Answered** about 2.5 seconds later. Multipart answers show their arrival progress.
+3. Tap **Phone B shares a location**, then open its location row. The Info tab switches to **Locate**, selects that location and lists Phone B’s latest pin.
+4. In **Locate**, tap **Share location** and choose the public channel or Phone B. The hub is excluded from this picker.
+5. In **Ask**, tap a suggested question. Watch **Sent**, **Received by hub** after about 0.8 seconds, and **Answered** about 2.5 seconds later. Multipart answers show their arrival progress.
 6. Tap **Ask another question**. In Demo controls, choose **Hub offline**, then ask again. After 30 seconds, **Hub not reachable** appears.
 7. Choose **Hub online** and tap **Retry**. The same question is sent again and receives an answer.
 8. Choose **Hub error** to demonstrate **Hub could not answer**. Use the position controls to demonstrate a denied permission or no position fix.
+9. Tap the header **SOS** pill and try **Send SOS + get first-aid guidance**: the SOS lands in the public channel (with your pin) and the first-aid answer arrives in Ask.
 
 **Attach my location** starts off for every new question. When enabled, it adds the exact trailing `loc:` line defined in [the protocol contract](../protocol/README.md). A real fix or the clearly labelled demo position is required. The AI disclaimer stays visible while the Ask content scrolls.
 

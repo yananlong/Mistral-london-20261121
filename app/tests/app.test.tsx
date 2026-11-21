@@ -25,7 +25,10 @@ class OutOfOrderTransport extends SimulatedTransport {
 }
 const button = (name: string) => screen.getByRole('button', { name });
 const tap = async (name: string) => { await fireEvent.press(button(name)); };
-const tab = async (name: 'Ask' | 'Talk' | 'Locate') => { await fireEvent.press(screen.getByRole('tab', { name })); };
+const pressTab = async (name: string) => { await fireEvent.press(screen.getByRole('tab', { name })); };
+const openChats = async () => { await pressTab('Chats'); };
+const openAsk = async () => { await pressTab('Info'); await fireEvent.press(screen.getByRole('tab', { name: 'Ask' })); };
+const openLocate = async () => { await pressTab('Info'); await fireEvent.press(screen.getByRole('tab', { name: 'Locate' })); };
 const advance = async (ms: number) => { await act(async () => { jest.advanceTimersByTime(ms); }); };
 
 beforeEach(() => { jest.useFakeTimers(); });
@@ -40,14 +43,14 @@ test('the app falls back to the simulated link when the native module is unavail
 describe('Ask on the real simulated link', () => {
   test('the disclaimer stays outside the scrolling content', async () => {
     await launch();
-    await tab('Ask');
+    await openAsk();
     expect(screen.getByText(DISCLAIMER)).toBeTruthy();
     expect(within(screen.getByTestId('main-scroll')).queryByText(DISCLAIMER)).toBeNull();
   });
 
   test('a suggestion goes from Sent to Received by hub to Answered with the label', async () => {
     await launch();
-    await tab('Ask');
+    await openAsk();
     expect(screen.getByText('Simulated link')).toBeTruthy();
     expect(screen.getByText(DISCLAIMER)).toBeTruthy();
     await tap('Make water safe to drink');
@@ -64,7 +67,7 @@ describe('Ask on the real simulated link', () => {
 
   test('out-of-order simulated mesh parts show progress and assemble the full answer', async () => {
     await launch({}, demoLocation, new OutOfOrderTransport());
-    await tab('Ask');
+    await openAsk();
     await tap('Make water safe to drink');
     await advance(3300);
     expect(screen.getByText('Received by hub')).toBeTruthy();
@@ -77,7 +80,7 @@ describe('Ask on the real simulated link', () => {
   test('remembers a hub that goes offline, times out, retries and answers', async () => {
     const { transport } = await launch();
     await act(() => transport.setHubMode('offline'));
-    await tab('Ask');
+    await openAsk();
     await tap('Stop heavy bleeding');
     expect(screen.getByText('Sent')).toBeTruthy();
     await advance(ACK_TIMEOUT_MS - 1);
@@ -94,7 +97,7 @@ describe('Ask on the real simulated link', () => {
 
   test('hub error becomes Hub could not answer with retry', async () => {
     await launch({ hubMode: 'error' });
-    await tab('Ask');
+    await openAsk();
     await tap('Treat a burn');
     await advance(800);
     expect(screen.getByText('Received by hub')).toBeTruthy();
@@ -105,7 +108,7 @@ describe('Ask on the real simulated link', () => {
 
   test('attachment is off by default, then adds a valid loc line to the hub wire', async () => {
     const { transport } = await launch();
-    await tab('Ask');
+    await openAsk();
     const toggle = screen.getByRole('switch', { name: 'Attach my location' });
     expect(toggle).toHaveProp('value', false);
     await fireEvent(toggle, 'valueChange', true);
@@ -117,7 +120,7 @@ describe('Ask on the real simulated link', () => {
 
   test('a new question switches location attachment off again', async () => {
     const { transport } = await launch();
-    await tab('Ask');
+    await openAsk();
     await fireEvent(screen.getByRole('switch', { name: 'Attach my location' }), 'valueChange', true);
     await tap('Make water safe to drink');
     expect(decodeLocationShare(transport.hubInbox[0])).not.toBeNull();
@@ -130,14 +133,14 @@ describe('Ask on the real simulated link', () => {
 
   test('without attachment no coordinates travel to the hub', async () => {
     const { transport } = await launch();
-    await tab('Ask');
+    await openAsk();
     await tap('Carbon monoxide signs');
     expect(decodeLocationShare(transport.hubInbox[0])).toBeNull();
   });
 
   test('looks for the hub before its first sighting', async () => {
     const { transport } = await launch({ hubMode: 'offline' });
-    await tab('Ask');
+    await openAsk();
     expect(screen.getByText(/Looking for the hub/)).toBeTruthy();
     expect(button('Make water safe to drink')).toBeDisabled();
     expect(transport.sent).toHaveLength(0);
@@ -147,11 +150,11 @@ describe('Ask on the real simulated link', () => {
 
   test('status and timers survive leaving Ask', async () => {
     await launch();
-    await tab('Ask');
+    await openAsk();
     await tap('Food after a power cut');
-    await tab('Talk');
+    await openChats();
     await advance(3300);
-    await tab('Ask');
+    await openAsk();
     expect(screen.getByText('Answered')).toBeTruthy();
     expect(screen.getByText(/1\. Keep the fridge/)).toBeTruthy();
     await tap('Ask another question');
@@ -160,7 +163,7 @@ describe('Ask on the real simulated link', () => {
 
   test('after an ack, a missing answer fails at the answer timeout', async () => {
     const { runtime, transport } = await launch();
-    await tab('Ask');
+    await openAsk();
     await tap('Make water safe to drink');
     await advance(800);
     await act(() => transport.setHubMode('offline'));
@@ -175,7 +178,7 @@ describe('Ask on the real simulated link', () => {
   test('allows a late answer after an unreachable timeout and ignores duplicate replies', async () => {
     const { runtime, transport } = await launch();
     await act(() => transport.setHubMode('offline'));
-    await tab('Ask');
+    await openAsk();
     await tap('Treat a burn');
     await advance(ACK_TIMEOUT_MS);
     const reply = (text: string) => runtime.ask.receive({ id: 'late', from: HUB_ID, fromNickname: HUB_NICKNAME, text, channel: 'private', receivedAt: Date.now() });
@@ -189,7 +192,7 @@ describe('Ask on the real simulated link', () => {
   test('retry discards the previous attempt’s partial answer', async () => {
     const { runtime, transport } = await launch();
     await act(() => transport.setHubMode('offline'));
-    await tab('Ask');
+    await openAsk();
     await tap('Treat a burn');
     await advance(ACK_TIMEOUT_MS);
     const reply = (text: string) => runtime.ask.receive({ id: text, from: HUB_ID, fromNickname: HUB_NICKNAME, text, channel: 'private', receivedAt: Date.now() });
@@ -207,7 +210,7 @@ describe('Ask on the real simulated link', () => {
   test('reset discards partial answers before a new question', async () => {
     const { runtime, transport } = await launch();
     await act(() => transport.setHubMode('offline'));
-    await tab('Ask');
+    await openAsk();
     await tap('Treat a burn');
     await advance(ACK_TIMEOUT_MS);
     const reply = (text: string) => runtime.ask.receive({ id: text, from: HUB_ID, fromNickname: HUB_NICKNAME, text, channel: 'private', receivedAt: Date.now() });
@@ -223,7 +226,7 @@ describe('Ask on the real simulated link', () => {
 
   test('emoji questions stop at 200 bytes and fit with an attached location', async () => {
     const { transport } = await launch();
-    await tab('Ask');
+    await openAsk();
     await fireEvent(screen.getByRole('switch', { name: 'Attach my location' }), 'valueChange', true);
     await fireEvent.changeText(screen.getByLabelText('Your question'), `${'😀'.repeat(50)}extra`);
     expect(screen.getByLabelText('Your question')).toHaveProp('value', '😀'.repeat(50));
@@ -244,10 +247,12 @@ describe('Ask on the real simulated link', () => {
 describe('Talk', () => {
   test('no peers shows No one nearby', async () => {
     await launch({ hubMode: 'offline', phoneNearby: false });
+    await openChats();
     expect(screen.getByText('No one nearby')).toBeTruthy();
   });
   test('a sent public message appears in the thread', async () => {
     const { transport } = await launch();
+    await openChats();
     await fireEvent.changeText(screen.getByLabelText('Message'), 'We are safe at the gate.');
     await tap('Send message');
     expect(screen.getByText('We are safe at the gate.')).toBeTruthy();
@@ -255,6 +260,7 @@ describe('Talk', () => {
   });
   test('the composer stops at 255 bytes and an over-limit message cannot be sent', async () => {
     const { runtime, transport } = await launch();
+    await openChats();
     await fireEvent.changeText(screen.getByLabelText('Message'), `${'😀'.repeat(63)}abcde`);
     expect(screen.getByLabelText('Message')).toHaveProp('value', `${'😀'.repeat(63)}abc`);
     expect(screen.getByText('0 bytes remaining')).toBeTruthy();
@@ -265,6 +271,7 @@ describe('Talk', () => {
   });
   test('an inbound private message is in Phone B’s private thread', async () => {
     const { transport } = await launch();
+    await openChats();
     await act(() => transport.sendPhoneMessage('private'));
     expect(screen.queryByText('I’m at the north gate. Are you nearby?')).toBeNull();
     await tap('Open private thread with Phone B');
@@ -272,6 +279,7 @@ describe('Talk', () => {
   });
   test('a location row opens Locate on that pin', async () => {
     const { transport } = await launch();
+    await openChats();
     await act(() => transport.sendPhoneLocation());
     await tap('Open private thread with Phone B');
     await tap('Open Phone B location in Locate');
@@ -284,25 +292,25 @@ describe('Locate', () => {
   test('a location share produces a latest pin for Phone B', async () => {
     const { transport } = await launch();
     await act(() => transport.sendPhoneLocation());
-    await tab('Locate');
+    await openLocate();
     expect(screen.getByText('◆ Phone B')).toBeTruthy();
     expect(screen.getByText('51.50550, -0.11950')).toBeTruthy();
     expect(screen.getByText(/Offline map needs a development build/)).toBeTruthy();
   });
   test('denied location permission is clear and sharing is disabled', async () => {
     await launch({}, fixedLocation({ kind: 'denied' }));
-    await tab('Locate');
+    await openLocate();
     expect(screen.getByText(/Location permission denied/)).toBeTruthy();
     expect(button('Share location')).toBeDisabled();
   });
   test('no position fix has a separate state', async () => {
     await launch({}, fixedLocation({ kind: 'locating' }));
-    await tab('Locate');
+    await openLocate();
     expect(screen.getByText(/No position fix yet/)).toBeTruthy();
   });
   test('share recipient picker excludes the hub and emits the contract text', async () => {
     const { transport } = await launch();
-    await tab('Locate');
+    await openLocate();
     await tap('Share location');
     expect(screen.queryByRole('button', { name: 'Share with hub' })).toBeNull();
     await tap('Share with public channel');
@@ -317,6 +325,77 @@ test('demo controls can take the hub offline and inject a Phone B location', asy
   await tap('Hub offline');
   expect(screen.getByText('Hub mode: offline')).toBeTruthy();
   await tap('Phone B shares a location');
-  await tab('Locate');
+  await openLocate();
   expect(screen.getByText('◆ Phone B')).toBeTruthy();
+});
+
+describe('two-tab shell', () => {
+  test('launches on the Info tab showing Ask, with Info and Chats in the bottom bar', async () => {
+    await launch();
+    expect(screen.getByText('Ask the hub')).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Info' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Chats' })).toBeTruthy();
+    expect(screen.queryByRole('tab', { name: 'Talk' })).toBeNull();
+    // the Info sub-switcher offers Ask and Locate
+    expect(screen.getByRole('tab', { name: 'Ask' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Locate' })).toBeTruthy();
+  });
+
+  test('the pinned Ask/Locate switcher stays outside the scrolling content', async () => {
+    await launch();
+    expect(within(screen.getByTestId('main-scroll')).queryByRole('tab', { name: 'Locate' })).toBeNull();
+    await openLocate();
+    expect(screen.getByRole('header', { name: 'Locate' })).toBeTruthy();
+    expect(within(screen.getByTestId('main-scroll')).queryByRole('tab', { name: 'Ask' })).toBeNull();
+  });
+
+  test('Chats tab shows the Talk threads', async () => {
+    await launch();
+    await openChats();
+    expect(screen.getByText('Talk nearby')).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Info' })).toBeTruthy();
+  });
+});
+
+describe('SOS emergency flow', () => {
+  const openSOS = async () => { await fireEvent.press(screen.getByRole('button', { name: 'SOS — emergency options' })); };
+
+  test('the SOS header action is a small pill, not a big button, and opens the guided steps in order', async () => {
+    await launch();
+    const sos = screen.getByRole('button', { name: 'SOS — emergency options' });
+    expect(sos).toBeTruthy();
+    await fireEvent.press(sos);
+    expect(screen.getByText('Emergency')).toBeTruthy();
+    for (const step of ['First aid — try to resolve it yourself', 'Help — reach the people around you', 'What is happening — get an analysis', 'Call for help — alert everyone on the mesh']) {
+      expect(screen.getByText(step)).toBeTruthy();
+    }
+  });
+
+  test('Send SOS + get first-aid guidance does both at once: public SOS with loc pin, and a hub question', async () => {
+    const { transport } = await launch();
+    await openSOS();
+    await tap('Send SOS + get first-aid guidance');
+    expect(transport.sent).toContainEqual({ to: 'public', text: 'SOS — I need help\nloc: 51.50070,-0.12460' });
+    expect(transport.sent).toContainEqual({ to: HUB_ID, text: 'First aid: what should I do right now?\nloc: 51.50070,-0.12460' });
+    // navigated to Info/Ask and the question is on its way (the SOS receipt stays in the sheet until it closes)
+    expect(screen.getByText('Sent')).toBeTruthy();
+  });
+
+  test('Send SOS to everyone nearby reports the receipt and lands in the public thread', async () => {
+    const { transport } = await launch();
+    await openSOS();
+    await tap('Send SOS to everyone nearby');
+    expect(transport.sent).toContainEqual({ to: 'public', text: 'SOS — I need help\nloc: 51.50070,-0.12460' });
+    expect(screen.getByText(/SOS sent to everyone on the mesh/)).toBeTruthy();
+    await tap('Close emergency options');
+    await openChats();
+    expect(screen.getByText(/SOS — I need help/)).toBeTruthy();
+  });
+
+  test('Message people nearby from the sheet goes to the Chats tab', async () => {
+    await launch();
+    await openSOS();
+    await tap('Message people nearby');
+    expect(screen.getByText('Talk nearby')).toBeTruthy();
+  });
 });
