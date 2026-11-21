@@ -6,6 +6,18 @@ import {
   SimulatedTransport,
 } from '../src/transport/SimulatedTransport';
 import { MeshMessage, PUBLIC_CHANNEL, SELF_PEER_ID } from '../src/transport/Transport';
+import { assembleAnswer, classifyHubReply, MAX_MESSAGE_BYTES, utf8Bytes } from '../src/ask/meshMessages';
+
+/** The simulated hub's answer, reassembled from its "(i/n) " parts like the real hub's. */
+function answerFrom(messages: MeshMessage[]): string | null {
+  const parts = messages.map((m) => {
+    expect(utf8Bytes(m.text)).toBeLessThanOrEqual(MAX_MESSAGE_BYTES);
+    const reply = classifyHubReply(m.text);
+    if (reply.kind !== 'answer_part') throw new Error(`not an answer part: ${m.text}`);
+    return reply;
+  });
+  return assembleAnswer(parts);
+}
 
 describe('SimulatedTransport with the hub online', () => {
   beforeEach(() => jest.useFakeTimers());
@@ -30,11 +42,14 @@ describe('SimulatedTransport with the hub online', () => {
     expect(received[0].text).toBe(HUB_ACK_TEXT);
 
     jest.advanceTimersByTime(2000);
-    expect(received).toHaveLength(2);
-    expect(received[1].from).toBe(HUB_PEER_ID);
-    expect(received[1].text).not.toBe(HUB_ACK_TEXT);
-    expect(received[1].text.endsWith(HUB_ANSWER_LABEL)).toBe(true);
-    expect(received[1].timestamp).toBeGreaterThanOrEqual(received[0].timestamp);
+    const answerParts = received.slice(1);
+    expect(answerParts.length).toBeGreaterThan(1);
+    for (const part of answerParts) {
+      expect(part.from).toBe(HUB_PEER_ID);
+      expect(part.timestamp).toBeGreaterThanOrEqual(received[0].timestamp);
+    }
+    expect(answerParts[answerParts.length - 1].text.endsWith(HUB_ANSWER_LABEL)).toBe(true);
+    expect(answerFrom(answerParts)).toContain('How do I make water safe to drink?');
   });
 
   it('does not answer public-channel or phone-to-phone messages', () => {
@@ -102,7 +117,6 @@ describe('SimulatedTransport with the hub unreachable', () => {
     jest.advanceTimersByTime(100);
     expect(received.map((message) => message.text)).toEqual([HUB_ACK_TEXT]);
     jest.advanceTimersByTime(100);
-    expect(received).toHaveLength(2);
-    expect(received[1].text.endsWith(HUB_ANSWER_LABEL)).toBe(true);
+    expect(answerFrom(received.slice(1))).toContain('second question');
   });
 });
