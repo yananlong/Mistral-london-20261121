@@ -3,7 +3,7 @@ import { Switch, Text, TextInput, View } from 'react-native';
 import { SUGGESTED_QUESTIONS } from '../ask/questions';
 import { AskStatus } from '../components/AskStatus';
 import { Body, Button, Card, Heading, Notice, styles } from '../components/ui';
-import { ANSWER_LABEL, MAX_QUESTION_BYTES, prefixBytes, trim, utf8Bytes } from '../protocol';
+import { ANSWER_LABEL, formatCoordinate, MAX_QUESTION_BYTES, prefixBytes, trim, utf8Bytes } from '../protocol';
 import { useAsk, useLocation, useMesh, useRuntime } from '../store/Runtime';
 import { tokens as t } from '../theme/tokens';
 
@@ -38,7 +38,7 @@ export function AskScreen({ openLocate }: { openLocate: () => void }) {
           <Body>Get a position before attaching it.</Body><Button secondary title="Find my position" onPress={openLocate} />
         </>}
         {attachLocation && location.kind === 'ready' && <Body style={styles.small}>
-          {location.source === 'demo' ? 'Demo position' : 'Your position'}: {location.position.lat.toFixed(5)}, {location.position.lon.toFixed(5)}
+          {location.source === 'demo' ? 'Demo position' : 'Your position'}: {formatCoordinate(location.position.lat)}, {formatCoordinate(location.position.lon)}
         </Body>}
       </Card>
       <Text accessibilityRole="header" style={styles.subheading}>Choose a question</Text>

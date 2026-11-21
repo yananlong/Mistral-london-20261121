@@ -55,8 +55,21 @@ export function prefixBytes(text: string, limit: number): string {
   return result;
 }
 
+export function formatCoordinate(value: number): string {
+  if (Object.is(value, -0)) return '-0.00000';
+  const absolute = Math.abs(value);
+  const sixtyFourths = absolute * 64;
+  // Exact halfway values at five decimals are odd multiples of 1/64.
+  if (Number.isSafeInteger(sixtyFourths) && sixtyFourths % 2 === 1) {
+    const lower = Math.floor(absolute * 100_000);
+    const rounded = lower % 2 === 0 ? lower : lower + 1;
+    return `${value < 0 ? '-' : ''}${(rounded / 100_000).toFixed(5)}`;
+  }
+  return value.toFixed(5);
+}
+
 export function encodeLoc(lat: number, lon: number): string {
-  return `loc: ${lat.toFixed(5)},${lon.toFixed(5)}`;
+  return `loc: ${formatCoordinate(lat)},${formatCoordinate(lon)}`;
 }
 
 export function decodeLoc(line: string): Coordinates | null {

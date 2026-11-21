@@ -62,6 +62,11 @@ test('trimming matches the reference for Unicode whitespace and byte-order marks
   expect(decodeLoc('loc:\u008551.5,\u001e-0.1')).toEqual({ lat: 51.5, lon: -0.1 });
 });
 
+test('location encoding uses the reference rounding for ties and signed zero', () => {
+  expect(encodeLoc(0.015625, -0)).toBe('loc: 0.01562,-0.00000');
+  expect(encodeLoc(-0.015625, 0.046875)).toBe('loc: -0.01562,0.04688');
+});
+
 test('answer assembly follows the latest total and replaces duplicate indexes', () => {
   expect(assembleAnswer([
     { index: 1, total: 2, text: 'old' },
