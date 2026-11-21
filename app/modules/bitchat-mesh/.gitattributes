@@ -1,0 +1,2 @@
+# Preserve whitespace in the generated fork diff context.
+bitchat-fork.patch -whitespace

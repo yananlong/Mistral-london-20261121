@@ -1,0 +1,8 @@
+{
+  "platforms": ["apple"],
+  "apple": {
+    "modules": ["BitchatMeshModule"],
+    "podspecPath": ["ios/BitLogger.podspec", "ios/BitFoundation.podspec", "ios/BitchatMesh.podspec"],
+    "swiftModuleName": ["BitchatMesh"]
+  }
+}
