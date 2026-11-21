@@ -1,6 +1,10 @@
 # Your Phone's Swiss Army Knife
 
-Let's set the scene.
+Let's set the scene. You're in the middle of an ongoing disaster: the lights are off, your phone has no signal, and you have no access to the internet. You need to survive, and your phone is your only tool.
+
+
+
+
 
 
 
@@ -25,4 +29,4 @@ Let's set the scene.
 
 Computer Vision
 
-NLP
+TTS integration, using Voxtral 3
