@@ -361,8 +361,29 @@ class TestDisclaimerSuffix(ResponderTestCase):
         self.assertEqual(body["answer"].count(responder.DISCLAIMER), 2)
 
 
-class TestConcurrencyCap(unittest.TestCase):
-    def test_429_when_saturated_and_slot_released_afterwards(self):
+def start_server(env=None):
+    with mock.patch.dict(os.environ, env or {}):
+        server = responder.make_server("127.0.0.1", 0)
+    thread = threading.Thread(
+        target=server.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True
+    )
+    thread.start()
+    return server, thread
+
+
+def post_to(port, payload, timeout=15):
+    conn = http.client.HTTPConnection("127.0.0.1", port, timeout=timeout)
+    conn.request("POST", "/ask", json.dumps(payload), {"Content-Type": "application/json"})
+    resp = conn.getresponse()
+    raw = resp.read().decode("utf-8")
+    conn.close()
+    return resp.status, (json.loads(raw) if raw else None)
+
+
+class TestQueueing(unittest.TestCase):
+    """BLUEPRINT: the hub answers several questions in parallel and queues the rest."""
+
+    def run_saturated(self, env, body):
         entered = threading.Event()
         release = threading.Event()
         callbacks = []
@@ -378,55 +399,391 @@ class TestConcurrencyCap(unittest.TestCase):
             callbacks.append({"url": url, "payload": json.loads((req.data or b"{}").decode())})
             return FakeHTTPResponse("{}")
 
-        with mock.patch.dict(os.environ, {"OLLAMA_NUM_PARALLEL": "1"}):
-            server = responder.make_server("127.0.0.1", 0)
+        server, thread = start_server(env)
         port = server.server_address[1]
-        thread = threading.Thread(
-            target=server.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True
-        )
-        thread.start()
-
-        def post(payload):
-            conn = http.client.HTTPConnection("127.0.0.1", port, timeout=15)
-            conn.request("POST", "/ask", json.dumps(payload),
-                         {"Content-Type": "application/json"})
-            resp = conn.getresponse()
-            raw = resp.read().decode("utf-8")
-            conn.close()
-            return resp.status, (json.loads(raw) if raw else None)
-
         try:
-            with mock.patch("urllib.request.urlopen", blocking_urlopen):
-                status1, body1 = post({"sender": "a", "question": "q1",
-                                       "callback_url": "http://127.0.0.1:9/cb"})
+            with mock.patch.dict(os.environ, env), mock.patch(
+                "urllib.request.urlopen", blocking_urlopen
+            ):
+                status1, body1 = post_to(port, {"sender": "a", "question": "q1",
+                                                "callback_url": "http://127.0.0.1:9/cb"})
                 self.assertEqual(status1, 202)
                 self.assertEqual(body1["ack"], responder.ACK)
                 self.assertTrue(ResponderTestCase.wait_for(entered.is_set, 5),
                                 "the model call never started")
-                # the only slot is held: async and wait asks are refused with 429
-                status2, body2 = post({"sender": "b", "question": "q2",
-                                       "callback_url": "http://127.0.0.1:9/cb"})
-                self.assertEqual(status2, 429)
-                self.assertEqual(body2["status"], "busy")
-                self.assertIn("retry", body2["answer"].lower())
-                self.assertTrue(body2["answer"].endswith(responder.DISCLAIMER), body2)
-                status3, body3 = post({"sender": "c", "question": "q3", "wait": True})
-                self.assertEqual(status3, 429)
-                self.assertTrue(body3["answer"].endswith(responder.DISCLAIMER), body3)
-                release.set()
-                self.assertTrue(ResponderTestCase.wait_for(lambda: len(callbacks) == 1, 5),
-                                "the first answer was never delivered")
-                self.assertTrue(callbacks[0]["payload"]["answer"].endswith(responder.DISCLAIMER))
-                # the slot was released: the next ask is accepted again
-                status4, _ = post({"sender": "d", "question": "q4",
-                                  "callback_url": "http://127.0.0.1:9/cb"})
-                self.assertEqual(status4, 202)
-                self.assertTrue(ResponderTestCase.wait_for(lambda: len(callbacks) == 2, 5))
+                body(port, callbacks, release)
         finally:
             release.set()
             server.shutdown()
             server.server_close()
             thread.join(timeout=5)
+
+    def test_second_asker_queues_and_is_answered_when_a_slot_frees(self):
+        def body(port, callbacks, release):
+            # the only slot is held: the next ask is still acked at once ...
+            t0 = time.monotonic()
+            status2, body2 = post_to(port, {"sender": "b", "question": "q2",
+                                            "callback_url": "http://127.0.0.1:9/cb"})
+            self.assertEqual(status2, 202)
+            self.assertEqual(body2["ack"], responder.ACK)
+            self.assertLess(time.monotonic() - t0, 0.5)
+            time.sleep(0.2)
+            self.assertEqual(callbacks, [])  # ... and waits in the queue
+            release.set()
+            self.assertTrue(ResponderTestCase.wait_for(lambda: len(callbacks) == 2, 5))
+            self.assertEqual(sorted(c["payload"]["sender"] for c in callbacks), ["a", "b"])
+            for c in callbacks:
+                self.assertEqual(c["payload"]["status"], "answered")
+                self.assertTrue(c["payload"]["answer"].endswith(responder.DISCLAIMER))
+
+        self.run_saturated({"OLLAMA_NUM_PARALLEL": "1", "HUB_QUEUE_WAIT_SECONDS": "5"}, body)
+
+    def test_busy_answer_after_bounded_queue_wait(self):
+        def body(port, callbacks, release):
+            # async: acked, then the busy answer arrives by callback
+            status2, body2 = post_to(port, {"sender": "b", "question": "q2",
+                                            "callback_url": "http://127.0.0.1:9/cb"})
+            self.assertEqual(status2, 202)
+            self.assertTrue(ResponderTestCase.wait_for(lambda: len(callbacks) == 1, 5))
+            busy = callbacks[0]["payload"]
+            self.assertEqual(busy["sender"], "b")
+            self.assertEqual(busy["status"], "busy")
+            self.assertIn("busy", busy["answer"])
+            self.assertIn("retry", busy["answer"].lower())
+            self.assertTrue(busy["answer"].startswith("No answer:"), busy["answer"])
+            self.assertTrue(busy["answer"].endswith(responder.DISCLAIMER))
+            # sync: 503 with the same busy answer, after the bounded wait
+            t0 = time.monotonic()
+            status3, body3 = post_to(port, {"sender": "c", "question": "q3", "wait": True})
+            self.assertEqual(status3, 503)
+            self.assertGreaterEqual(time.monotonic() - t0, 0.25)
+            self.assertEqual(body3["status"], "busy")
+            self.assertEqual(body3["answer"], busy["answer"])
+            release.set()
+            self.assertTrue(ResponderTestCase.wait_for(lambda: len(callbacks) == 2, 5))
+            # the slot was released: the next ask is answered again
+            status4, body4 = post_to(port, {"sender": "d", "question": "q4", "wait": True})
+            self.assertEqual(status4, 200)
+            self.assertEqual(body4["status"], "answered")
+
+        self.run_saturated({"OLLAMA_NUM_PARALLEL": "1", "HUB_QUEUE_WAIT_SECONDS": "0.3"}, body)
+
+    def test_full_queue_gets_the_busy_answer_at_once(self):
+        def body(port, callbacks, release):
+            t0 = time.monotonic()
+            status, resp = post_to(port, {"sender": "c", "question": "q", "wait": True})
+            self.assertEqual(status, 503)
+            self.assertLess(time.monotonic() - t0, 1.0)
+            self.assertEqual(resp["status"], "busy")
+
+        self.run_saturated(
+            {"OLLAMA_NUM_PARALLEL": "1", "HUB_QUEUE_WAIT_SECONDS": "30", "HUB_MAX_QUEUED": "0"},
+            body,
+        )
+
+    def test_queue_wait_counts_against_the_total_deadline(self):
+        # U-timeout: the model gets only what is left of HUB_ANSWER_TIMEOUT_SECONDS
+        seen = []
+
+        def slow_urlopen(req, timeout=None):
+            if req.full_url.endswith("/api/chat"):
+                seen.append(timeout)
+                time.sleep(0.4)
+                return FakeHTTPResponse(
+                    json.dumps({"message": {"role": "assistant", "content": "1. ok."}})
+                )
+            return FakeHTTPResponse("{}")
+
+        env = {"OLLAMA_NUM_PARALLEL": "1", "HUB_ANSWER_TIMEOUT_SECONDS": "2",
+               "HUB_QUEUE_WAIT_SECONDS": "1.5"}
+        server, thread = start_server(env)
+        port = server.server_address[1]
+        results = []
+        try:
+            with mock.patch.dict(os.environ, env), mock.patch(
+                "urllib.request.urlopen", slow_urlopen
+            ):
+                threads = [
+                    threading.Thread(target=lambda i=i: results.append(
+                        post_to(port, {"sender": "s%d" % i, "question": "q", "wait": True})))
+                    for i in range(2)
+                ]
+                for t in threads:
+                    t.start()
+                for t in threads:
+                    t.join(10)
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=5)
+        self.assertEqual([r[0] for r in results], [200, 200])
+        self.assertEqual(len(seen), 2)
+        self.assertLessEqual(max(seen), 2.0)
+        self.assertLess(min(seen), 1.7)  # the queued one had less than the full 2 s left
+
+
+class TestParallelAsks(ResponderTestCase):
+    def test_u11_eight_async_asks_ack_fast_and_all_get_their_own_answer(self):
+        callbacks = []
+
+        def echo_urlopen(req, timeout=None):
+            data = json.loads((req.data or b"{}").decode())
+            if req.full_url.endswith("/api/chat"):
+                time.sleep(0.3)
+                return FakeHTTPResponse(json.dumps(
+                    {"message": {"content": "1. Echo %s." % data["messages"][-1]["content"]}}
+                ))
+            callbacks.append(data)
+            return FakeHTTPResponse("{}")
+
+        acks = []
+
+        def ask(i):
+            t0 = time.monotonic()
+            status, body = self.post_ask({
+                "sender": "phone%d" % i, "question": "question-%d" % i,
+                "callback_url": "http://127.0.0.1:9/cb",
+            })
+            acks.append((status, body.get("ack"), time.monotonic() - t0))
+
+        with mock.patch("urllib.request.urlopen", echo_urlopen):
+            t0 = time.monotonic()
+            threads = [threading.Thread(target=ask, args=(i,)) for i in range(8)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join(10)
+            self.assertTrue(self.wait_for(lambda: len(callbacks) == 8, 5))
+            wall = time.monotonic() - t0
+        self.assertEqual(len(acks), 8)
+        for status, ack, took in acks:
+            self.assertEqual(status, 202)
+            self.assertEqual(ack, responder.ACK)
+            self.assertLess(took, 0.5)  # the ack never waits on the model or the queue
+        for c in callbacks:
+            n = c["sender"].replace("phone", "")
+            self.assertIn("question-%s." % n, c["answer"])
+        self.assertEqual(len({c["sender"] for c in callbacks}), 8)
+        self.assertLess(wall, 2.0)  # 8 x 0.3 s serial would be 2.4 s: 4 ran in parallel
+
+
+class TestModelFailures(ResponderTestCase):
+    def both_modes(self, error):
+        with mock.patch("urllib.request.urlopen", fake_urlopen_factory(
+                model_error=error, callbacks=self.callbacks)):
+            status, body = self.post_ask({
+                "sender": "a", "question": "q?", "callback_url": "http://127.0.0.1:9/cb"})
+            self.assertEqual(status, 202)
+            self.assertEqual(body["ack"], responder.ACK)
+            self.assertTrue(self.wait_for(lambda: len(self.callbacks) == 1))
+            status, sync = self.post_ask({"sender": "a", "question": "q?", "wait": True})
+        self.assertEqual(status, 502)
+        cb = self.callbacks[0]["payload"]
+        self.assertEqual(cb["status"], "error")
+        self.assertEqual(sync["status"], "error")
+        self.assertEqual(cb["answer"], sync["answer"])
+        answer = sync["answer"]
+        self.assertTrue(answer.startswith("No answer:"), answer)
+        self.assertIn("retry", answer.lower())
+        self.assertTrue(answer.endswith(responder.DISCLAIMER), answer)
+        return answer, sync
+
+    def test_u04_ollama_down(self):
+        answer, sync = self.both_modes(urllib.error.URLError(ConnectionRefusedError()))
+        self.assertIn("not reachable", answer)
+        # internals stay in the log and the JSON error, not in the mesh answer
+        self.assertNotIn("http://", answer)
+        self.assertIn("unreachable", sync["error"])
+
+    def test_u05_model_tag_not_pulled_404_and_500(self):
+        answer, sync = self.both_modes(
+            urllib.error.HTTPError("http://x/api/chat", 404, "model not found", {}, None))
+        self.assertIn("not installed", answer)
+        self.assertIn("404", sync["error"])
+        self.callbacks.clear()
+        answer, sync = self.both_modes(
+            urllib.error.HTTPError("http://x/api/chat", 500, "boom", {}, None))
+        self.assertIn("500", sync["error"])
+
+    def test_u06_bad_model_responses(self):
+        for raw in ("not json", "{}", json.dumps({"message": {"content": "  "}})):
+            def urlopen(req, timeout=None, raw=raw):
+                return FakeHTTPResponse(raw)
+            with mock.patch("urllib.request.urlopen", urlopen):
+                status, body = self.post_ask({"sender": "a", "question": "q?", "wait": True})
+            self.assertEqual(status, 502, raw)
+            self.assertTrue(body["answer"].endswith(responder.DISCLAIMER))
+
+
+class TestAnswerShaping(ResponderTestCase):
+    def sync_answer(self, raw, env=None):
+        with mock.patch.dict(os.environ, env or {}), mock.patch(
+            "urllib.request.urlopen", fake_urlopen_factory(model_reply=raw)
+        ):
+            status, body = self.post_ask({"sender": "p", "question": "q?", "wait": True})
+        self.assertEqual(status, 200)
+        return body["answer"]
+
+    def model_part(self, answer):
+        self.assertTrue(answer.endswith("\n" + responder.DISCLAIMER), answer)
+        return answer[: -len(responder.DISCLAIMER) - 1]
+
+    def test_ack_and_disclaimer_are_byte_exact_from_the_blueprint(self):
+        self.assertEqual(responder.ACK, "Received. Working on an answer.")
+        self.assertEqual(
+            responder.DISCLAIMER,
+            "AI answer from an open-weight model on the hub. Not verified emergency advice.",
+        )
+
+    def test_u07_truncation_never_ends_on_a_list_marker(self):
+        raw = ("1. Move to higher ground now, away from the river\n"
+               "2. Call 999 if anyone is trapped\n"
+               "3. Do not walk or drive through flood water as six inches can knock "
+               "you over and two feet can float a car away so stay out")
+        part = self.model_part(self.sync_answer(raw, {"HUB_MAX_ANSWER_CHARS": "150"}))
+        self.assertNotRegex(part, r"(?:^|\n)\s*\d+[.)]\s*$")
+        self.assertTrue(part.endswith("2. Call 999 if anyone is trapped"), part)
+
+    def test_truncation_units(self):
+        t = responder.truncate_at_sentence
+        self.assertEqual(t("1. Boil it. 2. Cool it down slowly please", 22), "1. Boil it.")
+        # "3." right at the cut is a marker, not a sentence end
+        self.assertEqual(t("1. Boil the water.\n2. Cool it.\n3. Drink it slowly", 34),
+                         "1. Boil the water.\n2. Cool it.")
+        # a decimal point is not a sentence end
+        self.assertEqual(t("Add 0.5 litres of water now and stir it well", 6), "Add")
+        self.assertEqual(t("short", 100, 100), "short")
+        # the byte cut never splits a multi-byte character
+        out = t("é" * 50, 100, 25)
+        self.assertEqual(out, "é" * 12)
+
+    def test_u08_answer_fits_the_mesh_byte_budget_with_the_disclaimer(self):
+        raw = "é " * 650  # 1300 chars, 1950 bytes
+        answer = self.sync_answer(raw)
+        self.assertLessEqual(len(answer.encode("utf-8")), 1407)
+        self.assertTrue(answer.endswith(responder.DISCLAIMER))
+        raw = "1. " + "Keep warm and dry. " * 200
+        answer = self.sync_answer(raw)
+        self.assertLessEqual(len(answer.encode("utf-8")), 1407)
+        self.assertTrue(self.model_part(answer).endswith("."))
+        small = self.sync_answer(raw, {"HUB_MAX_ANSWER_BYTES": "300"})
+        self.assertLessEqual(len(small.encode("utf-8")), 300)
+        self.assertTrue(small.endswith(responder.DISCLAIMER))
+
+    def test_num_predict_and_keep_alive_are_sent_and_sized_to_the_cap(self):
+        payload = responder.build_chat_payload("q?", None)
+        self.assertEqual(payload["options"]["num_ctx"], 8192)
+        self.assertEqual(payload["options"]["num_predict"], (1407 - 78 - 1) // 4)
+        self.assertEqual(payload["keep_alive"], -1)
+        self.assertIs(payload["stream"], False)
+        with mock.patch.dict(os.environ, {"HUB_MAX_ANSWER_BYTES": "700"}):
+            self.assertEqual(
+                responder.build_chat_payload("q?", None)["options"]["num_predict"], 155)
+        with mock.patch.dict(os.environ, {"HUB_NUM_PREDICT": "99"}):
+            self.assertEqual(
+                responder.build_chat_payload("q?", None)["options"]["num_predict"], 99)
+
+    def test_u16_disclaimer_mid_text_and_at_end(self):
+        raw = "1. Boil it.\n" + responder.DISCLAIMER + "\n2. Then cool it."
+        answer = self.sync_answer(raw)
+        self.assertTrue(answer.endswith("2. Then cool it.\n" + responder.DISCLAIMER))
+        # a model that already ends with the label gets exactly one, as the last line
+        answer = self.sync_answer("1. Boil it. " + responder.DISCLAIMER)
+        self.assertEqual(answer, "1. Boil it.\n" + responder.DISCLAIMER)
+
+    def test_markdown_is_stripped_to_plain_text(self):
+        answer = self.sync_answer("## Steps\n1. **Call 999** now.\n2. Press on the wound.")
+        self.assertEqual(
+            self.model_part(answer), "Steps\n1. Call 999 now.\n2. Press on the wound.")
+
+    def test_system_prompt_safety_rules(self):
+        prompt = responder.build_chat_payload("q?", None)["messages"][0]["content"]
+        for needle in ("numbered steps", "most urgent action first", "999",
+                       "Never invent place names", "UK units", "no Markdown"):
+            self.assertIn(needle, prompt)
+
+    def test_sync_answer_carries_the_ack_for_callers_without_a_callback(self):
+        with mock.patch("urllib.request.urlopen", fake_urlopen_factory(model_reply="1. ok.")):
+            status, body = self.post_ask({"sender": "p", "question": "q?", "wait": True})
+        self.assertEqual(status, 200)
+        self.assertEqual(body["ack"], responder.ACK)
+        self.assertEqual(body["status"], "answered")
+
+
+class TestAsyncNeedsCallback(ResponderTestCase):
+    def test_u09_async_without_callback_url_is_400(self):
+        with mock.patch("urllib.request.urlopen",
+                        fake_urlopen_factory(model_reply="x", ollama_requests=self.ollama_requests)):
+            status, body = self.post_ask({"sender": "p", "question": "q?"})
+            self.assertEqual(status, 400)
+            self.assertIn("callback_url", body["error"])
+            status, _ = self.post_ask({"sender": "p", "question": "q?", "wait": False})
+            self.assertEqual(status, 400)
+        self.assertEqual(self.ollama_requests, [])
+
+
+class TestEgressAndConfig(ResponderTestCase):
+    def test_u13a_only_ollama_and_the_callback_are_ever_contacted(self):
+        urls = []
+        state = {"error": None}
+
+        def recording_urlopen(req, timeout=None):
+            urls.append(req.full_url)
+            if req.full_url.endswith("/api/chat"):
+                if state["error"] is not None:
+                    raise state["error"]
+                return FakeHTTPResponse(json.dumps({"message": {"content": "1. ok."}}))
+            return FakeHTTPResponse("{}")
+
+        cb = "http://127.0.0.1:9/cb"
+        with mock.patch.dict(os.environ, {"OLLAMA_HOST": "10.0.0.2:11434"}), mock.patch(
+            "urllib.request.urlopen", recording_urlopen
+        ):
+            for err in (None, urllib.error.URLError(ConnectionRefusedError()),
+                        socket.timeout("timed out")):
+                state["error"] = err
+                before = len(urls)
+                self.post_ask({"sender": "a", "question": "q?", "callback_url": cb})
+                self.assertTrue(self.wait_for(lambda: len(urls) >= before + 2))
+                self.post_ask({"sender": "a", "question": "q?", "wait": True})
+        self.assertEqual(set(urls), {"http://10.0.0.2:11434/api/chat", cb})
+
+    def test_default_model_is_the_pulled_fp16_tag_and_is_overridable(self):
+        with mock.patch.dict(os.environ):
+            os.environ.pop("HUB_MODEL", None)
+            self.assertEqual(responder.model_name(), "ministral-3:14b-instruct-2512-fp16")
+            os.environ["HUB_MODEL"] = "ministral-3:14b-instruct-2512-q8_0"
+            self.assertEqual(responder.build_chat_payload("q", None)["model"],
+                             "ministral-3:14b-instruct-2512-q8_0")
+
+    def test_ollama_host_falls_back_to_the_local_link_ip(self):
+        with mock.patch.dict(os.environ):
+            for k in ("OLLAMA_HOST", "SPARK_LOCAL_LINK_IP", "HUB_BIND"):
+                os.environ.pop(k, None)
+            self.assertEqual(responder.ollama_base_url(), "http://127.0.0.1:11434")
+            self.assertEqual(responder.default_bind(), "127.0.0.1")
+            os.environ["SPARK_LOCAL_LINK_IP"] = "10.0.0.2"
+            self.assertEqual(responder.ollama_base_url(), "http://10.0.0.2:11434")
+            self.assertEqual(responder.default_bind(), "10.0.0.2")
+            os.environ["OLLAMA_HOST"] = "127.0.0.1:11435"
+            self.assertEqual(responder.ollama_base_url(), "http://127.0.0.1:11435")
+
+    def test_u13b_cloud_tags_and_public_ollama_hosts_are_refused_at_startup(self):
+        for env in ({"HUB_MODEL": "ministral-3:14b-cloud"}, {"HUB_MODEL": "gpt-oss:cloud"},
+                    {"OLLAMA_HOST": "0.0.0.0:11434"}, {"OLLAMA_HOST": "https://8.8.8.8"}):
+            with mock.patch.dict(os.environ, env), self.assertRaises(SystemExit, msg=env):
+                responder.validate_numeric_env()
+        for env in ({"OLLAMA_HOST": "127.0.0.1:11435"}, {"OLLAMA_HOST": "169.254.10.2:11434"},
+                    {"OLLAMA_HOST": "192.168.5.2:11434"}, {"OLLAMA_HOST": "spark.local:11434"}):
+            with mock.patch.dict(os.environ, env):
+                responder.validate_numeric_env()
+
+    def test_default_timeouts(self):
+        with mock.patch.dict(os.environ):
+            for k in ("HUB_ANSWER_TIMEOUT_SECONDS", "HUB_QUEUE_WAIT_SECONDS"):
+                os.environ.pop(k, None)
+            self.assertEqual(responder.answer_timeout(), 100.0)
+            self.assertLess(responder.queue_wait_seconds(), responder.answer_timeout())
 
 
 class TestBroadExceptionHandling(ResponderTestCase):
