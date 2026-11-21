@@ -36,8 +36,10 @@ cd bitchat && cp Configs/Local.xcconfig.example Configs/Local.xcconfig
   - Remove the share-extension target and the `com.apple.security.application-groups` entitlement in the fork, then check
     the app still launches (it reads the group ID from `bitchat/Info.plist`).
   - Use a paid team ($99) if anyone has one.
-- Leave out the increased-memory-limit entitlement. The 18 Pro doesn't need it: ~3.5 GB resident against a roughly 6 GB
-  per-app ceiling. The iPhone 17 tiers in `DESIGN_IPHONE17.md` already assume it is absent.
+- Start without the increased-memory-limit entitlement (it may not be signable with a personal team). The 18 Pro should
+  not need it: README.md section 3 estimates ~3 GB for weights and KV plus compute buffers, and one unconfirmed forum
+  report puts the 12 GB-iPhone ceiling at ~6 GB. On the iPhone 17, `DESIGN_IPHONE17.md` plans a build with and without
+  it; without it, its tiers assume 3-4 GB available.
 
 ## 3. Copy the model files onto each phone
 
