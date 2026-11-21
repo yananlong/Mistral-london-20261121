@@ -1,0 +1,11 @@
+{
+  "name": "bitchat-mesh",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.ts",
+  "types": "index.ts",
+  "devDependencies": {
+    "expo-modules-core": "^3.0.0",
+    "typescript": "^5.9.3"
+  }
+}
