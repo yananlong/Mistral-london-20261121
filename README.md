@@ -12,6 +12,10 @@ Each iPhone runs our React Native app. A native module in the app wraps the mesh
 
 [BLUEPRINT_1.md](BLUEPRINT_1.md) has the architecture, message format, build order, fallbacks and open questions. Its [decisions](BLUEPRINT_1.md#decisions) list what the team has settled and who owns each part. [DATASETS.md](DATASETS.md) ranks which information matters most in an urban emergency and lists the data sources for each kind.
 
+## Design source of truth
+
+[Design principles](design/PRINCIPLES.md), [visual tokens](design/system.html) and [interactive component examples](design/components.html) define the current interface. They supersede older visual and UX guidance elsewhere, including the legacy `prototype/`. Examples use fictional data and do not establish implemented transport, SMS or SOS integrations.
+
 ## Hackathon scope
 
 For the hackathon, the hub is the team's offline DGX Spark, which runs Ministral 3 14B Instruct 2512 in Ollama. Phones reach it only over the BitChat mesh. The MVP is all three capabilities working on an iPhone and an Android phone (Pixel 9a). Both phones are in airplane mode with Bluetooth on, so the phones have no internet. The claim is that the model can run on local hardware with no internet, and that no question goes to a cloud model API. On stage, both phones show airplane mode, and the Ollama log on the hub shows each run.
@@ -37,3 +41,7 @@ This repository contains planning documents, a Voxtral TTS script and the BitCha
 | [critique.md](critique.md) | The evidence that the demo should collect, and a commercial critique. |
 | [SETUP_VOXTRAL.md](SETUP_VOXTRAL.md) | Mistral API key and cloud Voxtral TTS setup. The MVP uses no cloud model API. |
 | [video/README.md](video/README.md) | Multi-agent Remotion pipeline for the 35-40 s feature video: director -> parallel generator agents -> curator -> editor/QA -> human review gate. |
+
+## Contributors
+
+- Ying Wang (wyxiaoyang)
